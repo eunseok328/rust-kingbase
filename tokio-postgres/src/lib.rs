@@ -125,7 +125,11 @@
 #![warn(rust_2018_idioms, clippy::all, missing_docs)]
 
 pub use crate::cancel_token::CancelToken;
-pub use crate::client::Client;
+// ═══════════════════ [修改开始] Kingbase 导出连接级兼容模式 ═══════════════════
+// 原代码保留：
+// pub use crate::client::Client;
+pub use crate::client::{Client, CompatibleMode};
+// ═══════════════════ [修改结束] Kingbase 导出连接级兼容模式 ═══════════════════
 pub use crate::config::Config;
 pub use crate::connection::Connection;
 pub use crate::copy_in::CopyInSink;
@@ -170,6 +174,9 @@ mod copy_in;
 mod copy_out;
 pub mod error;
 mod generic_client;
+// ═══════════════════ [新增开始] Kingbase 兼容模块入口 ═══════════════════
+pub mod kingbase;
+// ═══════════════════ [新增结束] Kingbase 兼容模块入口 ═══════════════════
 #[cfg(not(target_arch = "wasm32"))]
 mod keepalive;
 mod maybe_tls_stream;

@@ -9,6 +9,9 @@ struct StatementInner {
     client: Weak<InnerClient>,
     name: String,
     params: Vec<Type>,
+    // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 元数据 ═══════════════════
+    param_codec_types: Vec<Option<Type>>,
+    // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 元数据 ═══════════════════
     columns: Vec<Column>,
 }
 
@@ -40,21 +43,36 @@ impl Statement {
         inner: &Arc<InnerClient>,
         name: String,
         params: Vec<Type>,
+        // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 构造参数 ═══════════════════
+        param_codec_types: Vec<Option<Type>>,
+        // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 构造参数 ═══════════════════
         columns: Vec<Column>,
     ) -> Statement {
+        // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 长度校验 ═══════════════════
+        debug_assert_eq!(params.len(), param_codec_types.len());
+        // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 长度校验 ═══════════════════
         Statement(Arc::new(StatementInner {
             client: Arc::downgrade(inner),
             name,
             params,
+            // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 字段初始化 ═══════════════════
+            param_codec_types,
+            // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 字段初始化 ═══════════════════
             columns,
         }))
     }
 
     pub(crate) fn unnamed(params: Vec<Type>, columns: Vec<Column>) -> Statement {
+        // ═══════════════════ [新增开始] Kingbase MySQL unnamed statement 默认无 parameter codec alias ═══════════════════
+        let param_codec_types = vec![None; params.len()];
+        // ═══════════════════ [新增结束] Kingbase MySQL unnamed statement 默认无 parameter codec alias ═══════════════════
         Statement(Arc::new(StatementInner {
             client: Weak::new(),
             name: String::new(),
             params,
+            // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 字段初始化 ═══════════════════
+            param_codec_types,
+            // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 字段初始化 ═══════════════════
             columns,
         }))
     }
@@ -67,6 +85,13 @@ impl Statement {
     pub fn params(&self) -> &[Type] {
         &self.0.params
     }
+
+    // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 访问接口 ═══════════════════
+    pub(crate) fn param_codec_types(&self) -> &[Option<Type>] {
+        debug_assert_eq!(self.0.params.len(), self.0.param_codec_types.len());
+        &self.0.param_codec_types
+    }
+    // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 访问接口 ═══════════════════
 
     /// Returns information about the columns returned when the statement is queried.
     pub fn columns(&self) -> &[Column] {
@@ -92,6 +117,9 @@ pub struct Column {
     pub(crate) column_id: Option<i16>,
     pub(crate) type_modifier: i32,
     pub(crate) r#type: Type,
+    // ═══════════════════ [新增开始] Kingbase read-side codec alias 元数据 ═══════════════════
+    pub(crate) codec_type: Option<Type>,
+    // ═══════════════════ [新增结束] Kingbase read-side codec alias 元数据 ═══════════════════
 }
 
 impl Column {
@@ -119,4 +147,10 @@ impl Column {
     pub fn type_(&self) -> &Type {
         &self.r#type
     }
+
+    // ═══════════════════ [新增开始] Kingbase read-side codec alias 访问接口 ═══════════════════
+    pub(crate) fn codec_type(&self) -> Option<&Type> {
+        self.codec_type.as_ref()
+    }
+    // ═══════════════════ [新增结束] Kingbase read-side codec alias 访问接口 ═══════════════════
 }

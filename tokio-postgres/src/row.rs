@@ -173,15 +173,40 @@ impl Row {
             None => return Err(Error::column(idx.to_string())),
         };
 
-        let ty = self.columns()[idx].type_();
-        if !T::accepts(ty) {
+        // ═══════════════════ [修改开始] Kingbase read-side codec alias 解码类型选择 ═══════════════════
+        // 原逻辑：
+        // let ty = self.columns()[idx].type_();
+        // if !T::accepts(ty) {
+        //     return Err(Error::from_sql(
+        //         Box::new(WrongType::new::<T>(ty.clone())),
+        //         idx,
+        //     ));
+        // }
+        //
+        // FromSql::from_sql_nullable(ty, self.col_buffer(idx)).map_err(|e| Error::from_sql(e, idx))
+        let column = &self.columns()[idx];
+        let original_type = column.type_();
+        let decode_type = if T::accepts(original_type) {
+            original_type
+        } else if let Some(codec_type) = column.codec_type() {
+            if T::accepts(codec_type) {
+                codec_type
+            } else {
+                return Err(Error::from_sql(
+                    Box::new(WrongType::new::<T>(original_type.clone())),
+                    idx,
+                ));
+            }
+        } else {
             return Err(Error::from_sql(
-                Box::new(WrongType::new::<T>(ty.clone())),
+                Box::new(WrongType::new::<T>(original_type.clone())),
                 idx,
             ));
-        }
+        };
 
-        FromSql::from_sql_nullable(ty, self.col_buffer(idx)).map_err(|e| Error::from_sql(e, idx))
+        FromSql::from_sql_nullable(decode_type, self.col_buffer(idx))
+            .map_err(|e| Error::from_sql(e, idx))
+        // ═══════════════════ [修改结束] Kingbase read-side codec alias 解码类型选择 ═══════════════════
     }
 
     /// Returns the raw size of the row in bytes.
