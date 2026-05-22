@@ -84,12 +84,56 @@ struct CachedTypeInfo {
     types: HashMap<Oid, Type>,
 }
 
+// ═══════════════════ [新增开始] Kingbase 四模式兼容状态 ═══════════════════
+/// Kingbase database compatibility mode detected for a live connection.
+///
+/// Java's Kingbase JDBC driver reads `pg_settings.database_mode` after
+/// connection startup and then lets type metadata, SQL escaping and other
+/// behavior branch on that connection-level mode. Rust-kingbase keeps the same
+/// idea here: make the current mode a first-class piece of client state before
+/// adding mode-specific type mappers.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CompatibleMode {
+    /// Kingbase/PostgreSQL native behavior. Empty or missing `database_mode`
+    /// is treated as this mode, matching the Java driver's `pg` branch.
+    Pg,
+    /// Oracle compatibility mode.
+    Oracle,
+    /// MySQL compatibility mode.
+    Mysql,
+    /// SQL Server compatibility mode.
+    SqlServer,
+}
+
+impl CompatibleMode {
+    pub(crate) fn from_database_mode(mode: Option<&str>) -> CompatibleMode {
+        match mode.map(str::trim).filter(|mode| !mode.is_empty()) {
+            Some(mode) if mode.eq_ignore_ascii_case("oracle") => CompatibleMode::Oracle,
+            Some(mode) if mode.eq_ignore_ascii_case("mysql") => CompatibleMode::Mysql,
+            Some(mode) if mode.eq_ignore_ascii_case("sqlserver") => CompatibleMode::SqlServer,
+            Some(mode) if mode.eq_ignore_ascii_case("pg") => CompatibleMode::Pg,
+            _ => CompatibleMode::Pg,
+        }
+    }
+}
+// ═══════════════════ [新增结束] Kingbase 四模式兼容状态 ═══════════════════
+
 pub struct InnerClient {
     sender: mpsc::UnboundedSender<Request>,
     cached_typeinfo: Mutex<CachedTypeInfo>,
 
     /// A buffer to use when writing out postgres commands.
     buffer: Mutex<BytesMut>,
+
+    // ═══════════════════ [新增开始] Kingbase 连接级服务端设置缓存 ═══════════════════
+    /// Compatibility mode and related settings detected after startup.
+    ///
+    /// These values are connection scoped, so they live beside the request
+    /// sender and type cache rather than on `Connection`, which later type
+    /// lookup code cannot conveniently access.
+    compatible_mode: Mutex<CompatibleMode>,
+    kingbase_server_settings: Mutex<HashMap<String, String>>,
+    // ═══════════════════ [新增结束] Kingbase 连接级服务端设置缓存 ═══════════════════
 }
 
 impl InnerClient {
@@ -141,6 +185,26 @@ impl InnerClient {
     pub fn clear_type_cache(&self) {
         self.cached_typeinfo.lock().types.clear();
     }
+
+    // ═══════════════════ [新增开始] Kingbase 兼容状态访问接口 ═══════════════════
+    pub fn compatible_mode(&self) -> CompatibleMode {
+        *self.compatible_mode.lock()
+    }
+
+    pub fn kingbase_server_setting(&self, name: &str) -> Option<String> {
+        self.kingbase_server_settings.lock().get(name).cloned()
+    }
+
+    pub(crate) fn set_kingbase_server_settings(&self, settings: HashMap<String, String>) {
+        let mode = CompatibleMode::from_database_mode(
+            settings
+                .get("database_mode")
+                .map(std::string::String::as_str),
+        );
+        *self.compatible_mode.lock() = mode;
+        *self.kingbase_server_settings.lock() = settings;
+    }
+    // ═══════════════════ [新增结束] Kingbase 兼容状态访问接口 ═══════════════════
 
     /// Call the given function with a buffer to be used when writing out
     /// postgres commands.
@@ -201,6 +265,10 @@ impl Client {
                 sender,
                 cached_typeinfo: Default::default(),
                 buffer: Default::default(),
+                // ═══════════════════ [新增开始] Kingbase 兼容状态默认值 ═══════════════════
+                compatible_mode: Mutex::new(CompatibleMode::Pg),
+                kingbase_server_settings: Default::default(),
+                // ═══════════════════ [新增结束] Kingbase 兼容状态默认值 ═══════════════════
             }),
             #[cfg(feature = "runtime")]
             socket_config: None,
@@ -214,6 +282,22 @@ impl Client {
     pub(crate) fn inner(&self) -> &Arc<InnerClient> {
         &self.inner
     }
+
+    // ═══════════════════ [新增开始] Kingbase 兼容状态公开访问接口 ═══════════════════
+    /// Returns the Kingbase compatibility mode detected for this connection.
+    pub fn compatible_mode(&self) -> CompatibleMode {
+        self.inner.compatible_mode()
+    }
+
+    /// Returns a Kingbase server setting captured during compatibility probing.
+    ///
+    /// The first probe stores values such as `database_mode`, `sql_mode`, and
+    /// `ora_input_emptystr_isnull`. Later mode-specific layers can use this to
+    /// match Java JDBC behavior without re-querying the server.
+    pub fn kingbase_server_setting(&self, name: &str) -> Option<String> {
+        self.inner.kingbase_server_setting(name)
+    }
+    // ═══════════════════ [新增结束] Kingbase 兼容状态公开访问接口 ═══════════════════
 
     #[cfg(feature = "runtime")]
     pub(crate) fn set_socket_config(&mut self, socket_config: SocketConfig) {

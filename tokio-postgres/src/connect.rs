@@ -1,11 +1,21 @@
+// ═══════════════════ [修改开始] Kingbase 引入连接级兼容状态写入能力 ═══════════════════
+// 原代码保留：
+// use crate::client::{Addr, SocketConfig};
 use crate::client::{Addr, SocketConfig};
+// ═══════════════════ [修改结束] Kingbase 引入连接级兼容状态写入能力 ═══════════════════
 use crate::config::{Host, LoadBalanceHosts, TargetSessionAttrs};
 use crate::connect_raw::connect_raw;
 use crate::connect_socket::connect_socket;
+// ═══════════════════ [新增开始] Kingbase 探测错误策略需要按 SQLSTATE 分类 ═══════════════════
+use crate::error::SqlState;
+// ═══════════════════ [新增结束] Kingbase 探测错误策略需要按 SQLSTATE 分类 ═══════════════════
 use crate::tls::MakeTlsConnect;
 use crate::{Client, Config, Connection, Error, SimpleQueryMessage, Socket};
 use futures_util::{FutureExt, Stream};
 use rand::seq::SliceRandom;
+// ═══════════════════ [新增开始] Kingbase 兼容模式探测需要缓存服务端设置 ═══════════════════
+use std::collections::HashMap;
+// ═══════════════════ [新增结束] Kingbase 兼容模式探测需要缓存服务端设置 ═══════════════════
 use std::future::{self, Future};
 use std::pin::pin;
 use std::task::Poll;
@@ -162,6 +172,13 @@ where
     let has_hostname = hostname.is_some();
     let (mut client, mut connection) = connect_raw(socket, tls, has_hostname, config).await?;
 
+    // ═══════════════════ [新增开始] Kingbase 四模式连接级探测 ═══════════════════
+    // Java Kingbase JDBC connects first, then reads `pg_settings.database_mode`
+    // and related settings to decide whether the connection is pg/oracle/mysql/
+    // sqlserver compatible. Do the same before exposing the client to callers.
+    probe_kingbase_compatibility(&client, &mut connection).await?;
+    // ═══════════════════ [新增结束] Kingbase 四模式连接级探测 ═══════════════════
+
     if config.target_session_attrs != TargetSessionAttrs::Any {
         let mut rows = pin!(client.simple_query_raw("SHOW transaction_read_only"));
 
@@ -227,3 +244,91 @@ where
 
     Ok((client, connection))
 }
+
+// ═══════════════════ [新增开始] Kingbase 四模式兼容探测实现 ═══════════════════
+// ═══════════════════ [新增开始] Kingbase 探测错误窄 allowlist 策略 ═══════════════════
+fn should_ignore_kingbase_probe_error(error: &Error) -> bool {
+    matches!(
+        error.code(),
+        Some(code)
+            if code == &SqlState::UNDEFINED_TABLE
+                || code == &SqlState::UNDEFINED_COLUMN
+                || code == &SqlState::INSUFFICIENT_PRIVILEGE
+                || code == &SqlState::FEATURE_NOT_SUPPORTED
+    )
+}
+// ═══════════════════ [新增结束] Kingbase 探测错误窄 allowlist 策略 ═══════════════════
+
+async fn probe_kingbase_compatibility<T>(
+    client: &Client,
+    connection: &mut Connection<Socket, T>,
+) -> Result<(), Error>
+where
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    const KINGBASE_COMPATIBILITY_QUERY: &str = "\
+SELECT name, setting
+FROM pg_settings
+WHERE name = 'database_mode'
+   OR name = 'ora_input_emptystr_isnull'
+   OR name = 'enable_unpaired_comment'
+   OR name = 'sql_mode'
+   OR name = 'kdb_flashback.db_recyclebin'";
+
+    let mut settings = HashMap::new();
+    let mut rows = pin!(client.simple_query_raw(KINGBASE_COMPATIBILITY_QUERY));
+
+    let rows = match future::poll_fn(|cx| {
+        if connection.poll_unpin(cx)?.is_ready() {
+            return Poll::Ready(Err(Error::closed()));
+        }
+
+        rows.as_mut().poll(cx)
+    })
+    .await
+    {
+        Ok(rows) => rows,
+        // Match the Java driver's forgiving startup behavior: if the probe is
+        // not available on a server, keep the default Pg compatibility mode.
+        // ═══════════════════ [修改开始] Kingbase 探测启动错误只忽略允许的数据库 SQLSTATE ═══════════════════
+        // 原新增探测逻辑中的宽泛回退：
+        // Err(_) => return Ok(()),
+        Err(e) if should_ignore_kingbase_probe_error(&e) => return Ok(()),
+        Err(e) => return Err(e),
+        // ═══════════════════ [修改结束] Kingbase 探测启动错误只忽略允许的数据库 SQLSTATE ═══════════════════
+    };
+    let mut rows = pin!(rows);
+
+    loop {
+        let next = future::poll_fn(|cx| {
+            if connection.poll_unpin(cx)?.is_ready() {
+                return Poll::Ready(Some(Err(Error::closed())));
+            }
+
+            rows.as_mut().poll_next(cx)
+        });
+
+        match next.await.transpose() {
+            Ok(Some(SimpleQueryMessage::Row(row))) => {
+                let name = row.try_get(0)?;
+                let setting = row.try_get(1)?;
+                if let (Some(name), Some(setting)) = (name, setting) {
+                    settings.insert(name.to_string(), setting.to_string());
+                }
+            }
+            Ok(Some(_)) => {}
+            Ok(None) => {
+                client.inner().set_kingbase_server_settings(settings);
+                return Ok(());
+            }
+            // Keep startup tolerant if the compatibility settings query fails.
+            // ═══════════════════ [修改开始] Kingbase 探测流错误只忽略允许的数据库 SQLSTATE ═══════════════════
+            // 原新增探测逻辑中的宽泛回退：
+            // Err(_) => return Ok(()),
+            Err(e) if should_ignore_kingbase_probe_error(&e) => return Ok(()),
+            Err(e) => return Err(e),
+            // ═══════════════════ [修改结束] Kingbase 探测流错误只忽略允许的数据库 SQLSTATE ═══════════════════
+        }
+    }
+}
+// ═══════════════════ [新增结束] Kingbase 四模式兼容探测实现 ═══════════════════

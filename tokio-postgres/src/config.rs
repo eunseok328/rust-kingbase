@@ -1002,11 +1002,12 @@ impl<'a> UrlParser<'a> {
     }
 
     fn remove_url_prefix(s: &str) -> Option<&str> {
-        for prefix in &["postgres://", "postgresql://"] {
+        for prefix in &["postgres://", "postgresql://", "kingbase://"] {
             if let Some(stripped) = s.strip_prefix(prefix) {
                 return Some(stripped);
             }
         }
+        // KINGBASE CHANGE END.
 
         None
     }

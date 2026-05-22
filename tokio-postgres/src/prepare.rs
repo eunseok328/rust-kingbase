@@ -1,9 +1,16 @@
-use crate::client::InnerClient;
+// ═══════════════════ [修改开始] Kingbase get_type 需要读取连接级兼容模式 ═══════════════════
+// 原代码保留：
+// use crate::client::InnerClient;
+use crate::client::{CompatibleMode, InnerClient};
+// ═══════════════════ [修改结束] Kingbase get_type 需要读取连接级兼容模式 ═══════════════════
 use crate::codec::FrontendMessage;
 use crate::connection::RequestMessages;
 use crate::error::SqlState;
 use crate::types::{Field, Kind, Oid, Type};
 use crate::{Column, Error, Statement};
+// ═══════════════════ [新增开始] Kingbase MySQL 模式类型映射入口 ═══════════════════
+use crate::kingbase::mysql_types;
+// ═══════════════════ [新增结束] Kingbase MySQL 模式类型映射入口 ═══════════════════
 use crate::{query, slice_iter};
 use bytes::Bytes;
 use fallible_iterator::FallibleIterator;
@@ -84,9 +91,19 @@ pub async fn prepare(
     };
 
     let mut parameters = vec![];
+    // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 列表 ═══════════════════
+    let mut param_codec_types = vec![];
+    // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 列表 ═══════════════════
     let mut it = parameter_description.parameters();
     while let Some(oid) = it.next().map_err(Error::parse)? {
         let type_ = get_type(client, oid).await?;
+        // ═══════════════════ [新增开始] Kingbase MySQL parameter codec alias 写入 Statement ═══════════════════
+        let codec_type = match client.compatible_mode() {
+            CompatibleMode::Mysql => mysql_types::param_codec_alias_for_mysql_type(&type_),
+            CompatibleMode::Pg | CompatibleMode::Oracle | CompatibleMode::SqlServer => None,
+        };
+        param_codec_types.push(codec_type);
+        // ═══════════════════ [新增结束] Kingbase MySQL parameter codec alias 写入 Statement ═══════════════════
         parameters.push(type_);
     }
 
@@ -95,18 +112,37 @@ pub async fn prepare(
         let mut it = row_description.fields();
         while let Some(field) = it.next().map_err(Error::parse)? {
             let type_ = get_type(client, field.type_oid()).await?;
+            // ═══════════════════ [新增开始] Kingbase MySQL read-side codec alias 写入 Column ═══════════════════
+            let codec_type = match client.compatible_mode() {
+                CompatibleMode::Mysql => mysql_types::read_codec_alias_for_mysql_type(&type_),
+                CompatibleMode::Pg | CompatibleMode::Oracle | CompatibleMode::SqlServer => None,
+            };
+            // ═══════════════════ [新增结束] Kingbase MySQL read-side codec alias 写入 Column ═══════════════════
             let column = Column {
                 name: field.name().to_string(),
                 table_oid: Some(field.table_oid()).filter(|n| *n != 0),
                 column_id: Some(field.column_id()).filter(|n| *n != 0),
                 type_modifier: field.type_modifier(),
                 r#type: type_,
+                // ═══════════════════ [新增开始] Kingbase MySQL read-side codec alias Column 字段 ═══════════════════
+                codec_type,
+                // ═══════════════════ [新增结束] Kingbase MySQL read-side codec alias Column 字段 ═══════════════════
             };
             columns.push(column);
         }
     }
 
-    Ok(Statement::new(client, name, parameters, columns))
+    // ═══════════════════ [修改开始] Kingbase MySQL parameter codec alias 传入 Statement ═══════════════════
+    // 原代码保留：
+    // Ok(Statement::new(client, name, parameters, columns))
+    Ok(Statement::new(
+        client,
+        name,
+        parameters,
+        param_codec_types,
+        columns,
+    ))
+    // ═══════════════════ [修改结束] Kingbase MySQL parameter codec alias 传入 Statement ═══════════════════
 }
 
 fn prepare_rec<'a>(
@@ -179,7 +215,15 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
         Kind::Simple
     };
 
-    let type_ = Type::new(name, oid, kind, schema);
+    // ═══════════════════ [修改开始] Kingbase 按连接兼容模式分派类型映射 ═══════════════════
+    // 原代码保留：
+    // let type_ = Type::new(name, oid, kind, schema);
+    let mapped_type = match client.compatible_mode() {
+        CompatibleMode::Mysql => mysql_types::map_mysql_type(&name, oid, &kind, &schema),
+        CompatibleMode::Pg | CompatibleMode::Oracle | CompatibleMode::SqlServer => None,
+    };
+    let type_ = mapped_type.unwrap_or_else(|| Type::new(name, oid, kind, schema));
+    // ═══════════════════ [修改结束] Kingbase 按连接兼容模式分派类型映射 ═══════════════════
     client.set_type(oid, &type_);
 
     Ok(type_)
