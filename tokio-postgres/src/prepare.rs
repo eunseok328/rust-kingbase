@@ -2,6 +2,7 @@ use crate::client::InnerClient;
 use crate::codec::FrontendMessage;
 use crate::connection::RequestMessages;
 use crate::error::SqlState;
+use crate::type_system;
 use crate::types::{Field, Kind, Oid, Type};
 use crate::{Column, Error, Statement};
 use crate::{query, slice_iter};
@@ -84,9 +85,12 @@ pub async fn prepare(
     };
 
     let mut parameters = vec![];
+    let mut param_codec_types = vec![];
     let mut it = parameter_description.parameters();
     while let Some(oid) = it.next().map_err(Error::parse)? {
         let type_ = get_type(client, oid).await?;
+        let codec_type = type_system::param_codec_type(client.compatible_mode(), &type_);
+        param_codec_types.push(codec_type);
         parameters.push(type_);
     }
 
@@ -95,18 +99,26 @@ pub async fn prepare(
         let mut it = row_description.fields();
         while let Some(field) = it.next().map_err(Error::parse)? {
             let type_ = get_type(client, field.type_oid()).await?;
+            let codec_type = type_system::read_codec_type(client.compatible_mode(), &type_);
             let column = Column {
                 name: field.name().to_string(),
                 table_oid: Some(field.table_oid()).filter(|n| *n != 0),
                 column_id: Some(field.column_id()).filter(|n| *n != 0),
                 type_modifier: field.type_modifier(),
                 r#type: type_,
+                codec_type,
             };
             columns.push(column);
         }
     }
 
-    Ok(Statement::new(client, name, parameters, columns))
+    Ok(Statement::new(
+        client,
+        name,
+        parameters,
+        param_codec_types,
+        columns,
+    ))
 }
 
 fn prepare_rec<'a>(
@@ -124,8 +136,9 @@ fn encode(client: &InnerClient, name: &str, query: &str, types: &[Type]) -> Resu
         debug!("preparing query {name} with types {types:?}: {query}");
     }
 
+    let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
     client.with_buf(|buf| {
-        frontend::parse(name, query, types.iter().map(Type::oid), buf).map_err(Error::encode)?;
+        frontend::parse(name, &query, types.iter().map(Type::oid), buf).map_err(Error::encode)?;
         frontend::describe(b'S', name, buf).map_err(Error::encode)?;
         frontend::sync(buf);
         Ok(buf.split().freeze())
@@ -133,11 +146,13 @@ fn encode(client: &InnerClient, name: &str, query: &str, types: &[Type]) -> Resu
 }
 
 pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type, Error> {
-    if let Some(type_) = Type::from_oid(oid) {
+    let type_system = client.type_system();
+
+    if let Some(type_) = type_system::type_from_oid(type_system, oid) {
         return Ok(type_);
     }
 
-    if let Some(type_) = client.type_(oid) {
+    if let Some(type_) = client.type_(type_system, oid) {
         return Ok(type_);
     }
 
@@ -180,7 +195,7 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     };
 
     let type_ = Type::new(name, oid, kind, schema);
-    client.set_type(oid, &type_);
+    client.set_type(type_system, oid, &type_);
 
     Ok(type_)
 }

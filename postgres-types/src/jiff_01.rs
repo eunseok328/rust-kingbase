@@ -46,7 +46,7 @@ impl<'a> FromSql<'a> for DateTime {
             .map_err(decode_err)
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(TIMESTAMP, MYSQL_TIMESTAMP, MYSQL_DATETIME);
 }
 
 impl ToSql for DateTime {
@@ -60,7 +60,7 @@ impl ToSql for DateTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(TIMESTAMP, MYSQL_TIMESTAMP, MYSQL_DATETIME);
     to_sql_checked!();
 }
 
@@ -99,7 +99,7 @@ impl<'a> FromSql<'a> for Date {
             .and_then(|s| base().date().checked_add(s))
             .map_err(decode_err)
     }
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_DATE, MYSQL_SYS_DATE);
 }
 
 impl ToSql for Date {
@@ -109,7 +109,7 @@ impl ToSql for Date {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_DATE, MYSQL_SYS_DATE);
     to_sql_checked!();
 }
 
@@ -122,7 +122,7 @@ impl<'a> FromSql<'a> for Time {
             .map_err(decode_err)
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_TIME, MYSQL_SYS_TIME);
 }
 
 impl ToSql for Time {
@@ -136,6 +136,6 @@ impl ToSql for Time {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_TIME, MYSQL_SYS_TIME);
     to_sql_checked!();
 }

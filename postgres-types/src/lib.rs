@@ -221,7 +221,7 @@ const NSEC_PER_USEC: u64 = 1_000;
 macro_rules! accepts {
     ($($expected:ident),+) => (
         fn accepts(ty: &$crate::Type) -> bool {
-            matches!(*ty, $($crate::Type::$expected)|+)
+            false $(|| ty.is_equivalent_to(&$crate::Type::$expected))+
         }
     )
 }
@@ -262,6 +262,8 @@ where
     v.to_sql(ty, out)
 }
 
+#[cfg(feature = "with-bigdecimal-0_4")]
+mod bigdecimal_04;
 #[cfg(feature = "with-bit-vec-0_6")]
 mod bit_vec_06;
 #[cfg(feature = "with-bit-vec-0_7")]
@@ -305,13 +307,25 @@ mod uuid_1;
 #[cfg(feature = "with-time-0_2")]
 extern crate time_02 as time;
 
+pub mod kingbase;
+mod mysql_type_gen;
 mod pg_lsn;
+mod pg_type_gen;
 #[doc(hidden)]
 pub mod private;
 mod special;
 mod type_gen;
 
-/// A Postgres type.
+/// A Kingbase wire-protocol type table.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TypeSystem {
+    /// PostgreSQL-compatible type table.
+    Pg,
+    /// Kingbase MySQL-compatible type table.
+    Mysql,
+}
+
+/// A Kingbase type.
 #[derive(PartialEq, Eq, Clone, Hash)]
 pub struct Type(Inner);
 
@@ -345,7 +359,65 @@ impl Type {
     /// Returns the `Type` corresponding to the provided `Oid` if it
     /// corresponds to a built-in type.
     pub fn from_oid(oid: Oid) -> Option<Type> {
-        Inner::from_oid(oid).map(Type)
+        Type::from_pg_oid(oid)
+    }
+
+    /// Returns the PostgreSQL-compatible built-in type for an OID.
+    pub fn from_pg_oid(oid: Oid) -> Option<Type> {
+        pg_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Pg(inner)))
+    }
+
+    /// Returns the built-in `Type` for an `Oid` in a specific type system.
+    pub fn from_oid_in(type_system: TypeSystem, oid: Oid) -> Option<Type> {
+        match type_system {
+            TypeSystem::Pg => Self::from_pg_oid(oid),
+            TypeSystem::Mysql => Self::from_mysql_oid(oid),
+        }
+    }
+
+    /// Returns the Kingbase MySQL-compatible built-in type for an OID.
+    pub fn from_mysql_oid(oid: Oid) -> Option<Type> {
+        mysql_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Mysql(inner)))
+    }
+
+    /// Returns the `Type` corresponding to the provided Kingbase MySQL-compatible
+    /// `Oid` if it corresponds to a built-in type in that compatibility mode.
+    ///
+    /// This intentionally does not affect [`Type::from_oid`], which remains scoped
+    /// to PostgreSQL built-in types. Common OIDs may exist in both generated
+    /// tables, but this method returns the Kingbase MySQL variant.
+    pub fn from_kingbase_mysql_oid(oid: Oid) -> Option<Type> {
+        Self::from_mysql_oid(oid)
+    }
+
+    /// Returns the built-in type system this type belongs to, if known.
+    pub fn type_system(&self) -> Option<TypeSystem> {
+        match self.0 {
+            Inner::Pg(_) => Some(TypeSystem::Pg),
+            Inner::Mysql(_) => Some(TypeSystem::Mysql),
+            Inner::Other(_) => None,
+        }
+    }
+
+    /// Returns true when this type can use the same Rust conversion as `expected`.
+    pub fn is_equivalent_to(&self, expected: &Type) -> bool {
+        if self == expected {
+            return true;
+        }
+
+        match self.0 {
+            Inner::Mysql(_) => {
+                if self.oid() == expected.oid()
+                    && self.name() == expected.name()
+                    && self.schema() == expected.schema()
+                {
+                    return true;
+                }
+
+                matches!(self.kind(), Kind::Domain(base) if base.is_equivalent_to(expected))
+            }
+            _ => false,
+        }
     }
 
     /// Returns the OID of the `Type`.
@@ -360,15 +432,143 @@ impl Type {
 
     /// Returns the schema of this type.
     pub fn schema(&self) -> &str {
-        match self.0 {
-            Inner::Other(ref u) => &u.schema,
-            _ => "pg_catalog",
-        }
+        self.0.schema()
     }
 
     /// Returns the name of this type.
     pub fn name(&self) -> &str {
         self.0.name()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FromSql, Kind, ToSql, Type};
+    use crate::kingbase::{MySqlBit, TinyInt};
+
+    #[test]
+    fn generated_type_modes_dispatch_by_schema() {
+        let int4 = Type::from_oid(23).unwrap();
+        assert_eq!(int4, Type::INT4);
+        assert_eq!(int4.name(), "int4");
+        assert_eq!(int4.schema(), "pg_catalog");
+
+        let mysql_binary = Type::from_kingbase_mysql_oid(3383).unwrap();
+        assert_eq!(mysql_binary.name(), "binary");
+        assert_eq!(mysql_binary.schema(), "sys");
+
+        let mysql_int4 = Type::from_kingbase_mysql_oid(23).unwrap();
+        assert_ne!(mysql_int4, Type::INT4);
+        assert_eq!(mysql_int4.oid(), Type::INT4.oid());
+        assert_eq!(mysql_int4.name(), "int4");
+        assert_eq!(mysql_int4.schema(), "pg_catalog");
+
+        let mysql_date = Type::from_kingbase_mysql_oid(1082).unwrap();
+        assert_eq!(mysql_date, Type::MYSQL_DATE);
+        assert_eq!(mysql_date.schema(), "pg_catalog");
+
+        let mysql_sys_date = Type::from_kingbase_mysql_oid(7944).unwrap();
+        assert_eq!(mysql_sys_date.name(), "date");
+        assert_eq!(mysql_sys_date.schema(), "sys");
+    }
+
+    #[test]
+    fn basic_rust_types_accept_mysql_mode_builtins() {
+        assert!(<bool as ToSql>::accepts(&Type::from_mysql_oid(16).unwrap()));
+        assert!(<i8 as ToSql>::accepts(&Type::MYSQL_TINYINT));
+        assert!(<i8 as FromSql<'_>>::accepts(&Type::MYSQL_TINYINT));
+        assert!(<i16 as ToSql>::accepts(&Type::from_mysql_oid(21).unwrap()));
+        assert!(<i32 as ToSql>::accepts(&Type::from_mysql_oid(23).unwrap()));
+        assert!(<i32 as ToSql>::accepts(&Type::MYSQL_INT3));
+        assert!(<i32 as ToSql>::accepts(&Type::MYSQL_MIDDLEINT));
+        assert!(<u32 as ToSql>::accepts(&Type::MYSQL_UINT4));
+        assert!(<u32 as FromSql<'_>>::accepts(&Type::MYSQL_UINT4));
+        assert!(<i64 as ToSql>::accepts(&Type::from_mysql_oid(20).unwrap()));
+        assert!(<f32 as ToSql>::accepts(&Type::from_mysql_oid(700).unwrap()));
+        assert!(<f64 as ToSql>::accepts(&Type::from_mysql_oid(701).unwrap()));
+
+        assert!(<String as FromSql<'_>>::accepts(
+            &Type::from_mysql_oid(25).unwrap()
+        ));
+        assert!(<&str as ToSql>::accepts(
+            &Type::from_mysql_oid(1043).unwrap()
+        ));
+        assert!(<&str as FromSql<'_>>::accepts(&Type::MYSQL_LONGTEXT));
+        assert!(<&str as FromSql<'_>>::accepts(&Type::MYSQL_CLOB));
+        assert!(<&str as ToSql>::accepts(&Type::MYSQL_NCLOB));
+        assert!(<&str as FromSql<'_>>::accepts(&Type::MYSQL_BPCHARBYTE));
+        assert!(<&str as ToSql>::accepts(&Type::MYSQL_VARCHARBYTE));
+        assert!(<Vec<String> as FromSql<'_>>::accepts(
+            &Type::MYSQL_BPCHARBYTE_ARRAY
+        ));
+        assert!(<Vec<String> as ToSql>::accepts(
+            &Type::MYSQL_VARCHARBYTE_ARRAY
+        ));
+    }
+
+    #[test]
+    fn mysql_mode_arrays_use_mysql_member_types() {
+        let mysql_int4_array = Type::from_mysql_oid(1007).unwrap();
+        assert_eq!(mysql_int4_array, Type::MYSQL_INT4_ARRAY);
+        match mysql_int4_array.kind() {
+            Kind::Array(member) => assert_eq!(member, &Type::MYSQL_INT4),
+            kind => panic!("expected array type, got {kind:?}"),
+        }
+        assert!(<Vec<i32> as FromSql<'_>>::accepts(&mysql_int4_array));
+        assert!(<Vec<i32> as ToSql>::accepts(&mysql_int4_array));
+
+        let mysql_binary_array = Type::from_mysql_oid(3385).unwrap();
+        assert_eq!(mysql_binary_array, Type::MYSQL_BINARY_ARRAY);
+        match mysql_binary_array.kind() {
+            Kind::Array(member) => assert_eq!(member, &Type::MYSQL_BINARY),
+            kind => panic!("expected array type, got {kind:?}"),
+        }
+        assert!(<Vec<Vec<u8>> as FromSql<'_>>::accepts(&mysql_binary_array));
+        assert!(<Vec<Vec<u8>> as ToSql>::accepts(&mysql_binary_array));
+
+        let mysql_bit_array = Type::from_mysql_oid(4656).unwrap();
+        assert_eq!(mysql_bit_array, Type::MYSQL_SYS_BIT_ARRAY);
+        match mysql_bit_array.kind() {
+            Kind::Array(member) => assert_eq!(member, &Type::MYSQL_SYS_BIT),
+            kind => panic!("expected array type, got {kind:?}"),
+        }
+        assert!(<Vec<MySqlBit> as FromSql<'_>>::accepts(&mysql_bit_array));
+        assert!(<Vec<MySqlBit> as ToSql>::accepts(&mysql_bit_array));
+
+        let mysql_tinyint_array = Type::from_mysql_oid(8101).unwrap();
+        assert_eq!(mysql_tinyint_array, Type::MYSQL_TINYINT_ARRAY);
+        assert!(<Vec<TinyInt> as FromSql<'_>>::accepts(&mysql_tinyint_array));
+        assert!(<Vec<TinyInt> as ToSql>::accepts(&mysql_tinyint_array));
+    }
+
+    #[test]
+    fn mysql_sql_alias_constants_share_canonical_types() {
+        assert_eq!(Type::MYSQL_SMALLINT, Type::MYSQL_INT2);
+        assert_eq!(Type::MYSQL_SMALLINT_ARRAY, Type::MYSQL_INT2_ARRAY);
+        assert!(<i16 as ToSql>::accepts(&Type::MYSQL_SMALLINT));
+        assert!(<Vec<i16> as ToSql>::accepts(&Type::MYSQL_SMALLINT_ARRAY));
+
+        assert_eq!(Type::MYSQL_INTEGER, Type::MYSQL_INT4);
+        assert_eq!(Type::MYSQL_INT, Type::MYSQL_INT4);
+        assert_eq!(Type::MYSQL_INTEGER_ARRAY, Type::MYSQL_INT4_ARRAY);
+        assert_eq!(Type::MYSQL_INT_ARRAY, Type::MYSQL_INT4_ARRAY);
+        assert!(<i32 as ToSql>::accepts(&Type::MYSQL_INTEGER));
+        assert!(<Vec<i32> as ToSql>::accepts(&Type::MYSQL_INT_ARRAY));
+
+        assert_eq!(Type::MYSQL_BIGINT, Type::MYSQL_INT8);
+        assert_eq!(Type::MYSQL_BIGINT_ARRAY, Type::MYSQL_INT8_ARRAY);
+        assert!(<i64 as ToSql>::accepts(&Type::MYSQL_BIGINT));
+        assert!(<Vec<i64> as ToSql>::accepts(&Type::MYSQL_BIGINT_ARRAY));
+
+        assert_eq!(Type::MYSQL_DOUBLE, Type::MYSQL_FLOAT8);
+        assert_eq!(Type::MYSQL_DOUBLE_ARRAY, Type::MYSQL_FLOAT8_ARRAY);
+        assert!(<f64 as ToSql>::accepts(&Type::MYSQL_DOUBLE));
+        assert!(<Vec<f64> as ToSql>::accepts(&Type::MYSQL_DOUBLE_ARRAY));
+
+        assert_eq!(Type::MYSQL_BOOLEAN, Type::MYSQL_BOOL);
+        assert_eq!(Type::MYSQL_BOOLEAN_ARRAY, Type::MYSQL_BOOL_ARRAY);
+        assert!(<bool as ToSql>::accepts(&Type::MYSQL_BOOLEAN));
+        assert!(<Vec<bool> as ToSql>::accepts(&Type::MYSQL_BOOLEAN_ARRAY));
     }
 }
 
@@ -683,7 +883,16 @@ impl<'a> FromSql<'a> for Vec<u8> {
         Ok(types::bytea_from_sql(raw).to_owned())
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB
+    );
 }
 
 impl<'a> FromSql<'a> for &'a [u8] {
@@ -691,7 +900,16 @@ impl<'a> FromSql<'a> for &'a [u8] {
         Ok(types::bytea_from_sql(raw))
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB
+    );
 }
 
 impl<'a> FromSql<'a> for String {
@@ -727,18 +945,24 @@ impl<'a> FromSql<'a> for &'a str {
     }
 
     fn accepts(ty: &Type) -> bool {
-        match *ty {
-            Type::VARCHAR | Type::TEXT | Type::BPCHAR | Type::NAME | Type::UNKNOWN => true,
-            ref ty
-                if (ty.name() == "citext"
-                    || ty.name() == "ltree"
-                    || ty.name() == "lquery"
-                    || ty.name() == "ltxtquery") =>
-            {
-                true
-            }
-            _ => false,
-        }
+        ty.is_equivalent_to(&Type::VARCHAR)
+            || ty.is_equivalent_to(&Type::TEXT)
+            || ty.is_equivalent_to(&Type::BPCHAR)
+            || ty.is_equivalent_to(&Type::NAME)
+            || ty.is_equivalent_to(&Type::UNKNOWN)
+            || ty.is_equivalent_to(&Type::MYSQL_VARCHAR)
+            || ty.is_equivalent_to(&Type::MYSQL_TEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_BPCHAR)
+            || ty.is_equivalent_to(&Type::MYSQL_NAME)
+            || ty.is_equivalent_to(&Type::MYSQL_UNKNOWN)
+            || ty.is_equivalent_to(&Type::MYSQL_LONGTEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_MEDIUMTEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_TINYTEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_CLOB)
+            || ty.is_equivalent_to(&Type::MYSQL_NCLOB)
+            || ty.is_equivalent_to(&Type::MYSQL_BPCHARBYTE)
+            || ty.is_equivalent_to(&Type::MYSQL_VARCHARBYTE)
+            || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
     }
 }
 
@@ -764,14 +988,22 @@ macro_rules! simple_from {
     }
 }
 
-simple_from!(bool, bool_from_sql, BOOL);
-simple_from!(i8, char_from_sql, CHAR);
-simple_from!(i16, int2_from_sql, INT2);
-simple_from!(i32, int4_from_sql, INT4);
-simple_from!(u32, oid_from_sql, OID);
-simple_from!(i64, int8_from_sql, INT8);
-simple_from!(f32, float4_from_sql, FLOAT4);
-simple_from!(f64, float8_from_sql, FLOAT8);
+simple_from!(bool, bool_from_sql, BOOL, MYSQL_BOOL);
+simple_from!(i8, char_from_sql, CHAR, MYSQL_TINYINT);
+simple_from!(i16, int2_from_sql, INT2, MYSQL_INT2);
+simple_from!(
+    i32,
+    int4_from_sql,
+    INT4,
+    MYSQL_INT4,
+    MYSQL_INT3,
+    MYSQL_MEDIUMINT,
+    MYSQL_MIDDLEINT
+);
+simple_from!(u32, oid_from_sql, OID, MYSQL_UINT4);
+simple_from!(i64, int8_from_sql, INT8, MYSQL_INT8);
+simple_from!(f32, float4_from_sql, FLOAT4, MYSQL_FLOAT4);
+simple_from!(f64, float8_from_sql, FLOAT8, MYSQL_FLOAT8);
 
 impl<'a, S> FromSql<'a> for HashMap<String, Option<String>, S>
 where
@@ -812,7 +1044,13 @@ impl<'a> FromSql<'a> for SystemTime {
         Ok(time)
     }
 
-    accepts!(TIMESTAMP, TIMESTAMPTZ);
+    accepts!(
+        TIMESTAMP,
+        TIMESTAMPTZ,
+        MYSQL_TIMESTAMP,
+        MYSQL_TIMESTAMPTZ,
+        MYSQL_DATETIME
+    );
 }
 
 impl<'a> FromSql<'a> for IpAddr {
@@ -936,6 +1174,7 @@ pub trait ToSql: fmt::Debug {
     fn encode_format(&self, _ty: &Type) -> Format {
         Format::Binary
     }
+
 }
 
 /// Supported Postgres message format types
@@ -1045,7 +1284,16 @@ impl ToSql for &[u8] {
         Ok(IsNull::No)
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB
+    );
 
     to_sql_checked!();
 }
@@ -1057,7 +1305,16 @@ impl<const N: usize> ToSql for [u8; N] {
         Ok(IsNull::No)
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB
+    );
 
     to_sql_checked!();
 }
@@ -1147,10 +1404,24 @@ impl ToSql for &str {
     }
 
     fn accepts(ty: &Type) -> bool {
-        matches!(
-            *ty,
-            Type::VARCHAR | Type::TEXT | Type::BPCHAR | Type::NAME | Type::UNKNOWN
-        ) || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
+        ty.is_equivalent_to(&Type::VARCHAR)
+            || ty.is_equivalent_to(&Type::TEXT)
+            || ty.is_equivalent_to(&Type::BPCHAR)
+            || ty.is_equivalent_to(&Type::NAME)
+            || ty.is_equivalent_to(&Type::UNKNOWN)
+            || ty.is_equivalent_to(&Type::MYSQL_VARCHAR)
+            || ty.is_equivalent_to(&Type::MYSQL_TEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_BPCHAR)
+            || ty.is_equivalent_to(&Type::MYSQL_NAME)
+            || ty.is_equivalent_to(&Type::MYSQL_UNKNOWN)
+            || ty.is_equivalent_to(&Type::MYSQL_LONGTEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_MEDIUMTEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_TINYTEXT)
+            || ty.is_equivalent_to(&Type::MYSQL_CLOB)
+            || ty.is_equivalent_to(&Type::MYSQL_NCLOB)
+            || ty.is_equivalent_to(&Type::MYSQL_BPCHARBYTE)
+            || ty.is_equivalent_to(&Type::MYSQL_VARCHARBYTE)
+            || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
     }
 
     to_sql_checked!();
@@ -1210,14 +1481,22 @@ macro_rules! simple_to {
     }
 }
 
-simple_to!(bool, bool_to_sql, BOOL);
-simple_to!(i8, char_to_sql, CHAR);
-simple_to!(i16, int2_to_sql, INT2);
-simple_to!(i32, int4_to_sql, INT4);
-simple_to!(u32, oid_to_sql, OID);
-simple_to!(i64, int8_to_sql, INT8);
-simple_to!(f32, float4_to_sql, FLOAT4);
-simple_to!(f64, float8_to_sql, FLOAT8);
+simple_to!(bool, bool_to_sql, BOOL, MYSQL_BOOL);
+simple_to!(i8, char_to_sql, CHAR, MYSQL_TINYINT);
+simple_to!(i16, int2_to_sql, INT2, MYSQL_INT2);
+simple_to!(
+    i32,
+    int4_to_sql,
+    INT4,
+    MYSQL_INT4,
+    MYSQL_INT3,
+    MYSQL_MEDIUMINT,
+    MYSQL_MIDDLEINT
+);
+simple_to!(u32, oid_to_sql, OID, MYSQL_UINT4);
+simple_to!(i64, int8_to_sql, INT8, MYSQL_INT8);
+simple_to!(f32, float4_to_sql, FLOAT4, MYSQL_FLOAT4);
+simple_to!(f64, float8_to_sql, FLOAT8, MYSQL_FLOAT8);
 
 impl<H> ToSql for HashMap<String, Option<String>, H>
 where
@@ -1254,7 +1533,13 @@ impl ToSql for SystemTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIMESTAMP, TIMESTAMPTZ);
+    accepts!(
+        TIMESTAMP,
+        TIMESTAMPTZ,
+        MYSQL_TIMESTAMP,
+        MYSQL_TIMESTAMPTZ,
+        MYSQL_DATETIME
+    );
 
     to_sql_checked!();
 }

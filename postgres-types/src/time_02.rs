@@ -16,7 +16,7 @@ impl<'a> FromSql<'a> for PrimitiveDateTime {
         Ok(base() + Duration::microseconds(t))
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(TIMESTAMP, MYSQL_TIMESTAMP, MYSQL_DATETIME);
 }
 
 impl ToSql for PrimitiveDateTime {
@@ -29,7 +29,7 @@ impl ToSql for PrimitiveDateTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(TIMESTAMP, MYSQL_TIMESTAMP, MYSQL_DATETIME);
     to_sql_checked!();
 }
 
@@ -65,7 +65,7 @@ impl<'a> FromSql<'a> for Date {
         Ok(base().date() + Duration::days(i64::from(jd)))
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_DATE, MYSQL_SYS_DATE);
 }
 
 impl ToSql for Date {
@@ -77,7 +77,7 @@ impl ToSql for Date {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_DATE, MYSQL_SYS_DATE);
     to_sql_checked!();
 }
 
@@ -87,7 +87,7 @@ impl<'a> FromSql<'a> for Time {
         Ok(time!(00:00:00) + Duration::microseconds(usec))
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_TIME, MYSQL_SYS_TIME);
 }
 
 impl ToSql for Time {
@@ -101,6 +101,6 @@ impl ToSql for Time {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_TIME, MYSQL_SYS_TIME);
     to_sql_checked!();
 }

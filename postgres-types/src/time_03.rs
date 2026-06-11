@@ -17,7 +17,7 @@ impl<'a> FromSql<'a> for PrimitiveDateTime {
             .ok_or("value too large to decode")?)
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(TIMESTAMP, MYSQL_TIMESTAMP, MYSQL_DATETIME);
 }
 
 impl ToSql for PrimitiveDateTime {
@@ -30,7 +30,7 @@ impl ToSql for PrimitiveDateTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(TIMESTAMP, MYSQL_TIMESTAMP, MYSQL_DATETIME);
     to_sql_checked!();
 }
 
@@ -69,7 +69,7 @@ impl<'a> FromSql<'a> for Date {
             .ok_or("value too large to decode")?)
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_DATE, MYSQL_SYS_DATE);
 }
 
 impl ToSql for Date {
@@ -81,7 +81,7 @@ impl ToSql for Date {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_DATE, MYSQL_SYS_DATE);
     to_sql_checked!();
 }
 
@@ -91,7 +91,7 @@ impl<'a> FromSql<'a> for Time {
         Ok(Time::MIDNIGHT + Duration::microseconds(usec))
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_TIME, MYSQL_SYS_TIME);
 }
 
 impl ToSql for Time {
@@ -105,6 +105,6 @@ impl ToSql for Time {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_TIME, MYSQL_SYS_TIME);
     to_sql_checked!();
 }

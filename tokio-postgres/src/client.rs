@@ -11,7 +11,7 @@ use crate::simple_query::SimpleQueryStream;
 #[cfg(feature = "runtime")]
 use crate::tls::MakeTlsConnect;
 use crate::tls::TlsConnect;
-use crate::types::{Oid, ToSql, Type};
+use crate::types::{Oid, ToSql, Type, TypeSystem};
 use crate::{
     CancelToken, CopyInSink, Error, Row, SimpleQueryMessage, Statement, ToStatement, Transaction,
     TransactionBuilder, copy_in, copy_out, prepare, query, simple_query, slice_iter,
@@ -81,7 +81,48 @@ struct CachedTypeInfo {
     typeinfo_enum: Option<Statement>,
 
     /// Cache of types already looked up.
-    types: HashMap<Oid, Type>,
+    types: HashMap<(TypeSystem, Oid), Type>,
+}
+
+/// Kingbase database compatibility mode detected for a live connection.
+///
+/// Java's Kingbase JDBC driver reads `pg_settings.database_mode` after
+/// connection startup and then lets type metadata, SQL escaping and other
+/// behavior branch on that connection-level mode. Rust-kingbase keeps the same
+/// idea here: make the current mode a first-class piece of client state before
+/// adding mode-specific type mappers.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CompatibleMode {
+    /// Kingbase/PostgreSQL native behavior. Empty or missing `database_mode`
+    /// is treated as this mode, matching the Java driver's `pg` branch.
+    Pg,
+    /// Oracle compatibility mode.
+    Oracle,
+    /// MySQL compatibility mode.
+    Mysql,
+    /// SQL Server compatibility mode.
+    SqlServer,
+}
+
+impl CompatibleMode {
+    pub(crate) fn from_database_mode(mode: Option<&str>) -> CompatibleMode {
+        match mode.map(str::trim).filter(|mode| !mode.is_empty()) {
+            Some(mode) if mode.eq_ignore_ascii_case("oracle") => CompatibleMode::Oracle,
+            Some(mode) if mode.eq_ignore_ascii_case("mysql") => CompatibleMode::Mysql,
+            Some(mode) if mode.eq_ignore_ascii_case("sqlserver") => CompatibleMode::SqlServer,
+            Some(mode) if mode.eq_ignore_ascii_case("pg") => CompatibleMode::Pg,
+            _ => CompatibleMode::Pg,
+        }
+    }
+
+    pub(crate) fn type_system(self) -> TypeSystem {
+        match self {
+            CompatibleMode::Mysql => TypeSystem::Mysql,
+            CompatibleMode::Pg | CompatibleMode::Oracle | CompatibleMode::SqlServer => {
+                TypeSystem::Pg
+            }
+        }
+    }
 }
 
 pub struct InnerClient {
@@ -90,6 +131,14 @@ pub struct InnerClient {
 
     /// A buffer to use when writing out postgres commands.
     buffer: Mutex<BytesMut>,
+
+    /// Compatibility mode and related settings detected after startup.
+    ///
+    /// These values are connection scoped, so they live beside the request
+    /// sender and type cache rather than on `Connection`, which later type
+    /// lookup code cannot conveniently access.
+    compatible_mode: Mutex<CompatibleMode>,
+    kingbase_server_settings: Mutex<HashMap<String, String>>,
 }
 
 impl InnerClient {
@@ -130,16 +179,45 @@ impl InnerClient {
         self.cached_typeinfo.lock().typeinfo_enum = Some(statement.clone());
     }
 
-    pub fn type_(&self, oid: Oid) -> Option<Type> {
-        self.cached_typeinfo.lock().types.get(&oid).cloned()
+    pub fn type_(&self, type_system: TypeSystem, oid: Oid) -> Option<Type> {
+        self.cached_typeinfo
+            .lock()
+            .types
+            .get(&(type_system, oid))
+            .cloned()
     }
 
-    pub fn set_type(&self, oid: Oid, type_: &Type) {
-        self.cached_typeinfo.lock().types.insert(oid, type_.clone());
+    pub fn set_type(&self, type_system: TypeSystem, oid: Oid, type_: &Type) {
+        self.cached_typeinfo
+            .lock()
+            .types
+            .insert((type_system, oid), type_.clone());
     }
 
     pub fn clear_type_cache(&self) {
         self.cached_typeinfo.lock().types.clear();
+    }
+
+    pub fn compatible_mode(&self) -> CompatibleMode {
+        *self.compatible_mode.lock()
+    }
+
+    pub fn type_system(&self) -> TypeSystem {
+        self.compatible_mode().type_system()
+    }
+
+    pub fn kingbase_server_setting(&self, name: &str) -> Option<String> {
+        self.kingbase_server_settings.lock().get(name).cloned()
+    }
+
+    pub(crate) fn set_kingbase_server_settings(&self, settings: HashMap<String, String>) {
+        let mode = CompatibleMode::from_database_mode(
+            settings
+                .get("database_mode")
+                .map(std::string::String::as_str),
+        );
+        *self.compatible_mode.lock() = mode;
+        *self.kingbase_server_settings.lock() = settings;
     }
 
     /// Call the given function with a buffer to be used when writing out
@@ -201,6 +279,8 @@ impl Client {
                 sender,
                 cached_typeinfo: Default::default(),
                 buffer: Default::default(),
+                compatible_mode: Mutex::new(CompatibleMode::Pg),
+                kingbase_server_settings: Default::default(),
             }),
             #[cfg(feature = "runtime")]
             socket_config: None,
@@ -213,6 +293,25 @@ impl Client {
 
     pub(crate) fn inner(&self) -> &Arc<InnerClient> {
         &self.inner
+    }
+
+    /// Returns the Kingbase compatibility mode detected for this connection.
+    pub fn compatible_mode(&self) -> CompatibleMode {
+        self.inner.compatible_mode()
+    }
+
+    /// Returns the type system selected for this connection.
+    pub fn type_system(&self) -> TypeSystem {
+        self.inner.type_system()
+    }
+
+    /// Returns a Kingbase server setting captured during compatibility probing.
+    ///
+    /// The first probe stores values such as `database_mode`, `sql_mode`, and
+    /// `ora_input_emptystr_isnull`. Later mode-specific layers can use this to
+    /// match Java JDBC behavior without re-querying the server.
+    pub fn kingbase_server_setting(&self, name: &str) -> Option<String> {
+        self.inner.kingbase_server_setting(name)
     }
 
     #[cfg(feature = "runtime")]
