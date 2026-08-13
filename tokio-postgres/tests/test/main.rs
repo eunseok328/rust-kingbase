@@ -19,6 +19,7 @@ use tokio_postgres::{
 };
 
 mod binary_copy;
+mod kingbase;
 mod parse;
 #[cfg(feature = "runtime")]
 mod runtime;

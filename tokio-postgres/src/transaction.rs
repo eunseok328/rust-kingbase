@@ -100,6 +100,18 @@ impl<'a> Transaction<'a> {
         self.client.query(statement, params).await
     }
 
+    /// Like [`Client::query_text`](crate::Client::query_text).
+    pub async fn query_text<T>(
+        &self,
+        statement: &T,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<Vec<Row>, Error>
+    where
+        T: ?Sized + ToStatement,
+    {
+        self.client.query_text(statement, params).await
+    }
+
     /// Like `Client::query_one`.
     pub async fn query_one<T>(
         &self,
@@ -133,6 +145,21 @@ impl<'a> Transaction<'a> {
         I::IntoIter: ExactSizeIterator,
     {
         self.client.query_raw(statement, params).await
+    }
+
+    /// Like [`Client::query_text_raw`](crate::Client::query_text_raw).
+    pub async fn query_text_raw<T, P, I>(
+        &self,
+        statement: &T,
+        params: I,
+    ) -> Result<RowStream, Error>
+    where
+        T: ?Sized + ToStatement,
+        P: BorrowToSql,
+        I: IntoIterator<Item = P>,
+        I::IntoIter: ExactSizeIterator,
+    {
+        self.client.query_text_raw(statement, params).await
     }
 
     /// Like `Client::query_typed`.

@@ -10,6 +10,10 @@ use std::io::Read;
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Json<T>(pub T);
 
+fn is_jsonb(ty: &Type) -> bool {
+    ty.is_equivalent_to(&Type::JSONB)
+}
+
 impl<T: Serialize> Serialize for Json<T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.0.serialize(serializer)
@@ -27,7 +31,7 @@ where
     T: Deserialize<'a>,
 {
     fn from_sql(ty: &Type, mut raw: &'a [u8]) -> Result<Json<T>, Box<dyn Error + Sync + Send>> {
-        if *ty == Type::JSONB {
+        if is_jsonb(ty) {
             let mut b = [0; 1];
             raw.read_exact(&mut b)?;
             // We only support version 1 of the jsonb binary format
@@ -52,7 +56,7 @@ where
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        if *ty == Type::JSONB {
+        if is_jsonb(ty) {
             out.put_u8(1);
         }
         serde_json_1::ser::to_writer(out.writer(), &self.0)?;

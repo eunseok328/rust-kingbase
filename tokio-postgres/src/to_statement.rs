@@ -4,7 +4,7 @@ use crate::to_statement::private::{Sealed, ToStatementType};
 mod private {
     use std::sync::Arc;
 
-    use crate::{Error, Statement, client::InnerClient, prepare};
+    use crate::{Error, Statement, client::InnerClient, prepare, types::Oid};
 
     pub trait Sealed {}
 
@@ -18,6 +18,19 @@ mod private {
             match self {
                 ToStatementType::Statement(s) => Ok(s.clone()),
                 ToStatementType::Query(s) => prepare::prepare(client, s, &[]).await,
+            }
+        }
+
+        pub async fn into_statement_with_param_oids(
+            self,
+            client: &Arc<InnerClient>,
+            param_oids: &[Oid],
+        ) -> Result<Statement, Error> {
+            match self {
+                ToStatementType::Statement(s) => Ok(s.clone()),
+                ToStatementType::Query(s) => {
+                    prepare::prepare_with_param_oids(client, s, param_oids).await
+                }
             }
         }
     }

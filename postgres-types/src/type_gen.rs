@@ -13,1512 +13,3322 @@ pub struct Other {
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Inner {
-    Bool,
-    Bytea,
-    Char,
-    Name,
-    Int8,
-    Int2,
-    Int2Vector,
-    Int4,
-    Regproc,
-    Text,
-    Oid,
-    Tid,
-    Xid,
-    Cid,
-    OidVector,
-    PgDdlCommand,
-    Json,
-    Xml,
-    XmlArray,
-    PgNodeTree,
-    JsonArray,
-    TableAmHandler,
-    Xid8Array,
-    IndexAmHandler,
-    Point,
-    Lseg,
-    Path,
-    Box,
-    Polygon,
-    Line,
-    LineArray,
-    Cidr,
-    CidrArray,
-    Float4,
-    Float8,
-    Unknown,
-    Circle,
-    CircleArray,
-    Macaddr8,
-    Macaddr8Array,
-    Money,
-    MoneyArray,
-    Macaddr,
-    Inet,
-    BoolArray,
-    ByteaArray,
-    CharArray,
-    NameArray,
-    Int2Array,
-    Int2VectorArray,
-    Int4Array,
-    RegprocArray,
-    TextArray,
-    TidArray,
-    XidArray,
-    CidArray,
-    OidVectorArray,
-    BpcharArray,
-    VarcharArray,
-    Int8Array,
-    PointArray,
-    LsegArray,
-    PathArray,
-    BoxArray,
-    Float4Array,
-    Float8Array,
-    PolygonArray,
-    OidArray,
-    Aclitem,
-    AclitemArray,
-    MacaddrArray,
-    InetArray,
-    Bpchar,
-    Varchar,
-    Date,
-    Time,
-    Timestamp,
-    TimestampArray,
-    DateArray,
-    TimeArray,
-    Timestamptz,
-    TimestamptzArray,
-    Interval,
-    IntervalArray,
-    NumericArray,
-    CstringArray,
-    Timetz,
-    TimetzArray,
-    Bit,
-    BitArray,
-    Varbit,
-    VarbitArray,
-    Numeric,
-    Refcursor,
-    RefcursorArray,
-    Regprocedure,
-    Regoper,
-    Regoperator,
-    Regclass,
-    Regtype,
-    RegprocedureArray,
-    RegoperArray,
-    RegoperatorArray,
-    RegclassArray,
-    RegtypeArray,
-    Record,
-    Cstring,
-    Any,
-    Anyarray,
-    Void,
-    Trigger,
-    LanguageHandler,
-    Internal,
-    Anyelement,
-    RecordArray,
-    Anynonarray,
-    TxidSnapshotArray,
-    Uuid,
-    UuidArray,
-    TxidSnapshot,
-    FdwHandler,
-    PgLsn,
-    PgLsnArray,
-    TsmHandler,
-    PgNdistinct,
-    PgDependencies,
-    Anyenum,
-    TsVector,
-    Tsquery,
-    GtsVector,
-    TsVectorArray,
-    GtsVectorArray,
-    TsqueryArray,
-    Regconfig,
-    RegconfigArray,
-    Regdictionary,
-    RegdictionaryArray,
-    Jsonb,
-    JsonbArray,
-    AnyRange,
-    EventTrigger,
-    Int4Range,
-    Int4RangeArray,
-    NumRange,
-    NumRangeArray,
-    TsRange,
-    TsRangeArray,
-    TstzRange,
-    TstzRangeArray,
-    DateRange,
-    DateRangeArray,
-    Int8Range,
-    Int8RangeArray,
-    Jsonpath,
-    JsonpathArray,
-    Regnamespace,
-    RegnamespaceArray,
-    Regrole,
-    RegroleArray,
-    Regcollation,
-    RegcollationArray,
-    Int4multiRange,
-    NummultiRange,
-    TsmultiRange,
-    TstzmultiRange,
-    DatemultiRange,
-    Int8multiRange,
-    AnymultiRange,
-    AnycompatiblemultiRange,
-    PgBrinBloomSummary,
-    PgBrinMinmaxMultiSummary,
-    PgMcvList,
-    PgSnapshot,
-    PgSnapshotArray,
-    Xid8,
-    Anycompatible,
-    Anycompatiblearray,
-    Anycompatiblenonarray,
-    AnycompatibleRange,
-    Int4multiRangeArray,
-    NummultiRangeArray,
-    TsmultiRangeArray,
-    TstzmultiRangeArray,
-    DatemultiRangeArray,
-    Int8multiRangeArray,
+    Pg(crate::pg_type_gen::Inner),
+    Mysql(crate::mysql_type_gen::Inner),
+    Oracle(crate::oracle_type_gen::Inner),
+    SqlServer(crate::sqlserver_type_gen::Inner),
     Other(Arc<Other>),
 }
 
 impl Inner {
-    pub fn from_oid(oid: Oid) -> Option<Inner> {
-        match oid {
-            16 => Some(Inner::Bool),
-            17 => Some(Inner::Bytea),
-            18 => Some(Inner::Char),
-            19 => Some(Inner::Name),
-            20 => Some(Inner::Int8),
-            21 => Some(Inner::Int2),
-            22 => Some(Inner::Int2Vector),
-            23 => Some(Inner::Int4),
-            24 => Some(Inner::Regproc),
-            25 => Some(Inner::Text),
-            26 => Some(Inner::Oid),
-            27 => Some(Inner::Tid),
-            28 => Some(Inner::Xid),
-            29 => Some(Inner::Cid),
-            30 => Some(Inner::OidVector),
-            32 => Some(Inner::PgDdlCommand),
-            114 => Some(Inner::Json),
-            142 => Some(Inner::Xml),
-            143 => Some(Inner::XmlArray),
-            194 => Some(Inner::PgNodeTree),
-            199 => Some(Inner::JsonArray),
-            269 => Some(Inner::TableAmHandler),
-            271 => Some(Inner::Xid8Array),
-            325 => Some(Inner::IndexAmHandler),
-            600 => Some(Inner::Point),
-            601 => Some(Inner::Lseg),
-            602 => Some(Inner::Path),
-            603 => Some(Inner::Box),
-            604 => Some(Inner::Polygon),
-            628 => Some(Inner::Line),
-            629 => Some(Inner::LineArray),
-            650 => Some(Inner::Cidr),
-            651 => Some(Inner::CidrArray),
-            700 => Some(Inner::Float4),
-            701 => Some(Inner::Float8),
-            705 => Some(Inner::Unknown),
-            718 => Some(Inner::Circle),
-            719 => Some(Inner::CircleArray),
-            774 => Some(Inner::Macaddr8),
-            775 => Some(Inner::Macaddr8Array),
-            790 => Some(Inner::Money),
-            791 => Some(Inner::MoneyArray),
-            829 => Some(Inner::Macaddr),
-            869 => Some(Inner::Inet),
-            1000 => Some(Inner::BoolArray),
-            1001 => Some(Inner::ByteaArray),
-            1002 => Some(Inner::CharArray),
-            1003 => Some(Inner::NameArray),
-            1005 => Some(Inner::Int2Array),
-            1006 => Some(Inner::Int2VectorArray),
-            1007 => Some(Inner::Int4Array),
-            1008 => Some(Inner::RegprocArray),
-            1009 => Some(Inner::TextArray),
-            1010 => Some(Inner::TidArray),
-            1011 => Some(Inner::XidArray),
-            1012 => Some(Inner::CidArray),
-            1013 => Some(Inner::OidVectorArray),
-            1014 => Some(Inner::BpcharArray),
-            1015 => Some(Inner::VarcharArray),
-            1016 => Some(Inner::Int8Array),
-            1017 => Some(Inner::PointArray),
-            1018 => Some(Inner::LsegArray),
-            1019 => Some(Inner::PathArray),
-            1020 => Some(Inner::BoxArray),
-            1021 => Some(Inner::Float4Array),
-            1022 => Some(Inner::Float8Array),
-            1027 => Some(Inner::PolygonArray),
-            1028 => Some(Inner::OidArray),
-            1033 => Some(Inner::Aclitem),
-            1034 => Some(Inner::AclitemArray),
-            1040 => Some(Inner::MacaddrArray),
-            1041 => Some(Inner::InetArray),
-            1042 => Some(Inner::Bpchar),
-            1043 => Some(Inner::Varchar),
-            1082 => Some(Inner::Date),
-            1083 => Some(Inner::Time),
-            1114 => Some(Inner::Timestamp),
-            1115 => Some(Inner::TimestampArray),
-            1182 => Some(Inner::DateArray),
-            1183 => Some(Inner::TimeArray),
-            1184 => Some(Inner::Timestamptz),
-            1185 => Some(Inner::TimestamptzArray),
-            1186 => Some(Inner::Interval),
-            1187 => Some(Inner::IntervalArray),
-            1231 => Some(Inner::NumericArray),
-            1263 => Some(Inner::CstringArray),
-            1266 => Some(Inner::Timetz),
-            1270 => Some(Inner::TimetzArray),
-            1560 => Some(Inner::Bit),
-            1561 => Some(Inner::BitArray),
-            1562 => Some(Inner::Varbit),
-            1563 => Some(Inner::VarbitArray),
-            1700 => Some(Inner::Numeric),
-            1790 => Some(Inner::Refcursor),
-            2201 => Some(Inner::RefcursorArray),
-            2202 => Some(Inner::Regprocedure),
-            2203 => Some(Inner::Regoper),
-            2204 => Some(Inner::Regoperator),
-            2205 => Some(Inner::Regclass),
-            2206 => Some(Inner::Regtype),
-            2207 => Some(Inner::RegprocedureArray),
-            2208 => Some(Inner::RegoperArray),
-            2209 => Some(Inner::RegoperatorArray),
-            2210 => Some(Inner::RegclassArray),
-            2211 => Some(Inner::RegtypeArray),
-            2249 => Some(Inner::Record),
-            2275 => Some(Inner::Cstring),
-            2276 => Some(Inner::Any),
-            2277 => Some(Inner::Anyarray),
-            2278 => Some(Inner::Void),
-            2279 => Some(Inner::Trigger),
-            2280 => Some(Inner::LanguageHandler),
-            2281 => Some(Inner::Internal),
-            2283 => Some(Inner::Anyelement),
-            2287 => Some(Inner::RecordArray),
-            2776 => Some(Inner::Anynonarray),
-            2949 => Some(Inner::TxidSnapshotArray),
-            2950 => Some(Inner::Uuid),
-            2951 => Some(Inner::UuidArray),
-            2970 => Some(Inner::TxidSnapshot),
-            3115 => Some(Inner::FdwHandler),
-            3220 => Some(Inner::PgLsn),
-            3221 => Some(Inner::PgLsnArray),
-            3310 => Some(Inner::TsmHandler),
-            3361 => Some(Inner::PgNdistinct),
-            3402 => Some(Inner::PgDependencies),
-            3500 => Some(Inner::Anyenum),
-            3614 => Some(Inner::TsVector),
-            3615 => Some(Inner::Tsquery),
-            3642 => Some(Inner::GtsVector),
-            3643 => Some(Inner::TsVectorArray),
-            3644 => Some(Inner::GtsVectorArray),
-            3645 => Some(Inner::TsqueryArray),
-            3734 => Some(Inner::Regconfig),
-            3735 => Some(Inner::RegconfigArray),
-            3769 => Some(Inner::Regdictionary),
-            3770 => Some(Inner::RegdictionaryArray),
-            3802 => Some(Inner::Jsonb),
-            3807 => Some(Inner::JsonbArray),
-            3831 => Some(Inner::AnyRange),
-            3838 => Some(Inner::EventTrigger),
-            3904 => Some(Inner::Int4Range),
-            3905 => Some(Inner::Int4RangeArray),
-            3906 => Some(Inner::NumRange),
-            3907 => Some(Inner::NumRangeArray),
-            3908 => Some(Inner::TsRange),
-            3909 => Some(Inner::TsRangeArray),
-            3910 => Some(Inner::TstzRange),
-            3911 => Some(Inner::TstzRangeArray),
-            3912 => Some(Inner::DateRange),
-            3913 => Some(Inner::DateRangeArray),
-            3926 => Some(Inner::Int8Range),
-            3927 => Some(Inner::Int8RangeArray),
-            4072 => Some(Inner::Jsonpath),
-            4073 => Some(Inner::JsonpathArray),
-            4089 => Some(Inner::Regnamespace),
-            4090 => Some(Inner::RegnamespaceArray),
-            4096 => Some(Inner::Regrole),
-            4097 => Some(Inner::RegroleArray),
-            4191 => Some(Inner::Regcollation),
-            4192 => Some(Inner::RegcollationArray),
-            4451 => Some(Inner::Int4multiRange),
-            4532 => Some(Inner::NummultiRange),
-            4533 => Some(Inner::TsmultiRange),
-            4534 => Some(Inner::TstzmultiRange),
-            4535 => Some(Inner::DatemultiRange),
-            4536 => Some(Inner::Int8multiRange),
-            4537 => Some(Inner::AnymultiRange),
-            4538 => Some(Inner::AnycompatiblemultiRange),
-            4600 => Some(Inner::PgBrinBloomSummary),
-            4601 => Some(Inner::PgBrinMinmaxMultiSummary),
-            5017 => Some(Inner::PgMcvList),
-            5038 => Some(Inner::PgSnapshot),
-            5039 => Some(Inner::PgSnapshotArray),
-            5069 => Some(Inner::Xid8),
-            5077 => Some(Inner::Anycompatible),
-            5078 => Some(Inner::Anycompatiblearray),
-            5079 => Some(Inner::Anycompatiblenonarray),
-            5080 => Some(Inner::AnycompatibleRange),
-            6150 => Some(Inner::Int4multiRangeArray),
-            6151 => Some(Inner::NummultiRangeArray),
-            6152 => Some(Inner::TsmultiRangeArray),
-            6153 => Some(Inner::TstzmultiRangeArray),
-            6155 => Some(Inner::DatemultiRangeArray),
-            6157 => Some(Inner::Int8multiRangeArray),
-            _ => None,
-        }
-    }
-
     pub fn oid(&self) -> Oid {
         match *self {
-            Inner::Bool => 16,
-            Inner::Bytea => 17,
-            Inner::Char => 18,
-            Inner::Name => 19,
-            Inner::Int8 => 20,
-            Inner::Int2 => 21,
-            Inner::Int2Vector => 22,
-            Inner::Int4 => 23,
-            Inner::Regproc => 24,
-            Inner::Text => 25,
-            Inner::Oid => 26,
-            Inner::Tid => 27,
-            Inner::Xid => 28,
-            Inner::Cid => 29,
-            Inner::OidVector => 30,
-            Inner::PgDdlCommand => 32,
-            Inner::Json => 114,
-            Inner::Xml => 142,
-            Inner::XmlArray => 143,
-            Inner::PgNodeTree => 194,
-            Inner::JsonArray => 199,
-            Inner::TableAmHandler => 269,
-            Inner::Xid8Array => 271,
-            Inner::IndexAmHandler => 325,
-            Inner::Point => 600,
-            Inner::Lseg => 601,
-            Inner::Path => 602,
-            Inner::Box => 603,
-            Inner::Polygon => 604,
-            Inner::Line => 628,
-            Inner::LineArray => 629,
-            Inner::Cidr => 650,
-            Inner::CidrArray => 651,
-            Inner::Float4 => 700,
-            Inner::Float8 => 701,
-            Inner::Unknown => 705,
-            Inner::Circle => 718,
-            Inner::CircleArray => 719,
-            Inner::Macaddr8 => 774,
-            Inner::Macaddr8Array => 775,
-            Inner::Money => 790,
-            Inner::MoneyArray => 791,
-            Inner::Macaddr => 829,
-            Inner::Inet => 869,
-            Inner::BoolArray => 1000,
-            Inner::ByteaArray => 1001,
-            Inner::CharArray => 1002,
-            Inner::NameArray => 1003,
-            Inner::Int2Array => 1005,
-            Inner::Int2VectorArray => 1006,
-            Inner::Int4Array => 1007,
-            Inner::RegprocArray => 1008,
-            Inner::TextArray => 1009,
-            Inner::TidArray => 1010,
-            Inner::XidArray => 1011,
-            Inner::CidArray => 1012,
-            Inner::OidVectorArray => 1013,
-            Inner::BpcharArray => 1014,
-            Inner::VarcharArray => 1015,
-            Inner::Int8Array => 1016,
-            Inner::PointArray => 1017,
-            Inner::LsegArray => 1018,
-            Inner::PathArray => 1019,
-            Inner::BoxArray => 1020,
-            Inner::Float4Array => 1021,
-            Inner::Float8Array => 1022,
-            Inner::PolygonArray => 1027,
-            Inner::OidArray => 1028,
-            Inner::Aclitem => 1033,
-            Inner::AclitemArray => 1034,
-            Inner::MacaddrArray => 1040,
-            Inner::InetArray => 1041,
-            Inner::Bpchar => 1042,
-            Inner::Varchar => 1043,
-            Inner::Date => 1082,
-            Inner::Time => 1083,
-            Inner::Timestamp => 1114,
-            Inner::TimestampArray => 1115,
-            Inner::DateArray => 1182,
-            Inner::TimeArray => 1183,
-            Inner::Timestamptz => 1184,
-            Inner::TimestamptzArray => 1185,
-            Inner::Interval => 1186,
-            Inner::IntervalArray => 1187,
-            Inner::NumericArray => 1231,
-            Inner::CstringArray => 1263,
-            Inner::Timetz => 1266,
-            Inner::TimetzArray => 1270,
-            Inner::Bit => 1560,
-            Inner::BitArray => 1561,
-            Inner::Varbit => 1562,
-            Inner::VarbitArray => 1563,
-            Inner::Numeric => 1700,
-            Inner::Refcursor => 1790,
-            Inner::RefcursorArray => 2201,
-            Inner::Regprocedure => 2202,
-            Inner::Regoper => 2203,
-            Inner::Regoperator => 2204,
-            Inner::Regclass => 2205,
-            Inner::Regtype => 2206,
-            Inner::RegprocedureArray => 2207,
-            Inner::RegoperArray => 2208,
-            Inner::RegoperatorArray => 2209,
-            Inner::RegclassArray => 2210,
-            Inner::RegtypeArray => 2211,
-            Inner::Record => 2249,
-            Inner::Cstring => 2275,
-            Inner::Any => 2276,
-            Inner::Anyarray => 2277,
-            Inner::Void => 2278,
-            Inner::Trigger => 2279,
-            Inner::LanguageHandler => 2280,
-            Inner::Internal => 2281,
-            Inner::Anyelement => 2283,
-            Inner::RecordArray => 2287,
-            Inner::Anynonarray => 2776,
-            Inner::TxidSnapshotArray => 2949,
-            Inner::Uuid => 2950,
-            Inner::UuidArray => 2951,
-            Inner::TxidSnapshot => 2970,
-            Inner::FdwHandler => 3115,
-            Inner::PgLsn => 3220,
-            Inner::PgLsnArray => 3221,
-            Inner::TsmHandler => 3310,
-            Inner::PgNdistinct => 3361,
-            Inner::PgDependencies => 3402,
-            Inner::Anyenum => 3500,
-            Inner::TsVector => 3614,
-            Inner::Tsquery => 3615,
-            Inner::GtsVector => 3642,
-            Inner::TsVectorArray => 3643,
-            Inner::GtsVectorArray => 3644,
-            Inner::TsqueryArray => 3645,
-            Inner::Regconfig => 3734,
-            Inner::RegconfigArray => 3735,
-            Inner::Regdictionary => 3769,
-            Inner::RegdictionaryArray => 3770,
-            Inner::Jsonb => 3802,
-            Inner::JsonbArray => 3807,
-            Inner::AnyRange => 3831,
-            Inner::EventTrigger => 3838,
-            Inner::Int4Range => 3904,
-            Inner::Int4RangeArray => 3905,
-            Inner::NumRange => 3906,
-            Inner::NumRangeArray => 3907,
-            Inner::TsRange => 3908,
-            Inner::TsRangeArray => 3909,
-            Inner::TstzRange => 3910,
-            Inner::TstzRangeArray => 3911,
-            Inner::DateRange => 3912,
-            Inner::DateRangeArray => 3913,
-            Inner::Int8Range => 3926,
-            Inner::Int8RangeArray => 3927,
-            Inner::Jsonpath => 4072,
-            Inner::JsonpathArray => 4073,
-            Inner::Regnamespace => 4089,
-            Inner::RegnamespaceArray => 4090,
-            Inner::Regrole => 4096,
-            Inner::RegroleArray => 4097,
-            Inner::Regcollation => 4191,
-            Inner::RegcollationArray => 4192,
-            Inner::Int4multiRange => 4451,
-            Inner::NummultiRange => 4532,
-            Inner::TsmultiRange => 4533,
-            Inner::TstzmultiRange => 4534,
-            Inner::DatemultiRange => 4535,
-            Inner::Int8multiRange => 4536,
-            Inner::AnymultiRange => 4537,
-            Inner::AnycompatiblemultiRange => 4538,
-            Inner::PgBrinBloomSummary => 4600,
-            Inner::PgBrinMinmaxMultiSummary => 4601,
-            Inner::PgMcvList => 5017,
-            Inner::PgSnapshot => 5038,
-            Inner::PgSnapshotArray => 5039,
-            Inner::Xid8 => 5069,
-            Inner::Anycompatible => 5077,
-            Inner::Anycompatiblearray => 5078,
-            Inner::Anycompatiblenonarray => 5079,
-            Inner::AnycompatibleRange => 5080,
-            Inner::Int4multiRangeArray => 6150,
-            Inner::NummultiRangeArray => 6151,
-            Inner::TsmultiRangeArray => 6152,
-            Inner::TstzmultiRangeArray => 6153,
-            Inner::DatemultiRangeArray => 6155,
-            Inner::Int8multiRangeArray => 6157,
+            Inner::Pg(ref inner) => inner.oid(),
+            Inner::Mysql(ref inner) => inner.oid(),
+            Inner::Oracle(ref inner) => inner.oid(),
+            Inner::SqlServer(ref inner) => inner.oid(),
             Inner::Other(ref u) => u.oid,
         }
     }
 
     pub fn kind(&self) -> &Kind {
         match *self {
-            Inner::Bool => &Kind::Simple,
-            Inner::Bytea => &Kind::Simple,
-            Inner::Char => &Kind::Simple,
-            Inner::Name => &Kind::Simple,
-            Inner::Int8 => &Kind::Simple,
-            Inner::Int2 => &Kind::Simple,
-            Inner::Int2Vector => &Kind::Array(Type(Inner::Int2)),
-            Inner::Int4 => &Kind::Simple,
-            Inner::Regproc => &Kind::Simple,
-            Inner::Text => &Kind::Simple,
-            Inner::Oid => &Kind::Simple,
-            Inner::Tid => &Kind::Simple,
-            Inner::Xid => &Kind::Simple,
-            Inner::Cid => &Kind::Simple,
-            Inner::OidVector => &Kind::Array(Type(Inner::Oid)),
-            Inner::PgDdlCommand => &Kind::Pseudo,
-            Inner::Json => &Kind::Simple,
-            Inner::Xml => &Kind::Simple,
-            Inner::XmlArray => &Kind::Array(Type(Inner::Xml)),
-            Inner::PgNodeTree => &Kind::Simple,
-            Inner::JsonArray => &Kind::Array(Type(Inner::Json)),
-            Inner::TableAmHandler => &Kind::Pseudo,
-            Inner::Xid8Array => &Kind::Array(Type(Inner::Xid8)),
-            Inner::IndexAmHandler => &Kind::Pseudo,
-            Inner::Point => &Kind::Simple,
-            Inner::Lseg => &Kind::Simple,
-            Inner::Path => &Kind::Simple,
-            Inner::Box => &Kind::Simple,
-            Inner::Polygon => &Kind::Simple,
-            Inner::Line => &Kind::Simple,
-            Inner::LineArray => &Kind::Array(Type(Inner::Line)),
-            Inner::Cidr => &Kind::Simple,
-            Inner::CidrArray => &Kind::Array(Type(Inner::Cidr)),
-            Inner::Float4 => &Kind::Simple,
-            Inner::Float8 => &Kind::Simple,
-            Inner::Unknown => &Kind::Simple,
-            Inner::Circle => &Kind::Simple,
-            Inner::CircleArray => &Kind::Array(Type(Inner::Circle)),
-            Inner::Macaddr8 => &Kind::Simple,
-            Inner::Macaddr8Array => &Kind::Array(Type(Inner::Macaddr8)),
-            Inner::Money => &Kind::Simple,
-            Inner::MoneyArray => &Kind::Array(Type(Inner::Money)),
-            Inner::Macaddr => &Kind::Simple,
-            Inner::Inet => &Kind::Simple,
-            Inner::BoolArray => &Kind::Array(Type(Inner::Bool)),
-            Inner::ByteaArray => &Kind::Array(Type(Inner::Bytea)),
-            Inner::CharArray => &Kind::Array(Type(Inner::Char)),
-            Inner::NameArray => &Kind::Array(Type(Inner::Name)),
-            Inner::Int2Array => &Kind::Array(Type(Inner::Int2)),
-            Inner::Int2VectorArray => &Kind::Array(Type(Inner::Int2Vector)),
-            Inner::Int4Array => &Kind::Array(Type(Inner::Int4)),
-            Inner::RegprocArray => &Kind::Array(Type(Inner::Regproc)),
-            Inner::TextArray => &Kind::Array(Type(Inner::Text)),
-            Inner::TidArray => &Kind::Array(Type(Inner::Tid)),
-            Inner::XidArray => &Kind::Array(Type(Inner::Xid)),
-            Inner::CidArray => &Kind::Array(Type(Inner::Cid)),
-            Inner::OidVectorArray => &Kind::Array(Type(Inner::OidVector)),
-            Inner::BpcharArray => &Kind::Array(Type(Inner::Bpchar)),
-            Inner::VarcharArray => &Kind::Array(Type(Inner::Varchar)),
-            Inner::Int8Array => &Kind::Array(Type(Inner::Int8)),
-            Inner::PointArray => &Kind::Array(Type(Inner::Point)),
-            Inner::LsegArray => &Kind::Array(Type(Inner::Lseg)),
-            Inner::PathArray => &Kind::Array(Type(Inner::Path)),
-            Inner::BoxArray => &Kind::Array(Type(Inner::Box)),
-            Inner::Float4Array => &Kind::Array(Type(Inner::Float4)),
-            Inner::Float8Array => &Kind::Array(Type(Inner::Float8)),
-            Inner::PolygonArray => &Kind::Array(Type(Inner::Polygon)),
-            Inner::OidArray => &Kind::Array(Type(Inner::Oid)),
-            Inner::Aclitem => &Kind::Simple,
-            Inner::AclitemArray => &Kind::Array(Type(Inner::Aclitem)),
-            Inner::MacaddrArray => &Kind::Array(Type(Inner::Macaddr)),
-            Inner::InetArray => &Kind::Array(Type(Inner::Inet)),
-            Inner::Bpchar => &Kind::Simple,
-            Inner::Varchar => &Kind::Simple,
-            Inner::Date => &Kind::Simple,
-            Inner::Time => &Kind::Simple,
-            Inner::Timestamp => &Kind::Simple,
-            Inner::TimestampArray => &Kind::Array(Type(Inner::Timestamp)),
-            Inner::DateArray => &Kind::Array(Type(Inner::Date)),
-            Inner::TimeArray => &Kind::Array(Type(Inner::Time)),
-            Inner::Timestamptz => &Kind::Simple,
-            Inner::TimestamptzArray => &Kind::Array(Type(Inner::Timestamptz)),
-            Inner::Interval => &Kind::Simple,
-            Inner::IntervalArray => &Kind::Array(Type(Inner::Interval)),
-            Inner::NumericArray => &Kind::Array(Type(Inner::Numeric)),
-            Inner::CstringArray => &Kind::Array(Type(Inner::Cstring)),
-            Inner::Timetz => &Kind::Simple,
-            Inner::TimetzArray => &Kind::Array(Type(Inner::Timetz)),
-            Inner::Bit => &Kind::Simple,
-            Inner::BitArray => &Kind::Array(Type(Inner::Bit)),
-            Inner::Varbit => &Kind::Simple,
-            Inner::VarbitArray => &Kind::Array(Type(Inner::Varbit)),
-            Inner::Numeric => &Kind::Simple,
-            Inner::Refcursor => &Kind::Simple,
-            Inner::RefcursorArray => &Kind::Array(Type(Inner::Refcursor)),
-            Inner::Regprocedure => &Kind::Simple,
-            Inner::Regoper => &Kind::Simple,
-            Inner::Regoperator => &Kind::Simple,
-            Inner::Regclass => &Kind::Simple,
-            Inner::Regtype => &Kind::Simple,
-            Inner::RegprocedureArray => &Kind::Array(Type(Inner::Regprocedure)),
-            Inner::RegoperArray => &Kind::Array(Type(Inner::Regoper)),
-            Inner::RegoperatorArray => &Kind::Array(Type(Inner::Regoperator)),
-            Inner::RegclassArray => &Kind::Array(Type(Inner::Regclass)),
-            Inner::RegtypeArray => &Kind::Array(Type(Inner::Regtype)),
-            Inner::Record => &Kind::Pseudo,
-            Inner::Cstring => &Kind::Pseudo,
-            Inner::Any => &Kind::Pseudo,
-            Inner::Anyarray => &Kind::Pseudo,
-            Inner::Void => &Kind::Pseudo,
-            Inner::Trigger => &Kind::Pseudo,
-            Inner::LanguageHandler => &Kind::Pseudo,
-            Inner::Internal => &Kind::Pseudo,
-            Inner::Anyelement => &Kind::Pseudo,
-            Inner::RecordArray => &Kind::Pseudo,
-            Inner::Anynonarray => &Kind::Pseudo,
-            Inner::TxidSnapshotArray => &Kind::Array(Type(Inner::TxidSnapshot)),
-            Inner::Uuid => &Kind::Simple,
-            Inner::UuidArray => &Kind::Array(Type(Inner::Uuid)),
-            Inner::TxidSnapshot => &Kind::Simple,
-            Inner::FdwHandler => &Kind::Pseudo,
-            Inner::PgLsn => &Kind::Simple,
-            Inner::PgLsnArray => &Kind::Array(Type(Inner::PgLsn)),
-            Inner::TsmHandler => &Kind::Pseudo,
-            Inner::PgNdistinct => &Kind::Simple,
-            Inner::PgDependencies => &Kind::Simple,
-            Inner::Anyenum => &Kind::Pseudo,
-            Inner::TsVector => &Kind::Simple,
-            Inner::Tsquery => &Kind::Simple,
-            Inner::GtsVector => &Kind::Simple,
-            Inner::TsVectorArray => &Kind::Array(Type(Inner::TsVector)),
-            Inner::GtsVectorArray => &Kind::Array(Type(Inner::GtsVector)),
-            Inner::TsqueryArray => &Kind::Array(Type(Inner::Tsquery)),
-            Inner::Regconfig => &Kind::Simple,
-            Inner::RegconfigArray => &Kind::Array(Type(Inner::Regconfig)),
-            Inner::Regdictionary => &Kind::Simple,
-            Inner::RegdictionaryArray => &Kind::Array(Type(Inner::Regdictionary)),
-            Inner::Jsonb => &Kind::Simple,
-            Inner::JsonbArray => &Kind::Array(Type(Inner::Jsonb)),
-            Inner::AnyRange => &Kind::Pseudo,
-            Inner::EventTrigger => &Kind::Pseudo,
-            Inner::Int4Range => &Kind::Range(Type(Inner::Int4)),
-            Inner::Int4RangeArray => &Kind::Array(Type(Inner::Int4Range)),
-            Inner::NumRange => &Kind::Range(Type(Inner::Numeric)),
-            Inner::NumRangeArray => &Kind::Array(Type(Inner::NumRange)),
-            Inner::TsRange => &Kind::Range(Type(Inner::Timestamp)),
-            Inner::TsRangeArray => &Kind::Array(Type(Inner::TsRange)),
-            Inner::TstzRange => &Kind::Range(Type(Inner::Timestamptz)),
-            Inner::TstzRangeArray => &Kind::Array(Type(Inner::TstzRange)),
-            Inner::DateRange => &Kind::Range(Type(Inner::Date)),
-            Inner::DateRangeArray => &Kind::Array(Type(Inner::DateRange)),
-            Inner::Int8Range => &Kind::Range(Type(Inner::Int8)),
-            Inner::Int8RangeArray => &Kind::Array(Type(Inner::Int8Range)),
-            Inner::Jsonpath => &Kind::Simple,
-            Inner::JsonpathArray => &Kind::Array(Type(Inner::Jsonpath)),
-            Inner::Regnamespace => &Kind::Simple,
-            Inner::RegnamespaceArray => &Kind::Array(Type(Inner::Regnamespace)),
-            Inner::Regrole => &Kind::Simple,
-            Inner::RegroleArray => &Kind::Array(Type(Inner::Regrole)),
-            Inner::Regcollation => &Kind::Simple,
-            Inner::RegcollationArray => &Kind::Array(Type(Inner::Regcollation)),
-            Inner::Int4multiRange => &Kind::Multirange(Type(Inner::Int4)),
-            Inner::NummultiRange => &Kind::Multirange(Type(Inner::Numeric)),
-            Inner::TsmultiRange => &Kind::Multirange(Type(Inner::Timestamp)),
-            Inner::TstzmultiRange => &Kind::Multirange(Type(Inner::Timestamptz)),
-            Inner::DatemultiRange => &Kind::Multirange(Type(Inner::Date)),
-            Inner::Int8multiRange => &Kind::Multirange(Type(Inner::Int8)),
-            Inner::AnymultiRange => &Kind::Pseudo,
-            Inner::AnycompatiblemultiRange => &Kind::Pseudo,
-            Inner::PgBrinBloomSummary => &Kind::Simple,
-            Inner::PgBrinMinmaxMultiSummary => &Kind::Simple,
-            Inner::PgMcvList => &Kind::Simple,
-            Inner::PgSnapshot => &Kind::Simple,
-            Inner::PgSnapshotArray => &Kind::Array(Type(Inner::PgSnapshot)),
-            Inner::Xid8 => &Kind::Simple,
-            Inner::Anycompatible => &Kind::Pseudo,
-            Inner::Anycompatiblearray => &Kind::Pseudo,
-            Inner::Anycompatiblenonarray => &Kind::Pseudo,
-            Inner::AnycompatibleRange => &Kind::Pseudo,
-            Inner::Int4multiRangeArray => &Kind::Array(Type(Inner::Int4multiRange)),
-            Inner::NummultiRangeArray => &Kind::Array(Type(Inner::NummultiRange)),
-            Inner::TsmultiRangeArray => &Kind::Array(Type(Inner::TsmultiRange)),
-            Inner::TstzmultiRangeArray => &Kind::Array(Type(Inner::TstzmultiRange)),
-            Inner::DatemultiRangeArray => &Kind::Array(Type(Inner::DatemultiRange)),
-            Inner::Int8multiRangeArray => &Kind::Array(Type(Inner::Int8multiRange)),
+            Inner::Pg(ref inner) => inner.kind(),
+            Inner::Mysql(ref inner) => inner.kind(),
+            Inner::Oracle(ref inner) => inner.kind(),
+            Inner::SqlServer(ref inner) => inner.kind(),
             Inner::Other(ref u) => &u.kind,
         }
     }
 
     pub fn name(&self) -> &str {
         match *self {
-            Inner::Bool => "bool",
-            Inner::Bytea => "bytea",
-            Inner::Char => "char",
-            Inner::Name => "name",
-            Inner::Int8 => "int8",
-            Inner::Int2 => "int2",
-            Inner::Int2Vector => "int2vector",
-            Inner::Int4 => "int4",
-            Inner::Regproc => "regproc",
-            Inner::Text => "text",
-            Inner::Oid => "oid",
-            Inner::Tid => "tid",
-            Inner::Xid => "xid",
-            Inner::Cid => "cid",
-            Inner::OidVector => "oidvector",
-            Inner::PgDdlCommand => "pg_ddl_command",
-            Inner::Json => "json",
-            Inner::Xml => "xml",
-            Inner::XmlArray => "_xml",
-            Inner::PgNodeTree => "pg_node_tree",
-            Inner::JsonArray => "_json",
-            Inner::TableAmHandler => "table_am_handler",
-            Inner::Xid8Array => "_xid8",
-            Inner::IndexAmHandler => "index_am_handler",
-            Inner::Point => "point",
-            Inner::Lseg => "lseg",
-            Inner::Path => "path",
-            Inner::Box => "box",
-            Inner::Polygon => "polygon",
-            Inner::Line => "line",
-            Inner::LineArray => "_line",
-            Inner::Cidr => "cidr",
-            Inner::CidrArray => "_cidr",
-            Inner::Float4 => "float4",
-            Inner::Float8 => "float8",
-            Inner::Unknown => "unknown",
-            Inner::Circle => "circle",
-            Inner::CircleArray => "_circle",
-            Inner::Macaddr8 => "macaddr8",
-            Inner::Macaddr8Array => "_macaddr8",
-            Inner::Money => "money",
-            Inner::MoneyArray => "_money",
-            Inner::Macaddr => "macaddr",
-            Inner::Inet => "inet",
-            Inner::BoolArray => "_bool",
-            Inner::ByteaArray => "_bytea",
-            Inner::CharArray => "_char",
-            Inner::NameArray => "_name",
-            Inner::Int2Array => "_int2",
-            Inner::Int2VectorArray => "_int2vector",
-            Inner::Int4Array => "_int4",
-            Inner::RegprocArray => "_regproc",
-            Inner::TextArray => "_text",
-            Inner::TidArray => "_tid",
-            Inner::XidArray => "_xid",
-            Inner::CidArray => "_cid",
-            Inner::OidVectorArray => "_oidvector",
-            Inner::BpcharArray => "_bpchar",
-            Inner::VarcharArray => "_varchar",
-            Inner::Int8Array => "_int8",
-            Inner::PointArray => "_point",
-            Inner::LsegArray => "_lseg",
-            Inner::PathArray => "_path",
-            Inner::BoxArray => "_box",
-            Inner::Float4Array => "_float4",
-            Inner::Float8Array => "_float8",
-            Inner::PolygonArray => "_polygon",
-            Inner::OidArray => "_oid",
-            Inner::Aclitem => "aclitem",
-            Inner::AclitemArray => "_aclitem",
-            Inner::MacaddrArray => "_macaddr",
-            Inner::InetArray => "_inet",
-            Inner::Bpchar => "bpchar",
-            Inner::Varchar => "varchar",
-            Inner::Date => "date",
-            Inner::Time => "time",
-            Inner::Timestamp => "timestamp",
-            Inner::TimestampArray => "_timestamp",
-            Inner::DateArray => "_date",
-            Inner::TimeArray => "_time",
-            Inner::Timestamptz => "timestamptz",
-            Inner::TimestamptzArray => "_timestamptz",
-            Inner::Interval => "interval",
-            Inner::IntervalArray => "_interval",
-            Inner::NumericArray => "_numeric",
-            Inner::CstringArray => "_cstring",
-            Inner::Timetz => "timetz",
-            Inner::TimetzArray => "_timetz",
-            Inner::Bit => "bit",
-            Inner::BitArray => "_bit",
-            Inner::Varbit => "varbit",
-            Inner::VarbitArray => "_varbit",
-            Inner::Numeric => "numeric",
-            Inner::Refcursor => "refcursor",
-            Inner::RefcursorArray => "_refcursor",
-            Inner::Regprocedure => "regprocedure",
-            Inner::Regoper => "regoper",
-            Inner::Regoperator => "regoperator",
-            Inner::Regclass => "regclass",
-            Inner::Regtype => "regtype",
-            Inner::RegprocedureArray => "_regprocedure",
-            Inner::RegoperArray => "_regoper",
-            Inner::RegoperatorArray => "_regoperator",
-            Inner::RegclassArray => "_regclass",
-            Inner::RegtypeArray => "_regtype",
-            Inner::Record => "record",
-            Inner::Cstring => "cstring",
-            Inner::Any => "any",
-            Inner::Anyarray => "anyarray",
-            Inner::Void => "void",
-            Inner::Trigger => "trigger",
-            Inner::LanguageHandler => "language_handler",
-            Inner::Internal => "internal",
-            Inner::Anyelement => "anyelement",
-            Inner::RecordArray => "_record",
-            Inner::Anynonarray => "anynonarray",
-            Inner::TxidSnapshotArray => "_txid_snapshot",
-            Inner::Uuid => "uuid",
-            Inner::UuidArray => "_uuid",
-            Inner::TxidSnapshot => "txid_snapshot",
-            Inner::FdwHandler => "fdw_handler",
-            Inner::PgLsn => "pg_lsn",
-            Inner::PgLsnArray => "_pg_lsn",
-            Inner::TsmHandler => "tsm_handler",
-            Inner::PgNdistinct => "pg_ndistinct",
-            Inner::PgDependencies => "pg_dependencies",
-            Inner::Anyenum => "anyenum",
-            Inner::TsVector => "tsvector",
-            Inner::Tsquery => "tsquery",
-            Inner::GtsVector => "gtsvector",
-            Inner::TsVectorArray => "_tsvector",
-            Inner::GtsVectorArray => "_gtsvector",
-            Inner::TsqueryArray => "_tsquery",
-            Inner::Regconfig => "regconfig",
-            Inner::RegconfigArray => "_regconfig",
-            Inner::Regdictionary => "regdictionary",
-            Inner::RegdictionaryArray => "_regdictionary",
-            Inner::Jsonb => "jsonb",
-            Inner::JsonbArray => "_jsonb",
-            Inner::AnyRange => "anyrange",
-            Inner::EventTrigger => "event_trigger",
-            Inner::Int4Range => "int4range",
-            Inner::Int4RangeArray => "_int4range",
-            Inner::NumRange => "numrange",
-            Inner::NumRangeArray => "_numrange",
-            Inner::TsRange => "tsrange",
-            Inner::TsRangeArray => "_tsrange",
-            Inner::TstzRange => "tstzrange",
-            Inner::TstzRangeArray => "_tstzrange",
-            Inner::DateRange => "daterange",
-            Inner::DateRangeArray => "_daterange",
-            Inner::Int8Range => "int8range",
-            Inner::Int8RangeArray => "_int8range",
-            Inner::Jsonpath => "jsonpath",
-            Inner::JsonpathArray => "_jsonpath",
-            Inner::Regnamespace => "regnamespace",
-            Inner::RegnamespaceArray => "_regnamespace",
-            Inner::Regrole => "regrole",
-            Inner::RegroleArray => "_regrole",
-            Inner::Regcollation => "regcollation",
-            Inner::RegcollationArray => "_regcollation",
-            Inner::Int4multiRange => "int4multirange",
-            Inner::NummultiRange => "nummultirange",
-            Inner::TsmultiRange => "tsmultirange",
-            Inner::TstzmultiRange => "tstzmultirange",
-            Inner::DatemultiRange => "datemultirange",
-            Inner::Int8multiRange => "int8multirange",
-            Inner::AnymultiRange => "anymultirange",
-            Inner::AnycompatiblemultiRange => "anycompatiblemultirange",
-            Inner::PgBrinBloomSummary => "pg_brin_bloom_summary",
-            Inner::PgBrinMinmaxMultiSummary => "pg_brin_minmax_multi_summary",
-            Inner::PgMcvList => "pg_mcv_list",
-            Inner::PgSnapshot => "pg_snapshot",
-            Inner::PgSnapshotArray => "_pg_snapshot",
-            Inner::Xid8 => "xid8",
-            Inner::Anycompatible => "anycompatible",
-            Inner::Anycompatiblearray => "anycompatiblearray",
-            Inner::Anycompatiblenonarray => "anycompatiblenonarray",
-            Inner::AnycompatibleRange => "anycompatiblerange",
-            Inner::Int4multiRangeArray => "_int4multirange",
-            Inner::NummultiRangeArray => "_nummultirange",
-            Inner::TsmultiRangeArray => "_tsmultirange",
-            Inner::TstzmultiRangeArray => "_tstzmultirange",
-            Inner::DatemultiRangeArray => "_datemultirange",
-            Inner::Int8multiRangeArray => "_int8multirange",
+            Inner::Pg(ref inner) => inner.name(),
+            Inner::Mysql(ref inner) => inner.name(),
+            Inner::Oracle(ref inner) => inner.name(),
+            Inner::SqlServer(ref inner) => inner.name(),
             Inner::Other(ref u) => &u.name,
+        }
+    }
+
+    pub fn schema(&self) -> &str {
+        match *self {
+            Inner::Pg(ref inner) => inner.schema(),
+            Inner::Mysql(ref inner) => inner.schema(),
+            Inner::Oracle(ref inner) => inner.schema(),
+            Inner::SqlServer(ref inner) => inner.schema(),
+            Inner::Other(ref u) => &u.schema,
         }
     }
 }
 impl Type {
     /// BOOL - boolean, &#39;true&#39;/&#39;false&#39;
-    pub const BOOL: Type = Type(Inner::Bool);
+    pub const BOOL: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Bool));
 
     /// BYTEA - variable-length string, binary values escaped
-    pub const BYTEA: Type = Type(Inner::Bytea);
+    pub const BYTEA: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Bytea));
 
     /// CHAR - single character
-    pub const CHAR: Type = Type(Inner::Char);
+    pub const CHAR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Char));
 
     /// NAME - 63-byte type for storing system identifiers
-    pub const NAME: Type = Type(Inner::Name);
+    pub const NAME: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Name));
 
     /// INT8 - ~18 digit integer, 8-byte storage
-    pub const INT8: Type = Type(Inner::Int8);
+    pub const INT8: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int8));
 
     /// INT2 - -32 thousand to 32 thousand, 2-byte storage
-    pub const INT2: Type = Type(Inner::Int2);
+    pub const INT2: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int2));
 
     /// INT2VECTOR - array of int2, used in system tables
-    pub const INT2_VECTOR: Type = Type(Inner::Int2Vector);
+    pub const INT2_VECTOR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int2Vector));
 
     /// INT4 - -2 billion to 2 billion integer, 4-byte storage
-    pub const INT4: Type = Type(Inner::Int4);
+    pub const INT4: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int4));
 
     /// REGPROC - registered procedure
-    pub const REGPROC: Type = Type(Inner::Regproc);
+    pub const REGPROC: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regproc));
 
     /// TEXT - variable-length string, no limit specified
-    pub const TEXT: Type = Type(Inner::Text);
+    pub const TEXT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Text));
 
     /// OID - object identifier&#40;oid&#41;, maximum 4 billion
-    pub const OID: Type = Type(Inner::Oid);
+    pub const OID: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Oid));
 
     /// TID - &#40;block, offset&#41;, physical location of tuple
-    pub const TID: Type = Type(Inner::Tid);
+    pub const TID: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Tid));
 
     /// XID - transaction id
-    pub const XID: Type = Type(Inner::Xid);
+    pub const XID: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Xid));
 
     /// CID - command identifier type, sequence in transaction id
-    pub const CID: Type = Type(Inner::Cid);
+    pub const CID: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Cid));
 
     /// OIDVECTOR - array of oids, used in system tables
-    pub const OID_VECTOR: Type = Type(Inner::OidVector);
+    pub const OID_VECTOR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::OidVector));
 
     /// PG_DDL_COMMAND - internal type for passing CollectedCommand
-    pub const PG_DDL_COMMAND: Type = Type(Inner::PgDdlCommand);
+    pub const PG_DDL_COMMAND: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgDdlCommand));
 
     /// JSON - JSON stored as text
-    pub const JSON: Type = Type(Inner::Json);
+    pub const JSON: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Json));
 
     /// XML - XML content
-    pub const XML: Type = Type(Inner::Xml);
+    pub const XML: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Xml));
 
     /// XML&#91;&#93;
-    pub const XML_ARRAY: Type = Type(Inner::XmlArray);
+    pub const XML_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::XmlArray));
 
     /// PG_NODE_TREE - string representing an internal node tree
-    pub const PG_NODE_TREE: Type = Type(Inner::PgNodeTree);
+    pub const PG_NODE_TREE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgNodeTree));
 
     /// JSON&#91;&#93;
-    pub const JSON_ARRAY: Type = Type(Inner::JsonArray);
+    pub const JSON_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::JsonArray));
 
     /// TABLE_AM_HANDLER
-    pub const TABLE_AM_HANDLER: Type = Type(Inner::TableAmHandler);
+    pub const TABLE_AM_HANDLER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TableAmHandler));
 
     /// XID8&#91;&#93;
-    pub const XID8_ARRAY: Type = Type(Inner::Xid8Array);
+    pub const XID8_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Xid8Array));
 
     /// INDEX_AM_HANDLER - pseudo-type for the result of an index AM handler function
-    pub const INDEX_AM_HANDLER: Type = Type(Inner::IndexAmHandler);
+    pub const INDEX_AM_HANDLER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::IndexAmHandler));
 
     /// POINT - geometric point &#39;&#40;x, y&#41;&#39;
-    pub const POINT: Type = Type(Inner::Point);
+    pub const POINT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Point));
 
     /// LSEG - geometric line segment &#39;&#40;pt1,pt2&#41;&#39;
-    pub const LSEG: Type = Type(Inner::Lseg);
+    pub const LSEG: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Lseg));
 
     /// PATH - geometric path &#39;&#40;pt1,...&#41;&#39;
-    pub const PATH: Type = Type(Inner::Path);
+    pub const PATH: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Path));
 
     /// BOX - geometric box &#39;&#40;lower left,upper right&#41;&#39;
-    pub const BOX: Type = Type(Inner::Box);
+    pub const BOX: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Box));
 
     /// POLYGON - geometric polygon &#39;&#40;pt1,...&#41;&#39;
-    pub const POLYGON: Type = Type(Inner::Polygon);
+    pub const POLYGON: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Polygon));
 
     /// LINE - geometric line
-    pub const LINE: Type = Type(Inner::Line);
+    pub const LINE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Line));
 
     /// LINE&#91;&#93;
-    pub const LINE_ARRAY: Type = Type(Inner::LineArray);
+    pub const LINE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::LineArray));
 
     /// CIDR - network IP address/netmask, network address
-    pub const CIDR: Type = Type(Inner::Cidr);
+    pub const CIDR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Cidr));
 
     /// CIDR&#91;&#93;
-    pub const CIDR_ARRAY: Type = Type(Inner::CidrArray);
+    pub const CIDR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::CidrArray));
 
     /// FLOAT4 - single-precision floating point number, 4-byte storage
-    pub const FLOAT4: Type = Type(Inner::Float4);
+    pub const FLOAT4: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Float4));
 
     /// FLOAT8 - double-precision floating point number, 8-byte storage
-    pub const FLOAT8: Type = Type(Inner::Float8);
+    pub const FLOAT8: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Float8));
 
     /// UNKNOWN - pseudo-type representing an undetermined type
-    pub const UNKNOWN: Type = Type(Inner::Unknown);
+    pub const UNKNOWN: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Unknown));
 
     /// CIRCLE - geometric circle &#39;&#40;center,radius&#41;&#39;
-    pub const CIRCLE: Type = Type(Inner::Circle);
+    pub const CIRCLE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Circle));
 
     /// CIRCLE&#91;&#93;
-    pub const CIRCLE_ARRAY: Type = Type(Inner::CircleArray);
+    pub const CIRCLE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::CircleArray));
 
     /// MACADDR8 - XX:XX:XX:XX:XX:XX:XX:XX, MAC address
-    pub const MACADDR8: Type = Type(Inner::Macaddr8);
+    pub const MACADDR8: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Macaddr8));
 
     /// MACADDR8&#91;&#93;
-    pub const MACADDR8_ARRAY: Type = Type(Inner::Macaddr8Array);
+    pub const MACADDR8_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Macaddr8Array));
 
     /// MONEY - monetary amounts, &#36;d,ddd.cc
-    pub const MONEY: Type = Type(Inner::Money);
+    pub const MONEY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Money));
 
     /// MONEY&#91;&#93;
-    pub const MONEY_ARRAY: Type = Type(Inner::MoneyArray);
+    pub const MONEY_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::MoneyArray));
 
     /// MACADDR - XX:XX:XX:XX:XX:XX, MAC address
-    pub const MACADDR: Type = Type(Inner::Macaddr);
+    pub const MACADDR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Macaddr));
 
     /// INET - IP address/netmask, host address, netmask optional
-    pub const INET: Type = Type(Inner::Inet);
+    pub const INET: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Inet));
 
     /// BOOL&#91;&#93;
-    pub const BOOL_ARRAY: Type = Type(Inner::BoolArray);
+    pub const BOOL_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::BoolArray));
 
     /// BYTEA&#91;&#93;
-    pub const BYTEA_ARRAY: Type = Type(Inner::ByteaArray);
+    pub const BYTEA_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::ByteaArray));
 
     /// CHAR&#91;&#93;
-    pub const CHAR_ARRAY: Type = Type(Inner::CharArray);
+    pub const CHAR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::CharArray));
 
     /// NAME&#91;&#93;
-    pub const NAME_ARRAY: Type = Type(Inner::NameArray);
+    pub const NAME_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::NameArray));
 
     /// INT2&#91;&#93;
-    pub const INT2_ARRAY: Type = Type(Inner::Int2Array);
+    pub const INT2_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int2Array));
 
     /// INT2VECTOR&#91;&#93;
-    pub const INT2_VECTOR_ARRAY: Type = Type(Inner::Int2VectorArray);
+    pub const INT2_VECTOR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int2VectorArray));
 
     /// INT4&#91;&#93;
-    pub const INT4_ARRAY: Type = Type(Inner::Int4Array);
+    pub const INT4_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int4Array));
 
     /// REGPROC&#91;&#93;
-    pub const REGPROC_ARRAY: Type = Type(Inner::RegprocArray);
+    pub const REGPROC_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegprocArray));
 
     /// TEXT&#91;&#93;
-    pub const TEXT_ARRAY: Type = Type(Inner::TextArray);
+    pub const TEXT_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TextArray));
 
     /// TID&#91;&#93;
-    pub const TID_ARRAY: Type = Type(Inner::TidArray);
+    pub const TID_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TidArray));
 
     /// XID&#91;&#93;
-    pub const XID_ARRAY: Type = Type(Inner::XidArray);
+    pub const XID_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::XidArray));
 
     /// CID&#91;&#93;
-    pub const CID_ARRAY: Type = Type(Inner::CidArray);
+    pub const CID_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::CidArray));
 
     /// OIDVECTOR&#91;&#93;
-    pub const OID_VECTOR_ARRAY: Type = Type(Inner::OidVectorArray);
+    pub const OID_VECTOR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::OidVectorArray));
 
     /// BPCHAR&#91;&#93;
-    pub const BPCHAR_ARRAY: Type = Type(Inner::BpcharArray);
+    pub const BPCHAR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::BpcharArray));
 
     /// VARCHAR&#91;&#93;
-    pub const VARCHAR_ARRAY: Type = Type(Inner::VarcharArray);
+    pub const VARCHAR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::VarcharArray));
 
     /// INT8&#91;&#93;
-    pub const INT8_ARRAY: Type = Type(Inner::Int8Array);
+    pub const INT8_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int8Array));
 
     /// POINT&#91;&#93;
-    pub const POINT_ARRAY: Type = Type(Inner::PointArray);
+    pub const POINT_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PointArray));
 
     /// LSEG&#91;&#93;
-    pub const LSEG_ARRAY: Type = Type(Inner::LsegArray);
+    pub const LSEG_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::LsegArray));
 
     /// PATH&#91;&#93;
-    pub const PATH_ARRAY: Type = Type(Inner::PathArray);
+    pub const PATH_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PathArray));
 
     /// BOX&#91;&#93;
-    pub const BOX_ARRAY: Type = Type(Inner::BoxArray);
+    pub const BOX_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::BoxArray));
 
     /// FLOAT4&#91;&#93;
-    pub const FLOAT4_ARRAY: Type = Type(Inner::Float4Array);
+    pub const FLOAT4_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Float4Array));
 
     /// FLOAT8&#91;&#93;
-    pub const FLOAT8_ARRAY: Type = Type(Inner::Float8Array);
+    pub const FLOAT8_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Float8Array));
 
     /// POLYGON&#91;&#93;
-    pub const POLYGON_ARRAY: Type = Type(Inner::PolygonArray);
+    pub const POLYGON_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PolygonArray));
 
     /// OID&#91;&#93;
-    pub const OID_ARRAY: Type = Type(Inner::OidArray);
+    pub const OID_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::OidArray));
 
     /// ACLITEM - access control list
-    pub const ACLITEM: Type = Type(Inner::Aclitem);
+    pub const ACLITEM: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Aclitem));
 
     /// ACLITEM&#91;&#93;
-    pub const ACLITEM_ARRAY: Type = Type(Inner::AclitemArray);
+    pub const ACLITEM_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::AclitemArray));
 
     /// MACADDR&#91;&#93;
-    pub const MACADDR_ARRAY: Type = Type(Inner::MacaddrArray);
+    pub const MACADDR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::MacaddrArray));
 
     /// INET&#91;&#93;
-    pub const INET_ARRAY: Type = Type(Inner::InetArray);
+    pub const INET_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::InetArray));
 
     /// BPCHAR - char&#40;length&#41;, blank-padded string, fixed storage length
-    pub const BPCHAR: Type = Type(Inner::Bpchar);
+    pub const BPCHAR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Bpchar));
 
     /// VARCHAR - varchar&#40;length&#41;, non-blank-padded string, variable storage length
-    pub const VARCHAR: Type = Type(Inner::Varchar);
+    pub const VARCHAR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Varchar));
 
     /// DATE - date
-    pub const DATE: Type = Type(Inner::Date);
+    pub const DATE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Date));
 
     /// TIME - time of day
-    pub const TIME: Type = Type(Inner::Time);
+    pub const TIME: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Time));
 
     /// TIMESTAMP - date and time
-    pub const TIMESTAMP: Type = Type(Inner::Timestamp);
+    pub const TIMESTAMP: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Timestamp));
 
     /// TIMESTAMP&#91;&#93;
-    pub const TIMESTAMP_ARRAY: Type = Type(Inner::TimestampArray);
+    pub const TIMESTAMP_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TimestampArray));
 
     /// DATE&#91;&#93;
-    pub const DATE_ARRAY: Type = Type(Inner::DateArray);
+    pub const DATE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::DateArray));
 
     /// TIME&#91;&#93;
-    pub const TIME_ARRAY: Type = Type(Inner::TimeArray);
+    pub const TIME_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TimeArray));
 
     /// TIMESTAMPTZ - date and time with time zone
-    pub const TIMESTAMPTZ: Type = Type(Inner::Timestamptz);
+    pub const TIMESTAMPTZ: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Timestamptz));
 
     /// TIMESTAMPTZ&#91;&#93;
-    pub const TIMESTAMPTZ_ARRAY: Type = Type(Inner::TimestamptzArray);
+    pub const TIMESTAMPTZ_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TimestamptzArray));
 
     /// INTERVAL - &#64; &lt;number&gt; &lt;units&gt;, time interval
-    pub const INTERVAL: Type = Type(Inner::Interval);
+    pub const INTERVAL: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Interval));
 
     /// INTERVAL&#91;&#93;
-    pub const INTERVAL_ARRAY: Type = Type(Inner::IntervalArray);
+    pub const INTERVAL_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::IntervalArray));
 
     /// NUMERIC&#91;&#93;
-    pub const NUMERIC_ARRAY: Type = Type(Inner::NumericArray);
+    pub const NUMERIC_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::NumericArray));
 
     /// CSTRING&#91;&#93;
-    pub const CSTRING_ARRAY: Type = Type(Inner::CstringArray);
+    pub const CSTRING_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::CstringArray));
 
     /// TIMETZ - time of day with time zone
-    pub const TIMETZ: Type = Type(Inner::Timetz);
+    pub const TIMETZ: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Timetz));
 
     /// TIMETZ&#91;&#93;
-    pub const TIMETZ_ARRAY: Type = Type(Inner::TimetzArray);
+    pub const TIMETZ_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TimetzArray));
 
     /// BIT - fixed-length bit string
-    pub const BIT: Type = Type(Inner::Bit);
+    pub const BIT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Bit));
 
     /// BIT&#91;&#93;
-    pub const BIT_ARRAY: Type = Type(Inner::BitArray);
+    pub const BIT_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::BitArray));
 
     /// VARBIT - variable-length bit string
-    pub const VARBIT: Type = Type(Inner::Varbit);
+    pub const VARBIT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Varbit));
 
     /// VARBIT&#91;&#93;
-    pub const VARBIT_ARRAY: Type = Type(Inner::VarbitArray);
+    pub const VARBIT_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::VarbitArray));
 
     /// NUMERIC - numeric&#40;precision, decimal&#41;, arbitrary precision number
-    pub const NUMERIC: Type = Type(Inner::Numeric);
+    pub const NUMERIC: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Numeric));
 
     /// REFCURSOR - reference to cursor &#40;portal name&#41;
-    pub const REFCURSOR: Type = Type(Inner::Refcursor);
+    pub const REFCURSOR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Refcursor));
 
     /// REFCURSOR&#91;&#93;
-    pub const REFCURSOR_ARRAY: Type = Type(Inner::RefcursorArray);
+    pub const REFCURSOR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RefcursorArray));
 
     /// REGPROCEDURE - registered procedure &#40;with args&#41;
-    pub const REGPROCEDURE: Type = Type(Inner::Regprocedure);
+    pub const REGPROCEDURE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regprocedure));
 
     /// REGOPER - registered operator
-    pub const REGOPER: Type = Type(Inner::Regoper);
+    pub const REGOPER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regoper));
 
     /// REGOPERATOR - registered operator &#40;with args&#41;
-    pub const REGOPERATOR: Type = Type(Inner::Regoperator);
+    pub const REGOPERATOR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regoperator));
 
     /// REGCLASS - registered class
-    pub const REGCLASS: Type = Type(Inner::Regclass);
+    pub const REGCLASS: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regclass));
 
     /// REGTYPE - registered type
-    pub const REGTYPE: Type = Type(Inner::Regtype);
+    pub const REGTYPE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regtype));
 
     /// REGPROCEDURE&#91;&#93;
-    pub const REGPROCEDURE_ARRAY: Type = Type(Inner::RegprocedureArray);
+    pub const REGPROCEDURE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegprocedureArray));
 
     /// REGOPER&#91;&#93;
-    pub const REGOPER_ARRAY: Type = Type(Inner::RegoperArray);
+    pub const REGOPER_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegoperArray));
 
     /// REGOPERATOR&#91;&#93;
-    pub const REGOPERATOR_ARRAY: Type = Type(Inner::RegoperatorArray);
+    pub const REGOPERATOR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegoperatorArray));
 
     /// REGCLASS&#91;&#93;
-    pub const REGCLASS_ARRAY: Type = Type(Inner::RegclassArray);
+    pub const REGCLASS_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegclassArray));
 
     /// REGTYPE&#91;&#93;
-    pub const REGTYPE_ARRAY: Type = Type(Inner::RegtypeArray);
+    pub const REGTYPE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegtypeArray));
 
     /// RECORD - pseudo-type representing any composite type
-    pub const RECORD: Type = Type(Inner::Record);
+    pub const RECORD: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Record));
 
     /// CSTRING - C-style string
-    pub const CSTRING: Type = Type(Inner::Cstring);
+    pub const CSTRING: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Cstring));
 
     /// ANY - pseudo-type representing any type
-    pub const ANY: Type = Type(Inner::Any);
+    pub const ANY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Any));
 
     /// ANYARRAY - pseudo-type representing a polymorphic array type
-    pub const ANYARRAY: Type = Type(Inner::Anyarray);
+    pub const ANYARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anyarray));
 
     /// VOID - pseudo-type for the result of a function with no real result
-    pub const VOID: Type = Type(Inner::Void);
+    pub const VOID: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Void));
 
     /// TRIGGER - pseudo-type for the result of a trigger function
-    pub const TRIGGER: Type = Type(Inner::Trigger);
+    pub const TRIGGER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Trigger));
 
     /// LANGUAGE_HANDLER - pseudo-type for the result of a language handler function
-    pub const LANGUAGE_HANDLER: Type = Type(Inner::LanguageHandler);
+    pub const LANGUAGE_HANDLER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::LanguageHandler));
 
     /// INTERNAL - pseudo-type representing an internal data structure
-    pub const INTERNAL: Type = Type(Inner::Internal);
+    pub const INTERNAL: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Internal));
 
     /// ANYELEMENT - pseudo-type representing a polymorphic base type
-    pub const ANYELEMENT: Type = Type(Inner::Anyelement);
+    pub const ANYELEMENT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anyelement));
 
     /// RECORD&#91;&#93;
-    pub const RECORD_ARRAY: Type = Type(Inner::RecordArray);
+    pub const RECORD_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RecordArray));
 
     /// ANYNONARRAY - pseudo-type representing a polymorphic base type that is not an array
-    pub const ANYNONARRAY: Type = Type(Inner::Anynonarray);
+    pub const ANYNONARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anynonarray));
 
     /// TXID_SNAPSHOT&#91;&#93;
-    pub const TXID_SNAPSHOT_ARRAY: Type = Type(Inner::TxidSnapshotArray);
+    pub const TXID_SNAPSHOT_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TxidSnapshotArray));
 
     /// UUID - UUID datatype
-    pub const UUID: Type = Type(Inner::Uuid);
+    pub const UUID: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Uuid));
 
     /// UUID&#91;&#93;
-    pub const UUID_ARRAY: Type = Type(Inner::UuidArray);
+    pub const UUID_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::UuidArray));
 
     /// TXID_SNAPSHOT - txid snapshot
-    pub const TXID_SNAPSHOT: Type = Type(Inner::TxidSnapshot);
+    pub const TXID_SNAPSHOT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TxidSnapshot));
 
     /// FDW_HANDLER - pseudo-type for the result of an FDW handler function
-    pub const FDW_HANDLER: Type = Type(Inner::FdwHandler);
+    pub const FDW_HANDLER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::FdwHandler));
 
     /// PG_LSN - PostgreSQL LSN datatype
-    pub const PG_LSN: Type = Type(Inner::PgLsn);
+    pub const PG_LSN: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgLsn));
 
     /// PG_LSN&#91;&#93;
-    pub const PG_LSN_ARRAY: Type = Type(Inner::PgLsnArray);
+    pub const PG_LSN_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgLsnArray));
 
     /// TSM_HANDLER - pseudo-type for the result of a tablesample method function
-    pub const TSM_HANDLER: Type = Type(Inner::TsmHandler);
+    pub const TSM_HANDLER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsmHandler));
 
     /// PG_NDISTINCT - multivariate ndistinct coefficients
-    pub const PG_NDISTINCT: Type = Type(Inner::PgNdistinct);
+    pub const PG_NDISTINCT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgNdistinct));
 
     /// PG_DEPENDENCIES - multivariate dependencies
-    pub const PG_DEPENDENCIES: Type = Type(Inner::PgDependencies);
+    pub const PG_DEPENDENCIES: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgDependencies));
 
     /// ANYENUM - pseudo-type representing a polymorphic base type that is an enum
-    pub const ANYENUM: Type = Type(Inner::Anyenum);
+    pub const ANYENUM: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anyenum));
 
     /// TSVECTOR - text representation for text search
-    pub const TS_VECTOR: Type = Type(Inner::TsVector);
+    pub const TS_VECTOR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsVector));
 
     /// TSQUERY - query representation for text search
-    pub const TSQUERY: Type = Type(Inner::Tsquery);
+    pub const TSQUERY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Tsquery));
 
     /// GTSVECTOR - GiST index internal text representation for text search
-    pub const GTS_VECTOR: Type = Type(Inner::GtsVector);
+    pub const GTS_VECTOR: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::GtsVector));
 
     /// TSVECTOR&#91;&#93;
-    pub const TS_VECTOR_ARRAY: Type = Type(Inner::TsVectorArray);
+    pub const TS_VECTOR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsVectorArray));
 
     /// GTSVECTOR&#91;&#93;
-    pub const GTS_VECTOR_ARRAY: Type = Type(Inner::GtsVectorArray);
+    pub const GTS_VECTOR_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::GtsVectorArray));
 
     /// TSQUERY&#91;&#93;
-    pub const TSQUERY_ARRAY: Type = Type(Inner::TsqueryArray);
+    pub const TSQUERY_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsqueryArray));
 
     /// REGCONFIG - registered text search configuration
-    pub const REGCONFIG: Type = Type(Inner::Regconfig);
+    pub const REGCONFIG: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regconfig));
 
     /// REGCONFIG&#91;&#93;
-    pub const REGCONFIG_ARRAY: Type = Type(Inner::RegconfigArray);
+    pub const REGCONFIG_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegconfigArray));
 
     /// REGDICTIONARY - registered text search dictionary
-    pub const REGDICTIONARY: Type = Type(Inner::Regdictionary);
+    pub const REGDICTIONARY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regdictionary));
 
     /// REGDICTIONARY&#91;&#93;
-    pub const REGDICTIONARY_ARRAY: Type = Type(Inner::RegdictionaryArray);
+    pub const REGDICTIONARY_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegdictionaryArray));
 
     /// JSONB - Binary JSON
-    pub const JSONB: Type = Type(Inner::Jsonb);
+    pub const JSONB: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Jsonb));
 
     /// JSONB&#91;&#93;
-    pub const JSONB_ARRAY: Type = Type(Inner::JsonbArray);
+    pub const JSONB_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::JsonbArray));
 
     /// ANYRANGE - pseudo-type representing a range over a polymorphic base type
-    pub const ANY_RANGE: Type = Type(Inner::AnyRange);
+    pub const ANY_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::AnyRange));
 
     /// EVENT_TRIGGER - pseudo-type for the result of an event trigger function
-    pub const EVENT_TRIGGER: Type = Type(Inner::EventTrigger);
+    pub const EVENT_TRIGGER: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::EventTrigger));
 
     /// INT4RANGE - range of integers
-    pub const INT4_RANGE: Type = Type(Inner::Int4Range);
+    pub const INT4_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int4Range));
 
     /// INT4RANGE&#91;&#93;
-    pub const INT4_RANGE_ARRAY: Type = Type(Inner::Int4RangeArray);
+    pub const INT4_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int4RangeArray));
 
     /// NUMRANGE - range of numerics
-    pub const NUM_RANGE: Type = Type(Inner::NumRange);
+    pub const NUM_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::NumRange));
 
     /// NUMRANGE&#91;&#93;
-    pub const NUM_RANGE_ARRAY: Type = Type(Inner::NumRangeArray);
+    pub const NUM_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::NumRangeArray));
 
     /// TSRANGE - range of timestamps without time zone
-    pub const TS_RANGE: Type = Type(Inner::TsRange);
+    pub const TS_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsRange));
 
     /// TSRANGE&#91;&#93;
-    pub const TS_RANGE_ARRAY: Type = Type(Inner::TsRangeArray);
+    pub const TS_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsRangeArray));
 
     /// TSTZRANGE - range of timestamps with time zone
-    pub const TSTZ_RANGE: Type = Type(Inner::TstzRange);
+    pub const TSTZ_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TstzRange));
 
     /// TSTZRANGE&#91;&#93;
-    pub const TSTZ_RANGE_ARRAY: Type = Type(Inner::TstzRangeArray);
+    pub const TSTZ_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TstzRangeArray));
 
     /// DATERANGE - range of dates
-    pub const DATE_RANGE: Type = Type(Inner::DateRange);
+    pub const DATE_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::DateRange));
 
     /// DATERANGE&#91;&#93;
-    pub const DATE_RANGE_ARRAY: Type = Type(Inner::DateRangeArray);
+    pub const DATE_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::DateRangeArray));
 
     /// INT8RANGE - range of bigints
-    pub const INT8_RANGE: Type = Type(Inner::Int8Range);
+    pub const INT8_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int8Range));
 
     /// INT8RANGE&#91;&#93;
-    pub const INT8_RANGE_ARRAY: Type = Type(Inner::Int8RangeArray);
+    pub const INT8_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int8RangeArray));
 
     /// JSONPATH - JSON path
-    pub const JSONPATH: Type = Type(Inner::Jsonpath);
+    pub const JSONPATH: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Jsonpath));
 
     /// JSONPATH&#91;&#93;
-    pub const JSONPATH_ARRAY: Type = Type(Inner::JsonpathArray);
+    pub const JSONPATH_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::JsonpathArray));
 
     /// REGNAMESPACE - registered namespace
-    pub const REGNAMESPACE: Type = Type(Inner::Regnamespace);
+    pub const REGNAMESPACE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regnamespace));
 
     /// REGNAMESPACE&#91;&#93;
-    pub const REGNAMESPACE_ARRAY: Type = Type(Inner::RegnamespaceArray);
+    pub const REGNAMESPACE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegnamespaceArray));
 
     /// REGROLE - registered role
-    pub const REGROLE: Type = Type(Inner::Regrole);
+    pub const REGROLE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regrole));
 
     /// REGROLE&#91;&#93;
-    pub const REGROLE_ARRAY: Type = Type(Inner::RegroleArray);
+    pub const REGROLE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegroleArray));
 
     /// REGCOLLATION - registered collation
-    pub const REGCOLLATION: Type = Type(Inner::Regcollation);
+    pub const REGCOLLATION: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Regcollation));
 
     /// REGCOLLATION&#91;&#93;
-    pub const REGCOLLATION_ARRAY: Type = Type(Inner::RegcollationArray);
+    pub const REGCOLLATION_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::RegcollationArray));
 
     /// INT4MULTIRANGE - multirange of integers
-    pub const INT4MULTI_RANGE: Type = Type(Inner::Int4multiRange);
+    pub const INT4MULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int4multiRange));
 
     /// NUMMULTIRANGE - multirange of numerics
-    pub const NUMMULTI_RANGE: Type = Type(Inner::NummultiRange);
+    pub const NUMMULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::NummultiRange));
 
     /// TSMULTIRANGE - multirange of timestamps without time zone
-    pub const TSMULTI_RANGE: Type = Type(Inner::TsmultiRange);
+    pub const TSMULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsmultiRange));
 
     /// TSTZMULTIRANGE - multirange of timestamps with time zone
-    pub const TSTZMULTI_RANGE: Type = Type(Inner::TstzmultiRange);
+    pub const TSTZMULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TstzmultiRange));
 
     /// DATEMULTIRANGE - multirange of dates
-    pub const DATEMULTI_RANGE: Type = Type(Inner::DatemultiRange);
+    pub const DATEMULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::DatemultiRange));
 
     /// INT8MULTIRANGE - multirange of bigints
-    pub const INT8MULTI_RANGE: Type = Type(Inner::Int8multiRange);
+    pub const INT8MULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int8multiRange));
 
     /// ANYMULTIRANGE - pseudo-type representing a polymorphic base type that is a multirange
-    pub const ANYMULTI_RANGE: Type = Type(Inner::AnymultiRange);
+    pub const ANYMULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::AnymultiRange));
 
     /// ANYCOMPATIBLEMULTIRANGE - pseudo-type representing a multirange over a polymorphic common type
-    pub const ANYCOMPATIBLEMULTI_RANGE: Type = Type(Inner::AnycompatiblemultiRange);
+    pub const ANYCOMPATIBLEMULTI_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::AnycompatiblemultiRange));
 
     /// PG_BRIN_BLOOM_SUMMARY - BRIN bloom summary
-    pub const PG_BRIN_BLOOM_SUMMARY: Type = Type(Inner::PgBrinBloomSummary);
+    pub const PG_BRIN_BLOOM_SUMMARY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgBrinBloomSummary));
 
     /// PG_BRIN_MINMAX_MULTI_SUMMARY - BRIN minmax-multi summary
-    pub const PG_BRIN_MINMAX_MULTI_SUMMARY: Type = Type(Inner::PgBrinMinmaxMultiSummary);
+    pub const PG_BRIN_MINMAX_MULTI_SUMMARY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgBrinMinmaxMultiSummary));
 
     /// PG_MCV_LIST - multivariate MCV list
-    pub const PG_MCV_LIST: Type = Type(Inner::PgMcvList);
+    pub const PG_MCV_LIST: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgMcvList));
 
     /// PG_SNAPSHOT - snapshot
-    pub const PG_SNAPSHOT: Type = Type(Inner::PgSnapshot);
+    pub const PG_SNAPSHOT: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgSnapshot));
 
     /// PG_SNAPSHOT&#91;&#93;
-    pub const PG_SNAPSHOT_ARRAY: Type = Type(Inner::PgSnapshotArray);
+    pub const PG_SNAPSHOT_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::PgSnapshotArray));
 
     /// XID8 - full transaction id
-    pub const XID8: Type = Type(Inner::Xid8);
+    pub const XID8: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Xid8));
 
     /// ANYCOMPATIBLE - pseudo-type representing a polymorphic common type
-    pub const ANYCOMPATIBLE: Type = Type(Inner::Anycompatible);
+    pub const ANYCOMPATIBLE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anycompatible));
 
     /// ANYCOMPATIBLEARRAY - pseudo-type representing an array of polymorphic common type elements
-    pub const ANYCOMPATIBLEARRAY: Type = Type(Inner::Anycompatiblearray);
+    pub const ANYCOMPATIBLEARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anycompatiblearray));
 
     /// ANYCOMPATIBLENONARRAY - pseudo-type representing a polymorphic common type that is not an array
-    pub const ANYCOMPATIBLENONARRAY: Type = Type(Inner::Anycompatiblenonarray);
+    pub const ANYCOMPATIBLENONARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Anycompatiblenonarray));
 
     /// ANYCOMPATIBLERANGE - pseudo-type representing a range over a polymorphic common type
-    pub const ANYCOMPATIBLE_RANGE: Type = Type(Inner::AnycompatibleRange);
+    pub const ANYCOMPATIBLE_RANGE: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::AnycompatibleRange));
 
     /// INT4MULTIRANGE&#91;&#93;
-    pub const INT4MULTI_RANGE_ARRAY: Type = Type(Inner::Int4multiRangeArray);
+    pub const INT4MULTI_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int4multiRangeArray));
 
     /// NUMMULTIRANGE&#91;&#93;
-    pub const NUMMULTI_RANGE_ARRAY: Type = Type(Inner::NummultiRangeArray);
+    pub const NUMMULTI_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::NummultiRangeArray));
 
     /// TSMULTIRANGE&#91;&#93;
-    pub const TSMULTI_RANGE_ARRAY: Type = Type(Inner::TsmultiRangeArray);
+    pub const TSMULTI_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TsmultiRangeArray));
 
     /// TSTZMULTIRANGE&#91;&#93;
-    pub const TSTZMULTI_RANGE_ARRAY: Type = Type(Inner::TstzmultiRangeArray);
+    pub const TSTZMULTI_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::TstzmultiRangeArray));
 
     /// DATEMULTIRANGE&#91;&#93;
-    pub const DATEMULTI_RANGE_ARRAY: Type = Type(Inner::DatemultiRangeArray);
+    pub const DATEMULTI_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::DatemultiRangeArray));
 
     /// INT8MULTIRANGE&#91;&#93;
-    pub const INT8MULTI_RANGE_ARRAY: Type = Type(Inner::Int8multiRangeArray);
-}
+    pub const INT8MULTI_RANGE_ARRAY: Type = Type(Inner::Pg(crate::pg_type_gen::Inner::Int8multiRangeArray));
+
+
+    /// PostgreSQL-compatible MYSQL alias for BOOL.
+    pub const MYSQL_BOOL: Type = Type::BOOL;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BYTEA.
+    pub const MYSQL_BYTEA: Type = Type::BYTEA;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CHAR.
+    pub const MYSQL_CHAR: Type = Type::CHAR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NAME.
+    pub const MYSQL_NAME: Type = Type::NAME;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT8.
+    pub const MYSQL_INT8: Type = Type::INT8;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT2.
+    pub const MYSQL_INT2: Type = Type::INT2;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT2_VECTOR.
+    pub const MYSQL_INT2_VECTOR: Type = Type::INT2_VECTOR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT4.
+    pub const MYSQL_INT4: Type = Type::INT4;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGPROC.
+    pub const MYSQL_REGPROC: Type = Type::REGPROC;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TEXT.
+    pub const MYSQL_TEXT: Type = Type::TEXT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for OID.
+    pub const MYSQL_OID: Type = Type::OID;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TID.
+    pub const MYSQL_TID: Type = Type::TID;
+
+
+    /// PostgreSQL-compatible MYSQL alias for XID.
+    pub const MYSQL_XID: Type = Type::XID;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CID.
+    pub const MYSQL_CID: Type = Type::CID;
+
+
+    /// PostgreSQL-compatible MYSQL alias for OID_VECTOR.
+    pub const MYSQL_OID_VECTOR: Type = Type::OID_VECTOR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_DDL_COMMAND.
+    pub const MYSQL_PG_DDL_COMMAND: Type = Type::PG_DDL_COMMAND;
+
+
+    /// PostgreSQL-compatible MYSQL alias for JSON.
+    pub const MYSQL_JSON: Type = Type::JSON;
+
+
+    /// PostgreSQL-compatible MYSQL alias for XML.
+    pub const MYSQL_XML: Type = Type::XML;
+
+
+    /// PostgreSQL-compatible MYSQL alias for XML_ARRAY.
+    pub const MYSQL_XML_ARRAY: Type = Type::XML_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_NODE_TREE.
+    pub const MYSQL_PG_NODE_TREE: Type = Type::PG_NODE_TREE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for JSON_ARRAY.
+    pub const MYSQL_JSON_ARRAY: Type = Type::JSON_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TABLE_AM_HANDLER.
+    pub const MYSQL_TABLE_AM_HANDLER: Type = Type::TABLE_AM_HANDLER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for XID8_ARRAY.
+    pub const MYSQL_XID8_ARRAY: Type = Type::XID8_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INDEX_AM_HANDLER.
+    pub const MYSQL_INDEX_AM_HANDLER: Type = Type::INDEX_AM_HANDLER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for POINT.
+    pub const MYSQL_POINT: Type = Type::POINT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for LSEG.
+    pub const MYSQL_LSEG: Type = Type::LSEG;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PATH.
+    pub const MYSQL_PATH: Type = Type::PATH;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BOX.
+    pub const MYSQL_BOX: Type = Type::BOX;
+
+
+    /// PostgreSQL-compatible MYSQL alias for POLYGON.
+    pub const MYSQL_POLYGON: Type = Type::POLYGON;
+
+
+    /// PostgreSQL-compatible MYSQL alias for LINE.
+    pub const MYSQL_LINE: Type = Type::LINE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for LINE_ARRAY.
+    pub const MYSQL_LINE_ARRAY: Type = Type::LINE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CIDR.
+    pub const MYSQL_CIDR: Type = Type::CIDR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CIDR_ARRAY.
+    pub const MYSQL_CIDR_ARRAY: Type = Type::CIDR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for FLOAT4.
+    pub const MYSQL_FLOAT4: Type = Type::FLOAT4;
+
+
+    /// PostgreSQL-compatible MYSQL alias for FLOAT8.
+    pub const MYSQL_FLOAT8: Type = Type::FLOAT8;
+
+
+    /// PostgreSQL-compatible MYSQL alias for UNKNOWN.
+    pub const MYSQL_UNKNOWN: Type = Type::UNKNOWN;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CIRCLE.
+    pub const MYSQL_CIRCLE: Type = Type::CIRCLE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CIRCLE_ARRAY.
+    pub const MYSQL_CIRCLE_ARRAY: Type = Type::CIRCLE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for MACADDR8.
+    pub const MYSQL_MACADDR8: Type = Type::MACADDR8;
+
+
+    /// PostgreSQL-compatible MYSQL alias for MACADDR8_ARRAY.
+    pub const MYSQL_MACADDR8_ARRAY: Type = Type::MACADDR8_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for MONEY.
+    pub const MYSQL_MONEY: Type = Type::MONEY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for MONEY_ARRAY.
+    pub const MYSQL_MONEY_ARRAY: Type = Type::MONEY_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for MACADDR.
+    pub const MYSQL_MACADDR: Type = Type::MACADDR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INET.
+    pub const MYSQL_INET: Type = Type::INET;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BOOL_ARRAY.
+    pub const MYSQL_BOOL_ARRAY: Type = Type::BOOL_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BYTEA_ARRAY.
+    pub const MYSQL_BYTEA_ARRAY: Type = Type::BYTEA_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CHAR_ARRAY.
+    pub const MYSQL_CHAR_ARRAY: Type = Type::CHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NAME_ARRAY.
+    pub const MYSQL_NAME_ARRAY: Type = Type::NAME_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT2_ARRAY.
+    pub const MYSQL_INT2_ARRAY: Type = Type::INT2_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT2_VECTOR_ARRAY.
+    pub const MYSQL_INT2_VECTOR_ARRAY: Type = Type::INT2_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT4_ARRAY.
+    pub const MYSQL_INT4_ARRAY: Type = Type::INT4_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGPROC_ARRAY.
+    pub const MYSQL_REGPROC_ARRAY: Type = Type::REGPROC_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TEXT_ARRAY.
+    pub const MYSQL_TEXT_ARRAY: Type = Type::TEXT_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TID_ARRAY.
+    pub const MYSQL_TID_ARRAY: Type = Type::TID_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for XID_ARRAY.
+    pub const MYSQL_XID_ARRAY: Type = Type::XID_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CID_ARRAY.
+    pub const MYSQL_CID_ARRAY: Type = Type::CID_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for OID_VECTOR_ARRAY.
+    pub const MYSQL_OID_VECTOR_ARRAY: Type = Type::OID_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BPCHAR_ARRAY.
+    pub const MYSQL_BPCHAR_ARRAY: Type = Type::BPCHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for VARCHAR_ARRAY.
+    pub const MYSQL_VARCHAR_ARRAY: Type = Type::VARCHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT8_ARRAY.
+    pub const MYSQL_INT8_ARRAY: Type = Type::INT8_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for POINT_ARRAY.
+    pub const MYSQL_POINT_ARRAY: Type = Type::POINT_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for LSEG_ARRAY.
+    pub const MYSQL_LSEG_ARRAY: Type = Type::LSEG_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PATH_ARRAY.
+    pub const MYSQL_PATH_ARRAY: Type = Type::PATH_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BOX_ARRAY.
+    pub const MYSQL_BOX_ARRAY: Type = Type::BOX_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for FLOAT4_ARRAY.
+    pub const MYSQL_FLOAT4_ARRAY: Type = Type::FLOAT4_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for FLOAT8_ARRAY.
+    pub const MYSQL_FLOAT8_ARRAY: Type = Type::FLOAT8_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for POLYGON_ARRAY.
+    pub const MYSQL_POLYGON_ARRAY: Type = Type::POLYGON_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for OID_ARRAY.
+    pub const MYSQL_OID_ARRAY: Type = Type::OID_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ACLITEM.
+    pub const MYSQL_ACLITEM: Type = Type::ACLITEM;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ACLITEM_ARRAY.
+    pub const MYSQL_ACLITEM_ARRAY: Type = Type::ACLITEM_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for MACADDR_ARRAY.
+    pub const MYSQL_MACADDR_ARRAY: Type = Type::MACADDR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INET_ARRAY.
+    pub const MYSQL_INET_ARRAY: Type = Type::INET_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BPCHAR.
+    pub const MYSQL_BPCHAR: Type = Type::BPCHAR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for VARCHAR.
+    pub const MYSQL_VARCHAR: Type = Type::VARCHAR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for DATE.
+    pub const MYSQL_DATE: Type = Type::DATE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIME.
+    pub const MYSQL_TIME: Type = Type::TIME;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIMESTAMP.
+    pub const MYSQL_TIMESTAMP: Type = Type::TIMESTAMP;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIMESTAMP_ARRAY.
+    pub const MYSQL_TIMESTAMP_ARRAY: Type = Type::TIMESTAMP_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for DATE_ARRAY.
+    pub const MYSQL_DATE_ARRAY: Type = Type::DATE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIME_ARRAY.
+    pub const MYSQL_TIME_ARRAY: Type = Type::TIME_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIMESTAMPTZ.
+    pub const MYSQL_TIMESTAMPTZ: Type = Type::TIMESTAMPTZ;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIMESTAMPTZ_ARRAY.
+    pub const MYSQL_TIMESTAMPTZ_ARRAY: Type = Type::TIMESTAMPTZ_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INTERVAL.
+    pub const MYSQL_INTERVAL: Type = Type::INTERVAL;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INTERVAL_ARRAY.
+    pub const MYSQL_INTERVAL_ARRAY: Type = Type::INTERVAL_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NUMERIC_ARRAY.
+    pub const MYSQL_NUMERIC_ARRAY: Type = Type::NUMERIC_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CSTRING_ARRAY.
+    pub const MYSQL_CSTRING_ARRAY: Type = Type::CSTRING_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIMETZ.
+    pub const MYSQL_TIMETZ: Type = Type::TIMETZ;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TIMETZ_ARRAY.
+    pub const MYSQL_TIMETZ_ARRAY: Type = Type::TIMETZ_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BIT.
+    pub const MYSQL_BIT: Type = Type::BIT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for BIT_ARRAY.
+    pub const MYSQL_BIT_ARRAY: Type = Type::BIT_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for VARBIT.
+    pub const MYSQL_VARBIT: Type = Type::VARBIT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for VARBIT_ARRAY.
+    pub const MYSQL_VARBIT_ARRAY: Type = Type::VARBIT_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NUMERIC.
+    pub const MYSQL_NUMERIC: Type = Type::NUMERIC;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REFCURSOR.
+    pub const MYSQL_REFCURSOR: Type = Type::REFCURSOR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REFCURSOR_ARRAY.
+    pub const MYSQL_REFCURSOR_ARRAY: Type = Type::REFCURSOR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGPROCEDURE.
+    pub const MYSQL_REGPROCEDURE: Type = Type::REGPROCEDURE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGOPER.
+    pub const MYSQL_REGOPER: Type = Type::REGOPER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGOPERATOR.
+    pub const MYSQL_REGOPERATOR: Type = Type::REGOPERATOR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGCLASS.
+    pub const MYSQL_REGCLASS: Type = Type::REGCLASS;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGTYPE.
+    pub const MYSQL_REGTYPE: Type = Type::REGTYPE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGPROCEDURE_ARRAY.
+    pub const MYSQL_REGPROCEDURE_ARRAY: Type = Type::REGPROCEDURE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGOPER_ARRAY.
+    pub const MYSQL_REGOPER_ARRAY: Type = Type::REGOPER_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGOPERATOR_ARRAY.
+    pub const MYSQL_REGOPERATOR_ARRAY: Type = Type::REGOPERATOR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGCLASS_ARRAY.
+    pub const MYSQL_REGCLASS_ARRAY: Type = Type::REGCLASS_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGTYPE_ARRAY.
+    pub const MYSQL_REGTYPE_ARRAY: Type = Type::REGTYPE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for RECORD.
+    pub const MYSQL_RECORD: Type = Type::RECORD;
+
+
+    /// PostgreSQL-compatible MYSQL alias for CSTRING.
+    pub const MYSQL_CSTRING: Type = Type::CSTRING;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANY.
+    pub const MYSQL_ANY: Type = Type::ANY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYARRAY.
+    pub const MYSQL_ANYARRAY: Type = Type::ANYARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for VOID.
+    pub const MYSQL_VOID: Type = Type::VOID;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TRIGGER.
+    pub const MYSQL_TRIGGER: Type = Type::TRIGGER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for LANGUAGE_HANDLER.
+    pub const MYSQL_LANGUAGE_HANDLER: Type = Type::LANGUAGE_HANDLER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INTERNAL.
+    pub const MYSQL_INTERNAL: Type = Type::INTERNAL;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYELEMENT.
+    pub const MYSQL_ANYELEMENT: Type = Type::ANYELEMENT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for RECORD_ARRAY.
+    pub const MYSQL_RECORD_ARRAY: Type = Type::RECORD_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYNONARRAY.
+    pub const MYSQL_ANYNONARRAY: Type = Type::ANYNONARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TXID_SNAPSHOT_ARRAY.
+    pub const MYSQL_TXID_SNAPSHOT_ARRAY: Type = Type::TXID_SNAPSHOT_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for UUID.
+    pub const MYSQL_UUID: Type = Type::UUID;
+
+
+    /// PostgreSQL-compatible MYSQL alias for UUID_ARRAY.
+    pub const MYSQL_UUID_ARRAY: Type = Type::UUID_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TXID_SNAPSHOT.
+    pub const MYSQL_TXID_SNAPSHOT: Type = Type::TXID_SNAPSHOT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for FDW_HANDLER.
+    pub const MYSQL_FDW_HANDLER: Type = Type::FDW_HANDLER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_LSN.
+    pub const MYSQL_PG_LSN: Type = Type::PG_LSN;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_LSN_ARRAY.
+    pub const MYSQL_PG_LSN_ARRAY: Type = Type::PG_LSN_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSM_HANDLER.
+    pub const MYSQL_TSM_HANDLER: Type = Type::TSM_HANDLER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_NDISTINCT.
+    pub const MYSQL_PG_NDISTINCT: Type = Type::PG_NDISTINCT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_DEPENDENCIES.
+    pub const MYSQL_PG_DEPENDENCIES: Type = Type::PG_DEPENDENCIES;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYENUM.
+    pub const MYSQL_ANYENUM: Type = Type::ANYENUM;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TS_VECTOR.
+    pub const MYSQL_TS_VECTOR: Type = Type::TS_VECTOR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSQUERY.
+    pub const MYSQL_TSQUERY: Type = Type::TSQUERY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for GTS_VECTOR.
+    pub const MYSQL_GTS_VECTOR: Type = Type::GTS_VECTOR;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TS_VECTOR_ARRAY.
+    pub const MYSQL_TS_VECTOR_ARRAY: Type = Type::TS_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for GTS_VECTOR_ARRAY.
+    pub const MYSQL_GTS_VECTOR_ARRAY: Type = Type::GTS_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSQUERY_ARRAY.
+    pub const MYSQL_TSQUERY_ARRAY: Type = Type::TSQUERY_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGCONFIG.
+    pub const MYSQL_REGCONFIG: Type = Type::REGCONFIG;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGCONFIG_ARRAY.
+    pub const MYSQL_REGCONFIG_ARRAY: Type = Type::REGCONFIG_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGDICTIONARY.
+    pub const MYSQL_REGDICTIONARY: Type = Type::REGDICTIONARY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGDICTIONARY_ARRAY.
+    pub const MYSQL_REGDICTIONARY_ARRAY: Type = Type::REGDICTIONARY_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for JSONB.
+    pub const MYSQL_JSONB: Type = Type::JSONB;
+
+
+    /// PostgreSQL-compatible MYSQL alias for JSONB_ARRAY.
+    pub const MYSQL_JSONB_ARRAY: Type = Type::JSONB_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANY_RANGE.
+    pub const MYSQL_ANY_RANGE: Type = Type::ANY_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for EVENT_TRIGGER.
+    pub const MYSQL_EVENT_TRIGGER: Type = Type::EVENT_TRIGGER;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT4_RANGE.
+    pub const MYSQL_INT4_RANGE: Type = Type::INT4_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT4_RANGE_ARRAY.
+    pub const MYSQL_INT4_RANGE_ARRAY: Type = Type::INT4_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NUM_RANGE.
+    pub const MYSQL_NUM_RANGE: Type = Type::NUM_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NUM_RANGE_ARRAY.
+    pub const MYSQL_NUM_RANGE_ARRAY: Type = Type::NUM_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TS_RANGE.
+    pub const MYSQL_TS_RANGE: Type = Type::TS_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TS_RANGE_ARRAY.
+    pub const MYSQL_TS_RANGE_ARRAY: Type = Type::TS_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSTZ_RANGE.
+    pub const MYSQL_TSTZ_RANGE: Type = Type::TSTZ_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSTZ_RANGE_ARRAY.
+    pub const MYSQL_TSTZ_RANGE_ARRAY: Type = Type::TSTZ_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for DATE_RANGE.
+    pub const MYSQL_DATE_RANGE: Type = Type::DATE_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for DATE_RANGE_ARRAY.
+    pub const MYSQL_DATE_RANGE_ARRAY: Type = Type::DATE_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT8_RANGE.
+    pub const MYSQL_INT8_RANGE: Type = Type::INT8_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT8_RANGE_ARRAY.
+    pub const MYSQL_INT8_RANGE_ARRAY: Type = Type::INT8_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for JSONPATH.
+    pub const MYSQL_JSONPATH: Type = Type::JSONPATH;
+
+
+    /// PostgreSQL-compatible MYSQL alias for JSONPATH_ARRAY.
+    pub const MYSQL_JSONPATH_ARRAY: Type = Type::JSONPATH_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGNAMESPACE.
+    pub const MYSQL_REGNAMESPACE: Type = Type::REGNAMESPACE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGNAMESPACE_ARRAY.
+    pub const MYSQL_REGNAMESPACE_ARRAY: Type = Type::REGNAMESPACE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGROLE.
+    pub const MYSQL_REGROLE: Type = Type::REGROLE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGROLE_ARRAY.
+    pub const MYSQL_REGROLE_ARRAY: Type = Type::REGROLE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGCOLLATION.
+    pub const MYSQL_REGCOLLATION: Type = Type::REGCOLLATION;
+
+
+    /// PostgreSQL-compatible MYSQL alias for REGCOLLATION_ARRAY.
+    pub const MYSQL_REGCOLLATION_ARRAY: Type = Type::REGCOLLATION_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT4MULTI_RANGE.
+    pub const MYSQL_INT4MULTI_RANGE: Type = Type::INT4MULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NUMMULTI_RANGE.
+    pub const MYSQL_NUMMULTI_RANGE: Type = Type::NUMMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSMULTI_RANGE.
+    pub const MYSQL_TSMULTI_RANGE: Type = Type::TSMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSTZMULTI_RANGE.
+    pub const MYSQL_TSTZMULTI_RANGE: Type = Type::TSTZMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for DATEMULTI_RANGE.
+    pub const MYSQL_DATEMULTI_RANGE: Type = Type::DATEMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT8MULTI_RANGE.
+    pub const MYSQL_INT8MULTI_RANGE: Type = Type::INT8MULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYMULTI_RANGE.
+    pub const MYSQL_ANYMULTI_RANGE: Type = Type::ANYMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYCOMPATIBLEMULTI_RANGE.
+    pub const MYSQL_ANYCOMPATIBLEMULTI_RANGE: Type = Type::ANYCOMPATIBLEMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_BRIN_BLOOM_SUMMARY.
+    pub const MYSQL_PG_BRIN_BLOOM_SUMMARY: Type = Type::PG_BRIN_BLOOM_SUMMARY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_BRIN_MINMAX_MULTI_SUMMARY.
+    pub const MYSQL_PG_BRIN_MINMAX_MULTI_SUMMARY: Type = Type::PG_BRIN_MINMAX_MULTI_SUMMARY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_MCV_LIST.
+    pub const MYSQL_PG_MCV_LIST: Type = Type::PG_MCV_LIST;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_SNAPSHOT.
+    pub const MYSQL_PG_SNAPSHOT: Type = Type::PG_SNAPSHOT;
+
+
+    /// PostgreSQL-compatible MYSQL alias for PG_SNAPSHOT_ARRAY.
+    pub const MYSQL_PG_SNAPSHOT_ARRAY: Type = Type::PG_SNAPSHOT_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for XID8.
+    pub const MYSQL_XID8: Type = Type::XID8;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYCOMPATIBLE.
+    pub const MYSQL_ANYCOMPATIBLE: Type = Type::ANYCOMPATIBLE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYCOMPATIBLEARRAY.
+    pub const MYSQL_ANYCOMPATIBLEARRAY: Type = Type::ANYCOMPATIBLEARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYCOMPATIBLENONARRAY.
+    pub const MYSQL_ANYCOMPATIBLENONARRAY: Type = Type::ANYCOMPATIBLENONARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for ANYCOMPATIBLE_RANGE.
+    pub const MYSQL_ANYCOMPATIBLE_RANGE: Type = Type::ANYCOMPATIBLE_RANGE;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT4MULTI_RANGE_ARRAY.
+    pub const MYSQL_INT4MULTI_RANGE_ARRAY: Type = Type::INT4MULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for NUMMULTI_RANGE_ARRAY.
+    pub const MYSQL_NUMMULTI_RANGE_ARRAY: Type = Type::NUMMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSMULTI_RANGE_ARRAY.
+    pub const MYSQL_TSMULTI_RANGE_ARRAY: Type = Type::TSMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for TSTZMULTI_RANGE_ARRAY.
+    pub const MYSQL_TSTZMULTI_RANGE_ARRAY: Type = Type::TSTZMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for DATEMULTI_RANGE_ARRAY.
+    pub const MYSQL_DATEMULTI_RANGE_ARRAY: Type = Type::DATEMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible MYSQL alias for INT8MULTI_RANGE_ARRAY.
+    pub const MYSQL_INT8MULTI_RANGE_ARRAY: Type = Type::INT8MULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BOOL.
+    pub const ORACLE_BOOL: Type = Type::BOOL;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BYTEA.
+    pub const ORACLE_BYTEA: Type = Type::BYTEA;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CHAR.
+    pub const ORACLE_CHAR: Type = Type::CHAR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NAME.
+    pub const ORACLE_NAME: Type = Type::NAME;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT8.
+    pub const ORACLE_INT8: Type = Type::INT8;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT2.
+    pub const ORACLE_INT2: Type = Type::INT2;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT2_VECTOR.
+    pub const ORACLE_INT2_VECTOR: Type = Type::INT2_VECTOR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT4.
+    pub const ORACLE_INT4: Type = Type::INT4;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGPROC.
+    pub const ORACLE_REGPROC: Type = Type::REGPROC;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TEXT.
+    pub const ORACLE_TEXT: Type = Type::TEXT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for OID.
+    pub const ORACLE_OID: Type = Type::OID;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TID.
+    pub const ORACLE_TID: Type = Type::TID;
+
+
+    /// PostgreSQL-compatible ORACLE alias for XID.
+    pub const ORACLE_XID: Type = Type::XID;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CID.
+    pub const ORACLE_CID: Type = Type::CID;
+
+
+    /// PostgreSQL-compatible ORACLE alias for OID_VECTOR.
+    pub const ORACLE_OID_VECTOR: Type = Type::OID_VECTOR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_DDL_COMMAND.
+    pub const ORACLE_PG_DDL_COMMAND: Type = Type::PG_DDL_COMMAND;
+
+
+    /// PostgreSQL-compatible ORACLE alias for JSON.
+    pub const ORACLE_JSON: Type = Type::JSON;
+
+
+    /// PostgreSQL-compatible ORACLE alias for XML.
+    pub const ORACLE_XML: Type = Type::XML;
+
+
+    /// PostgreSQL-compatible ORACLE alias for XML_ARRAY.
+    pub const ORACLE_XML_ARRAY: Type = Type::XML_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_NODE_TREE.
+    pub const ORACLE_PG_NODE_TREE: Type = Type::PG_NODE_TREE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for JSON_ARRAY.
+    pub const ORACLE_JSON_ARRAY: Type = Type::JSON_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TABLE_AM_HANDLER.
+    pub const ORACLE_TABLE_AM_HANDLER: Type = Type::TABLE_AM_HANDLER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for XID8_ARRAY.
+    pub const ORACLE_XID8_ARRAY: Type = Type::XID8_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INDEX_AM_HANDLER.
+    pub const ORACLE_INDEX_AM_HANDLER: Type = Type::INDEX_AM_HANDLER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for POINT.
+    pub const ORACLE_POINT: Type = Type::POINT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for LSEG.
+    pub const ORACLE_LSEG: Type = Type::LSEG;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PATH.
+    pub const ORACLE_PATH: Type = Type::PATH;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BOX.
+    pub const ORACLE_BOX: Type = Type::BOX;
+
+
+    /// PostgreSQL-compatible ORACLE alias for POLYGON.
+    pub const ORACLE_POLYGON: Type = Type::POLYGON;
+
+
+    /// PostgreSQL-compatible ORACLE alias for LINE.
+    pub const ORACLE_LINE: Type = Type::LINE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for LINE_ARRAY.
+    pub const ORACLE_LINE_ARRAY: Type = Type::LINE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CIDR.
+    pub const ORACLE_CIDR: Type = Type::CIDR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CIDR_ARRAY.
+    pub const ORACLE_CIDR_ARRAY: Type = Type::CIDR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for FLOAT4.
+    pub const ORACLE_FLOAT4: Type = Type::FLOAT4;
+
+
+    /// PostgreSQL-compatible ORACLE alias for FLOAT8.
+    pub const ORACLE_FLOAT8: Type = Type::FLOAT8;
+
+
+    /// PostgreSQL-compatible ORACLE alias for UNKNOWN.
+    pub const ORACLE_UNKNOWN: Type = Type::UNKNOWN;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CIRCLE.
+    pub const ORACLE_CIRCLE: Type = Type::CIRCLE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CIRCLE_ARRAY.
+    pub const ORACLE_CIRCLE_ARRAY: Type = Type::CIRCLE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for MACADDR8.
+    pub const ORACLE_MACADDR8: Type = Type::MACADDR8;
+
+
+    /// PostgreSQL-compatible ORACLE alias for MACADDR8_ARRAY.
+    pub const ORACLE_MACADDR8_ARRAY: Type = Type::MACADDR8_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for MONEY.
+    pub const ORACLE_MONEY: Type = Type::MONEY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for MONEY_ARRAY.
+    pub const ORACLE_MONEY_ARRAY: Type = Type::MONEY_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for MACADDR.
+    pub const ORACLE_MACADDR: Type = Type::MACADDR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INET.
+    pub const ORACLE_INET: Type = Type::INET;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BOOL_ARRAY.
+    pub const ORACLE_BOOL_ARRAY: Type = Type::BOOL_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BYTEA_ARRAY.
+    pub const ORACLE_BYTEA_ARRAY: Type = Type::BYTEA_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CHAR_ARRAY.
+    pub const ORACLE_CHAR_ARRAY: Type = Type::CHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NAME_ARRAY.
+    pub const ORACLE_NAME_ARRAY: Type = Type::NAME_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT2_ARRAY.
+    pub const ORACLE_INT2_ARRAY: Type = Type::INT2_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT2_VECTOR_ARRAY.
+    pub const ORACLE_INT2_VECTOR_ARRAY: Type = Type::INT2_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT4_ARRAY.
+    pub const ORACLE_INT4_ARRAY: Type = Type::INT4_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGPROC_ARRAY.
+    pub const ORACLE_REGPROC_ARRAY: Type = Type::REGPROC_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TEXT_ARRAY.
+    pub const ORACLE_TEXT_ARRAY: Type = Type::TEXT_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TID_ARRAY.
+    pub const ORACLE_TID_ARRAY: Type = Type::TID_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for XID_ARRAY.
+    pub const ORACLE_XID_ARRAY: Type = Type::XID_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CID_ARRAY.
+    pub const ORACLE_CID_ARRAY: Type = Type::CID_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for OID_VECTOR_ARRAY.
+    pub const ORACLE_OID_VECTOR_ARRAY: Type = Type::OID_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BPCHAR_ARRAY.
+    pub const ORACLE_BPCHAR_ARRAY: Type = Type::BPCHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for VARCHAR_ARRAY.
+    pub const ORACLE_VARCHAR_ARRAY: Type = Type::VARCHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT8_ARRAY.
+    pub const ORACLE_INT8_ARRAY: Type = Type::INT8_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for POINT_ARRAY.
+    pub const ORACLE_POINT_ARRAY: Type = Type::POINT_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for LSEG_ARRAY.
+    pub const ORACLE_LSEG_ARRAY: Type = Type::LSEG_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PATH_ARRAY.
+    pub const ORACLE_PATH_ARRAY: Type = Type::PATH_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BOX_ARRAY.
+    pub const ORACLE_BOX_ARRAY: Type = Type::BOX_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for FLOAT4_ARRAY.
+    pub const ORACLE_FLOAT4_ARRAY: Type = Type::FLOAT4_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for FLOAT8_ARRAY.
+    pub const ORACLE_FLOAT8_ARRAY: Type = Type::FLOAT8_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for POLYGON_ARRAY.
+    pub const ORACLE_POLYGON_ARRAY: Type = Type::POLYGON_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for OID_ARRAY.
+    pub const ORACLE_OID_ARRAY: Type = Type::OID_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ACLITEM.
+    pub const ORACLE_ACLITEM: Type = Type::ACLITEM;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ACLITEM_ARRAY.
+    pub const ORACLE_ACLITEM_ARRAY: Type = Type::ACLITEM_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for MACADDR_ARRAY.
+    pub const ORACLE_MACADDR_ARRAY: Type = Type::MACADDR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INET_ARRAY.
+    pub const ORACLE_INET_ARRAY: Type = Type::INET_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BPCHAR.
+    pub const ORACLE_BPCHAR: Type = Type::BPCHAR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for VARCHAR.
+    pub const ORACLE_VARCHAR: Type = Type::VARCHAR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for DATE.
+    pub const ORACLE_DATE: Type = Type::DATE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIME.
+    pub const ORACLE_TIME: Type = Type::TIME;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIMESTAMP.
+    pub const ORACLE_TIMESTAMP: Type = Type::TIMESTAMP;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIMESTAMP_ARRAY.
+    pub const ORACLE_TIMESTAMP_ARRAY: Type = Type::TIMESTAMP_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for DATE_ARRAY.
+    pub const ORACLE_DATE_ARRAY: Type = Type::DATE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIME_ARRAY.
+    pub const ORACLE_TIME_ARRAY: Type = Type::TIME_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIMESTAMPTZ.
+    pub const ORACLE_TIMESTAMPTZ: Type = Type::TIMESTAMPTZ;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIMESTAMPTZ_ARRAY.
+    pub const ORACLE_TIMESTAMPTZ_ARRAY: Type = Type::TIMESTAMPTZ_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INTERVAL.
+    pub const ORACLE_INTERVAL: Type = Type::INTERVAL;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INTERVAL_ARRAY.
+    pub const ORACLE_INTERVAL_ARRAY: Type = Type::INTERVAL_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NUMERIC_ARRAY.
+    pub const ORACLE_NUMERIC_ARRAY: Type = Type::NUMERIC_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CSTRING_ARRAY.
+    pub const ORACLE_CSTRING_ARRAY: Type = Type::CSTRING_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIMETZ.
+    pub const ORACLE_TIMETZ: Type = Type::TIMETZ;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TIMETZ_ARRAY.
+    pub const ORACLE_TIMETZ_ARRAY: Type = Type::TIMETZ_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BIT.
+    pub const ORACLE_BIT: Type = Type::BIT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for BIT_ARRAY.
+    pub const ORACLE_BIT_ARRAY: Type = Type::BIT_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for VARBIT.
+    pub const ORACLE_VARBIT: Type = Type::VARBIT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for VARBIT_ARRAY.
+    pub const ORACLE_VARBIT_ARRAY: Type = Type::VARBIT_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NUMERIC.
+    pub const ORACLE_NUMERIC: Type = Type::NUMERIC;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REFCURSOR.
+    pub const ORACLE_REFCURSOR: Type = Type::REFCURSOR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REFCURSOR_ARRAY.
+    pub const ORACLE_REFCURSOR_ARRAY: Type = Type::REFCURSOR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGPROCEDURE.
+    pub const ORACLE_REGPROCEDURE: Type = Type::REGPROCEDURE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGOPER.
+    pub const ORACLE_REGOPER: Type = Type::REGOPER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGOPERATOR.
+    pub const ORACLE_REGOPERATOR: Type = Type::REGOPERATOR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGCLASS.
+    pub const ORACLE_REGCLASS: Type = Type::REGCLASS;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGTYPE.
+    pub const ORACLE_REGTYPE: Type = Type::REGTYPE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGPROCEDURE_ARRAY.
+    pub const ORACLE_REGPROCEDURE_ARRAY: Type = Type::REGPROCEDURE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGOPER_ARRAY.
+    pub const ORACLE_REGOPER_ARRAY: Type = Type::REGOPER_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGOPERATOR_ARRAY.
+    pub const ORACLE_REGOPERATOR_ARRAY: Type = Type::REGOPERATOR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGCLASS_ARRAY.
+    pub const ORACLE_REGCLASS_ARRAY: Type = Type::REGCLASS_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGTYPE_ARRAY.
+    pub const ORACLE_REGTYPE_ARRAY: Type = Type::REGTYPE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for RECORD.
+    pub const ORACLE_RECORD: Type = Type::RECORD;
+
+
+    /// PostgreSQL-compatible ORACLE alias for CSTRING.
+    pub const ORACLE_CSTRING: Type = Type::CSTRING;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANY.
+    pub const ORACLE_ANY: Type = Type::ANY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYARRAY.
+    pub const ORACLE_ANYARRAY: Type = Type::ANYARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for VOID.
+    pub const ORACLE_VOID: Type = Type::VOID;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TRIGGER.
+    pub const ORACLE_TRIGGER: Type = Type::TRIGGER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for LANGUAGE_HANDLER.
+    pub const ORACLE_LANGUAGE_HANDLER: Type = Type::LANGUAGE_HANDLER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INTERNAL.
+    pub const ORACLE_INTERNAL: Type = Type::INTERNAL;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYELEMENT.
+    pub const ORACLE_ANYELEMENT: Type = Type::ANYELEMENT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for RECORD_ARRAY.
+    pub const ORACLE_RECORD_ARRAY: Type = Type::RECORD_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYNONARRAY.
+    pub const ORACLE_ANYNONARRAY: Type = Type::ANYNONARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TXID_SNAPSHOT_ARRAY.
+    pub const ORACLE_TXID_SNAPSHOT_ARRAY: Type = Type::TXID_SNAPSHOT_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for UUID.
+    pub const ORACLE_UUID: Type = Type::UUID;
+
+
+    /// PostgreSQL-compatible ORACLE alias for UUID_ARRAY.
+    pub const ORACLE_UUID_ARRAY: Type = Type::UUID_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TXID_SNAPSHOT.
+    pub const ORACLE_TXID_SNAPSHOT: Type = Type::TXID_SNAPSHOT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for FDW_HANDLER.
+    pub const ORACLE_FDW_HANDLER: Type = Type::FDW_HANDLER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_LSN.
+    pub const ORACLE_PG_LSN: Type = Type::PG_LSN;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_LSN_ARRAY.
+    pub const ORACLE_PG_LSN_ARRAY: Type = Type::PG_LSN_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSM_HANDLER.
+    pub const ORACLE_TSM_HANDLER: Type = Type::TSM_HANDLER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_NDISTINCT.
+    pub const ORACLE_PG_NDISTINCT: Type = Type::PG_NDISTINCT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_DEPENDENCIES.
+    pub const ORACLE_PG_DEPENDENCIES: Type = Type::PG_DEPENDENCIES;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYENUM.
+    pub const ORACLE_ANYENUM: Type = Type::ANYENUM;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TS_VECTOR.
+    pub const ORACLE_TS_VECTOR: Type = Type::TS_VECTOR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSQUERY.
+    pub const ORACLE_TSQUERY: Type = Type::TSQUERY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for GTS_VECTOR.
+    pub const ORACLE_GTS_VECTOR: Type = Type::GTS_VECTOR;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TS_VECTOR_ARRAY.
+    pub const ORACLE_TS_VECTOR_ARRAY: Type = Type::TS_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for GTS_VECTOR_ARRAY.
+    pub const ORACLE_GTS_VECTOR_ARRAY: Type = Type::GTS_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSQUERY_ARRAY.
+    pub const ORACLE_TSQUERY_ARRAY: Type = Type::TSQUERY_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGCONFIG.
+    pub const ORACLE_REGCONFIG: Type = Type::REGCONFIG;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGCONFIG_ARRAY.
+    pub const ORACLE_REGCONFIG_ARRAY: Type = Type::REGCONFIG_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGDICTIONARY.
+    pub const ORACLE_REGDICTIONARY: Type = Type::REGDICTIONARY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGDICTIONARY_ARRAY.
+    pub const ORACLE_REGDICTIONARY_ARRAY: Type = Type::REGDICTIONARY_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for JSONB.
+    pub const ORACLE_JSONB: Type = Type::JSONB;
+
+
+    /// PostgreSQL-compatible ORACLE alias for JSONB_ARRAY.
+    pub const ORACLE_JSONB_ARRAY: Type = Type::JSONB_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANY_RANGE.
+    pub const ORACLE_ANY_RANGE: Type = Type::ANY_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for EVENT_TRIGGER.
+    pub const ORACLE_EVENT_TRIGGER: Type = Type::EVENT_TRIGGER;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT4_RANGE.
+    pub const ORACLE_INT4_RANGE: Type = Type::INT4_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT4_RANGE_ARRAY.
+    pub const ORACLE_INT4_RANGE_ARRAY: Type = Type::INT4_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NUM_RANGE.
+    pub const ORACLE_NUM_RANGE: Type = Type::NUM_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NUM_RANGE_ARRAY.
+    pub const ORACLE_NUM_RANGE_ARRAY: Type = Type::NUM_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TS_RANGE.
+    pub const ORACLE_TS_RANGE: Type = Type::TS_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TS_RANGE_ARRAY.
+    pub const ORACLE_TS_RANGE_ARRAY: Type = Type::TS_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSTZ_RANGE.
+    pub const ORACLE_TSTZ_RANGE: Type = Type::TSTZ_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSTZ_RANGE_ARRAY.
+    pub const ORACLE_TSTZ_RANGE_ARRAY: Type = Type::TSTZ_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for DATE_RANGE.
+    pub const ORACLE_DATE_RANGE: Type = Type::DATE_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for DATE_RANGE_ARRAY.
+    pub const ORACLE_DATE_RANGE_ARRAY: Type = Type::DATE_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT8_RANGE.
+    pub const ORACLE_INT8_RANGE: Type = Type::INT8_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT8_RANGE_ARRAY.
+    pub const ORACLE_INT8_RANGE_ARRAY: Type = Type::INT8_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for JSONPATH.
+    pub const ORACLE_JSONPATH: Type = Type::JSONPATH;
+
+
+    /// PostgreSQL-compatible ORACLE alias for JSONPATH_ARRAY.
+    pub const ORACLE_JSONPATH_ARRAY: Type = Type::JSONPATH_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGNAMESPACE.
+    pub const ORACLE_REGNAMESPACE: Type = Type::REGNAMESPACE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGNAMESPACE_ARRAY.
+    pub const ORACLE_REGNAMESPACE_ARRAY: Type = Type::REGNAMESPACE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGROLE.
+    pub const ORACLE_REGROLE: Type = Type::REGROLE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGROLE_ARRAY.
+    pub const ORACLE_REGROLE_ARRAY: Type = Type::REGROLE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGCOLLATION.
+    pub const ORACLE_REGCOLLATION: Type = Type::REGCOLLATION;
+
+
+    /// PostgreSQL-compatible ORACLE alias for REGCOLLATION_ARRAY.
+    pub const ORACLE_REGCOLLATION_ARRAY: Type = Type::REGCOLLATION_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT4MULTI_RANGE.
+    pub const ORACLE_INT4MULTI_RANGE: Type = Type::INT4MULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NUMMULTI_RANGE.
+    pub const ORACLE_NUMMULTI_RANGE: Type = Type::NUMMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSMULTI_RANGE.
+    pub const ORACLE_TSMULTI_RANGE: Type = Type::TSMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSTZMULTI_RANGE.
+    pub const ORACLE_TSTZMULTI_RANGE: Type = Type::TSTZMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for DATEMULTI_RANGE.
+    pub const ORACLE_DATEMULTI_RANGE: Type = Type::DATEMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT8MULTI_RANGE.
+    pub const ORACLE_INT8MULTI_RANGE: Type = Type::INT8MULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYMULTI_RANGE.
+    pub const ORACLE_ANYMULTI_RANGE: Type = Type::ANYMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYCOMPATIBLEMULTI_RANGE.
+    pub const ORACLE_ANYCOMPATIBLEMULTI_RANGE: Type = Type::ANYCOMPATIBLEMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_BRIN_BLOOM_SUMMARY.
+    pub const ORACLE_PG_BRIN_BLOOM_SUMMARY: Type = Type::PG_BRIN_BLOOM_SUMMARY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_BRIN_MINMAX_MULTI_SUMMARY.
+    pub const ORACLE_PG_BRIN_MINMAX_MULTI_SUMMARY: Type = Type::PG_BRIN_MINMAX_MULTI_SUMMARY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_MCV_LIST.
+    pub const ORACLE_PG_MCV_LIST: Type = Type::PG_MCV_LIST;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_SNAPSHOT.
+    pub const ORACLE_PG_SNAPSHOT: Type = Type::PG_SNAPSHOT;
+
+
+    /// PostgreSQL-compatible ORACLE alias for PG_SNAPSHOT_ARRAY.
+    pub const ORACLE_PG_SNAPSHOT_ARRAY: Type = Type::PG_SNAPSHOT_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for XID8.
+    pub const ORACLE_XID8: Type = Type::XID8;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYCOMPATIBLE.
+    pub const ORACLE_ANYCOMPATIBLE: Type = Type::ANYCOMPATIBLE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYCOMPATIBLEARRAY.
+    pub const ORACLE_ANYCOMPATIBLEARRAY: Type = Type::ANYCOMPATIBLEARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYCOMPATIBLENONARRAY.
+    pub const ORACLE_ANYCOMPATIBLENONARRAY: Type = Type::ANYCOMPATIBLENONARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for ANYCOMPATIBLE_RANGE.
+    pub const ORACLE_ANYCOMPATIBLE_RANGE: Type = Type::ANYCOMPATIBLE_RANGE;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT4MULTI_RANGE_ARRAY.
+    pub const ORACLE_INT4MULTI_RANGE_ARRAY: Type = Type::INT4MULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for NUMMULTI_RANGE_ARRAY.
+    pub const ORACLE_NUMMULTI_RANGE_ARRAY: Type = Type::NUMMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSMULTI_RANGE_ARRAY.
+    pub const ORACLE_TSMULTI_RANGE_ARRAY: Type = Type::TSMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for TSTZMULTI_RANGE_ARRAY.
+    pub const ORACLE_TSTZMULTI_RANGE_ARRAY: Type = Type::TSTZMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for DATEMULTI_RANGE_ARRAY.
+    pub const ORACLE_DATEMULTI_RANGE_ARRAY: Type = Type::DATEMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible ORACLE alias for INT8MULTI_RANGE_ARRAY.
+    pub const ORACLE_INT8MULTI_RANGE_ARRAY: Type = Type::INT8MULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BOOL.
+    pub const SQLSERVER_BOOL: Type = Type::BOOL;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BYTEA.
+    pub const SQLSERVER_BYTEA: Type = Type::BYTEA;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CHAR.
+    pub const SQLSERVER_CHAR: Type = Type::CHAR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NAME.
+    pub const SQLSERVER_NAME: Type = Type::NAME;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT8.
+    pub const SQLSERVER_INT8: Type = Type::INT8;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT2.
+    pub const SQLSERVER_INT2: Type = Type::INT2;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT2_VECTOR.
+    pub const SQLSERVER_INT2_VECTOR: Type = Type::INT2_VECTOR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT4.
+    pub const SQLSERVER_INT4: Type = Type::INT4;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGPROC.
+    pub const SQLSERVER_REGPROC: Type = Type::REGPROC;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TEXT.
+    pub const SQLSERVER_TEXT: Type = Type::TEXT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for OID.
+    pub const SQLSERVER_OID: Type = Type::OID;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TID.
+    pub const SQLSERVER_TID: Type = Type::TID;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for XID.
+    pub const SQLSERVER_XID: Type = Type::XID;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CID.
+    pub const SQLSERVER_CID: Type = Type::CID;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for OID_VECTOR.
+    pub const SQLSERVER_OID_VECTOR: Type = Type::OID_VECTOR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_DDL_COMMAND.
+    pub const SQLSERVER_PG_DDL_COMMAND: Type = Type::PG_DDL_COMMAND;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for JSON.
+    pub const SQLSERVER_JSON: Type = Type::JSON;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for XML.
+    pub const SQLSERVER_XML: Type = Type::XML;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for XML_ARRAY.
+    pub const SQLSERVER_XML_ARRAY: Type = Type::XML_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_NODE_TREE.
+    pub const SQLSERVER_PG_NODE_TREE: Type = Type::PG_NODE_TREE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for JSON_ARRAY.
+    pub const SQLSERVER_JSON_ARRAY: Type = Type::JSON_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TABLE_AM_HANDLER.
+    pub const SQLSERVER_TABLE_AM_HANDLER: Type = Type::TABLE_AM_HANDLER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for XID8_ARRAY.
+    pub const SQLSERVER_XID8_ARRAY: Type = Type::XID8_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INDEX_AM_HANDLER.
+    pub const SQLSERVER_INDEX_AM_HANDLER: Type = Type::INDEX_AM_HANDLER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for POINT.
+    pub const SQLSERVER_POINT: Type = Type::POINT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for LSEG.
+    pub const SQLSERVER_LSEG: Type = Type::LSEG;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PATH.
+    pub const SQLSERVER_PATH: Type = Type::PATH;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BOX.
+    pub const SQLSERVER_BOX: Type = Type::BOX;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for POLYGON.
+    pub const SQLSERVER_POLYGON: Type = Type::POLYGON;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for LINE.
+    pub const SQLSERVER_LINE: Type = Type::LINE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for LINE_ARRAY.
+    pub const SQLSERVER_LINE_ARRAY: Type = Type::LINE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CIDR.
+    pub const SQLSERVER_CIDR: Type = Type::CIDR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CIDR_ARRAY.
+    pub const SQLSERVER_CIDR_ARRAY: Type = Type::CIDR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for FLOAT4.
+    pub const SQLSERVER_FLOAT4: Type = Type::FLOAT4;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for FLOAT8.
+    pub const SQLSERVER_FLOAT8: Type = Type::FLOAT8;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for UNKNOWN.
+    pub const SQLSERVER_UNKNOWN: Type = Type::UNKNOWN;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CIRCLE.
+    pub const SQLSERVER_CIRCLE: Type = Type::CIRCLE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CIRCLE_ARRAY.
+    pub const SQLSERVER_CIRCLE_ARRAY: Type = Type::CIRCLE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for MACADDR8.
+    pub const SQLSERVER_MACADDR8: Type = Type::MACADDR8;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for MACADDR8_ARRAY.
+    pub const SQLSERVER_MACADDR8_ARRAY: Type = Type::MACADDR8_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for MONEY.
+    pub const SQLSERVER_MONEY: Type = Type::MONEY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for MONEY_ARRAY.
+    pub const SQLSERVER_MONEY_ARRAY: Type = Type::MONEY_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for MACADDR.
+    pub const SQLSERVER_MACADDR: Type = Type::MACADDR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INET.
+    pub const SQLSERVER_INET: Type = Type::INET;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BOOL_ARRAY.
+    pub const SQLSERVER_BOOL_ARRAY: Type = Type::BOOL_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BYTEA_ARRAY.
+    pub const SQLSERVER_BYTEA_ARRAY: Type = Type::BYTEA_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CHAR_ARRAY.
+    pub const SQLSERVER_CHAR_ARRAY: Type = Type::CHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NAME_ARRAY.
+    pub const SQLSERVER_NAME_ARRAY: Type = Type::NAME_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT2_ARRAY.
+    pub const SQLSERVER_INT2_ARRAY: Type = Type::INT2_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT2_VECTOR_ARRAY.
+    pub const SQLSERVER_INT2_VECTOR_ARRAY: Type = Type::INT2_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT4_ARRAY.
+    pub const SQLSERVER_INT4_ARRAY: Type = Type::INT4_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGPROC_ARRAY.
+    pub const SQLSERVER_REGPROC_ARRAY: Type = Type::REGPROC_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TEXT_ARRAY.
+    pub const SQLSERVER_TEXT_ARRAY: Type = Type::TEXT_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TID_ARRAY.
+    pub const SQLSERVER_TID_ARRAY: Type = Type::TID_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for XID_ARRAY.
+    pub const SQLSERVER_XID_ARRAY: Type = Type::XID_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CID_ARRAY.
+    pub const SQLSERVER_CID_ARRAY: Type = Type::CID_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for OID_VECTOR_ARRAY.
+    pub const SQLSERVER_OID_VECTOR_ARRAY: Type = Type::OID_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BPCHAR_ARRAY.
+    pub const SQLSERVER_BPCHAR_ARRAY: Type = Type::BPCHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for VARCHAR_ARRAY.
+    pub const SQLSERVER_VARCHAR_ARRAY: Type = Type::VARCHAR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT8_ARRAY.
+    pub const SQLSERVER_INT8_ARRAY: Type = Type::INT8_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for POINT_ARRAY.
+    pub const SQLSERVER_POINT_ARRAY: Type = Type::POINT_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for LSEG_ARRAY.
+    pub const SQLSERVER_LSEG_ARRAY: Type = Type::LSEG_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PATH_ARRAY.
+    pub const SQLSERVER_PATH_ARRAY: Type = Type::PATH_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BOX_ARRAY.
+    pub const SQLSERVER_BOX_ARRAY: Type = Type::BOX_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for FLOAT4_ARRAY.
+    pub const SQLSERVER_FLOAT4_ARRAY: Type = Type::FLOAT4_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for FLOAT8_ARRAY.
+    pub const SQLSERVER_FLOAT8_ARRAY: Type = Type::FLOAT8_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for POLYGON_ARRAY.
+    pub const SQLSERVER_POLYGON_ARRAY: Type = Type::POLYGON_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for OID_ARRAY.
+    pub const SQLSERVER_OID_ARRAY: Type = Type::OID_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ACLITEM.
+    pub const SQLSERVER_ACLITEM: Type = Type::ACLITEM;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ACLITEM_ARRAY.
+    pub const SQLSERVER_ACLITEM_ARRAY: Type = Type::ACLITEM_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for MACADDR_ARRAY.
+    pub const SQLSERVER_MACADDR_ARRAY: Type = Type::MACADDR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INET_ARRAY.
+    pub const SQLSERVER_INET_ARRAY: Type = Type::INET_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BPCHAR.
+    pub const SQLSERVER_BPCHAR: Type = Type::BPCHAR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for VARCHAR.
+    pub const SQLSERVER_VARCHAR: Type = Type::VARCHAR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for DATE.
+    pub const SQLSERVER_DATE: Type = Type::DATE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIME.
+    pub const SQLSERVER_TIME: Type = Type::TIME;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIMESTAMP.
+    pub const SQLSERVER_TIMESTAMP: Type = Type::TIMESTAMP;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIMESTAMP_ARRAY.
+    pub const SQLSERVER_TIMESTAMP_ARRAY: Type = Type::TIMESTAMP_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for DATE_ARRAY.
+    pub const SQLSERVER_DATE_ARRAY: Type = Type::DATE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIME_ARRAY.
+    pub const SQLSERVER_TIME_ARRAY: Type = Type::TIME_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIMESTAMPTZ.
+    pub const SQLSERVER_TIMESTAMPTZ: Type = Type::TIMESTAMPTZ;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIMESTAMPTZ_ARRAY.
+    pub const SQLSERVER_TIMESTAMPTZ_ARRAY: Type = Type::TIMESTAMPTZ_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INTERVAL.
+    pub const SQLSERVER_INTERVAL: Type = Type::INTERVAL;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INTERVAL_ARRAY.
+    pub const SQLSERVER_INTERVAL_ARRAY: Type = Type::INTERVAL_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NUMERIC_ARRAY.
+    pub const SQLSERVER_NUMERIC_ARRAY: Type = Type::NUMERIC_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CSTRING_ARRAY.
+    pub const SQLSERVER_CSTRING_ARRAY: Type = Type::CSTRING_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIMETZ.
+    pub const SQLSERVER_TIMETZ: Type = Type::TIMETZ;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TIMETZ_ARRAY.
+    pub const SQLSERVER_TIMETZ_ARRAY: Type = Type::TIMETZ_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BIT.
+    pub const SQLSERVER_BIT: Type = Type::BIT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for BIT_ARRAY.
+    pub const SQLSERVER_BIT_ARRAY: Type = Type::BIT_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for VARBIT.
+    pub const SQLSERVER_VARBIT: Type = Type::VARBIT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for VARBIT_ARRAY.
+    pub const SQLSERVER_VARBIT_ARRAY: Type = Type::VARBIT_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NUMERIC.
+    pub const SQLSERVER_NUMERIC: Type = Type::NUMERIC;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REFCURSOR.
+    pub const SQLSERVER_REFCURSOR: Type = Type::REFCURSOR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REFCURSOR_ARRAY.
+    pub const SQLSERVER_REFCURSOR_ARRAY: Type = Type::REFCURSOR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGPROCEDURE.
+    pub const SQLSERVER_REGPROCEDURE: Type = Type::REGPROCEDURE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGOPER.
+    pub const SQLSERVER_REGOPER: Type = Type::REGOPER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGOPERATOR.
+    pub const SQLSERVER_REGOPERATOR: Type = Type::REGOPERATOR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGCLASS.
+    pub const SQLSERVER_REGCLASS: Type = Type::REGCLASS;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGTYPE.
+    pub const SQLSERVER_REGTYPE: Type = Type::REGTYPE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGPROCEDURE_ARRAY.
+    pub const SQLSERVER_REGPROCEDURE_ARRAY: Type = Type::REGPROCEDURE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGOPER_ARRAY.
+    pub const SQLSERVER_REGOPER_ARRAY: Type = Type::REGOPER_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGOPERATOR_ARRAY.
+    pub const SQLSERVER_REGOPERATOR_ARRAY: Type = Type::REGOPERATOR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGCLASS_ARRAY.
+    pub const SQLSERVER_REGCLASS_ARRAY: Type = Type::REGCLASS_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGTYPE_ARRAY.
+    pub const SQLSERVER_REGTYPE_ARRAY: Type = Type::REGTYPE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for RECORD.
+    pub const SQLSERVER_RECORD: Type = Type::RECORD;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for CSTRING.
+    pub const SQLSERVER_CSTRING: Type = Type::CSTRING;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANY.
+    pub const SQLSERVER_ANY: Type = Type::ANY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYARRAY.
+    pub const SQLSERVER_ANYARRAY: Type = Type::ANYARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for VOID.
+    pub const SQLSERVER_VOID: Type = Type::VOID;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TRIGGER.
+    pub const SQLSERVER_TRIGGER: Type = Type::TRIGGER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for LANGUAGE_HANDLER.
+    pub const SQLSERVER_LANGUAGE_HANDLER: Type = Type::LANGUAGE_HANDLER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INTERNAL.
+    pub const SQLSERVER_INTERNAL: Type = Type::INTERNAL;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYELEMENT.
+    pub const SQLSERVER_ANYELEMENT: Type = Type::ANYELEMENT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for RECORD_ARRAY.
+    pub const SQLSERVER_RECORD_ARRAY: Type = Type::RECORD_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYNONARRAY.
+    pub const SQLSERVER_ANYNONARRAY: Type = Type::ANYNONARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TXID_SNAPSHOT_ARRAY.
+    pub const SQLSERVER_TXID_SNAPSHOT_ARRAY: Type = Type::TXID_SNAPSHOT_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for UUID.
+    pub const SQLSERVER_UUID: Type = Type::UUID;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for UUID_ARRAY.
+    pub const SQLSERVER_UUID_ARRAY: Type = Type::UUID_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TXID_SNAPSHOT.
+    pub const SQLSERVER_TXID_SNAPSHOT: Type = Type::TXID_SNAPSHOT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for FDW_HANDLER.
+    pub const SQLSERVER_FDW_HANDLER: Type = Type::FDW_HANDLER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_LSN.
+    pub const SQLSERVER_PG_LSN: Type = Type::PG_LSN;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_LSN_ARRAY.
+    pub const SQLSERVER_PG_LSN_ARRAY: Type = Type::PG_LSN_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSM_HANDLER.
+    pub const SQLSERVER_TSM_HANDLER: Type = Type::TSM_HANDLER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_NDISTINCT.
+    pub const SQLSERVER_PG_NDISTINCT: Type = Type::PG_NDISTINCT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_DEPENDENCIES.
+    pub const SQLSERVER_PG_DEPENDENCIES: Type = Type::PG_DEPENDENCIES;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYENUM.
+    pub const SQLSERVER_ANYENUM: Type = Type::ANYENUM;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TS_VECTOR.
+    pub const SQLSERVER_TS_VECTOR: Type = Type::TS_VECTOR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSQUERY.
+    pub const SQLSERVER_TSQUERY: Type = Type::TSQUERY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for GTS_VECTOR.
+    pub const SQLSERVER_GTS_VECTOR: Type = Type::GTS_VECTOR;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TS_VECTOR_ARRAY.
+    pub const SQLSERVER_TS_VECTOR_ARRAY: Type = Type::TS_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for GTS_VECTOR_ARRAY.
+    pub const SQLSERVER_GTS_VECTOR_ARRAY: Type = Type::GTS_VECTOR_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSQUERY_ARRAY.
+    pub const SQLSERVER_TSQUERY_ARRAY: Type = Type::TSQUERY_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGCONFIG.
+    pub const SQLSERVER_REGCONFIG: Type = Type::REGCONFIG;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGCONFIG_ARRAY.
+    pub const SQLSERVER_REGCONFIG_ARRAY: Type = Type::REGCONFIG_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGDICTIONARY.
+    pub const SQLSERVER_REGDICTIONARY: Type = Type::REGDICTIONARY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGDICTIONARY_ARRAY.
+    pub const SQLSERVER_REGDICTIONARY_ARRAY: Type = Type::REGDICTIONARY_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for JSONB.
+    pub const SQLSERVER_JSONB: Type = Type::JSONB;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for JSONB_ARRAY.
+    pub const SQLSERVER_JSONB_ARRAY: Type = Type::JSONB_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANY_RANGE.
+    pub const SQLSERVER_ANY_RANGE: Type = Type::ANY_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for EVENT_TRIGGER.
+    pub const SQLSERVER_EVENT_TRIGGER: Type = Type::EVENT_TRIGGER;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT4_RANGE.
+    pub const SQLSERVER_INT4_RANGE: Type = Type::INT4_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT4_RANGE_ARRAY.
+    pub const SQLSERVER_INT4_RANGE_ARRAY: Type = Type::INT4_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NUM_RANGE.
+    pub const SQLSERVER_NUM_RANGE: Type = Type::NUM_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NUM_RANGE_ARRAY.
+    pub const SQLSERVER_NUM_RANGE_ARRAY: Type = Type::NUM_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TS_RANGE.
+    pub const SQLSERVER_TS_RANGE: Type = Type::TS_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TS_RANGE_ARRAY.
+    pub const SQLSERVER_TS_RANGE_ARRAY: Type = Type::TS_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSTZ_RANGE.
+    pub const SQLSERVER_TSTZ_RANGE: Type = Type::TSTZ_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSTZ_RANGE_ARRAY.
+    pub const SQLSERVER_TSTZ_RANGE_ARRAY: Type = Type::TSTZ_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for DATE_RANGE.
+    pub const SQLSERVER_DATE_RANGE: Type = Type::DATE_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for DATE_RANGE_ARRAY.
+    pub const SQLSERVER_DATE_RANGE_ARRAY: Type = Type::DATE_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT8_RANGE.
+    pub const SQLSERVER_INT8_RANGE: Type = Type::INT8_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT8_RANGE_ARRAY.
+    pub const SQLSERVER_INT8_RANGE_ARRAY: Type = Type::INT8_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for JSONPATH.
+    pub const SQLSERVER_JSONPATH: Type = Type::JSONPATH;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for JSONPATH_ARRAY.
+    pub const SQLSERVER_JSONPATH_ARRAY: Type = Type::JSONPATH_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGNAMESPACE.
+    pub const SQLSERVER_REGNAMESPACE: Type = Type::REGNAMESPACE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGNAMESPACE_ARRAY.
+    pub const SQLSERVER_REGNAMESPACE_ARRAY: Type = Type::REGNAMESPACE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGROLE.
+    pub const SQLSERVER_REGROLE: Type = Type::REGROLE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGROLE_ARRAY.
+    pub const SQLSERVER_REGROLE_ARRAY: Type = Type::REGROLE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGCOLLATION.
+    pub const SQLSERVER_REGCOLLATION: Type = Type::REGCOLLATION;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for REGCOLLATION_ARRAY.
+    pub const SQLSERVER_REGCOLLATION_ARRAY: Type = Type::REGCOLLATION_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT4MULTI_RANGE.
+    pub const SQLSERVER_INT4MULTI_RANGE: Type = Type::INT4MULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NUMMULTI_RANGE.
+    pub const SQLSERVER_NUMMULTI_RANGE: Type = Type::NUMMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSMULTI_RANGE.
+    pub const SQLSERVER_TSMULTI_RANGE: Type = Type::TSMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSTZMULTI_RANGE.
+    pub const SQLSERVER_TSTZMULTI_RANGE: Type = Type::TSTZMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for DATEMULTI_RANGE.
+    pub const SQLSERVER_DATEMULTI_RANGE: Type = Type::DATEMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT8MULTI_RANGE.
+    pub const SQLSERVER_INT8MULTI_RANGE: Type = Type::INT8MULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYMULTI_RANGE.
+    pub const SQLSERVER_ANYMULTI_RANGE: Type = Type::ANYMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYCOMPATIBLEMULTI_RANGE.
+    pub const SQLSERVER_ANYCOMPATIBLEMULTI_RANGE: Type = Type::ANYCOMPATIBLEMULTI_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_BRIN_BLOOM_SUMMARY.
+    pub const SQLSERVER_PG_BRIN_BLOOM_SUMMARY: Type = Type::PG_BRIN_BLOOM_SUMMARY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_BRIN_MINMAX_MULTI_SUMMARY.
+    pub const SQLSERVER_PG_BRIN_MINMAX_MULTI_SUMMARY: Type = Type::PG_BRIN_MINMAX_MULTI_SUMMARY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_MCV_LIST.
+    pub const SQLSERVER_PG_MCV_LIST: Type = Type::PG_MCV_LIST;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_SNAPSHOT.
+    pub const SQLSERVER_PG_SNAPSHOT: Type = Type::PG_SNAPSHOT;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for PG_SNAPSHOT_ARRAY.
+    pub const SQLSERVER_PG_SNAPSHOT_ARRAY: Type = Type::PG_SNAPSHOT_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for XID8.
+    pub const SQLSERVER_XID8: Type = Type::XID8;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYCOMPATIBLE.
+    pub const SQLSERVER_ANYCOMPATIBLE: Type = Type::ANYCOMPATIBLE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYCOMPATIBLEARRAY.
+    pub const SQLSERVER_ANYCOMPATIBLEARRAY: Type = Type::ANYCOMPATIBLEARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYCOMPATIBLENONARRAY.
+    pub const SQLSERVER_ANYCOMPATIBLENONARRAY: Type = Type::ANYCOMPATIBLENONARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for ANYCOMPATIBLE_RANGE.
+    pub const SQLSERVER_ANYCOMPATIBLE_RANGE: Type = Type::ANYCOMPATIBLE_RANGE;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT4MULTI_RANGE_ARRAY.
+    pub const SQLSERVER_INT4MULTI_RANGE_ARRAY: Type = Type::INT4MULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for NUMMULTI_RANGE_ARRAY.
+    pub const SQLSERVER_NUMMULTI_RANGE_ARRAY: Type = Type::NUMMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSMULTI_RANGE_ARRAY.
+    pub const SQLSERVER_TSMULTI_RANGE_ARRAY: Type = Type::TSMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for TSTZMULTI_RANGE_ARRAY.
+    pub const SQLSERVER_TSTZMULTI_RANGE_ARRAY: Type = Type::TSTZMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for DATEMULTI_RANGE_ARRAY.
+    pub const SQLSERVER_DATEMULTI_RANGE_ARRAY: Type = Type::DATEMULTI_RANGE_ARRAY;
+
+
+    /// PostgreSQL-compatible SQLSERVER alias for INT8MULTI_RANGE_ARRAY.
+    pub const SQLSERVER_INT8MULTI_RANGE_ARRAY: Type = Type::INT8MULTI_RANGE_ARRAY;
+
+
+    /// sys.binary - KingbaseES MySQL-compatible type
+    pub const MYSQL_BINARY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Binary,
+    ));
+
+    /// sys.varbinary - KingbaseES MySQL-compatible type
+    pub const MYSQL_VARBINARY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Varbinary,
+    ));
+
+    /// sys._binary - KingbaseES MySQL-compatible array type
+    pub const MYSQL_BINARY_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::BinaryArray,
+    ));
+
+    /// sys._varbinary - KingbaseES MySQL-compatible array type
+    pub const MYSQL_VARBINARY_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::VarbinaryArray,
+    ));
+
+    /// sys.bit - KingbaseES MySQL-compatible type
+    pub const MYSQL_SYS_BIT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlBit,
+    ));
+
+    /// sys._bit - KingbaseES MySQL-compatible array type
+    pub const MYSQL_SYS_BIT_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlBitArray,
+    ));
+
+    /// sys.rowid - KingbaseES MySQL-compatible type
+    pub const MYSQL_ROWID: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Rowid,
+    ));
+
+    /// sys._rowid - KingbaseES MySQL-compatible array type
+    pub const MYSQL_ROWID_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::RowidArray,
+    ));
+
+    /// sys.int1 - KingbaseES MySQL-compatible type
+    pub const MYSQL_INT1: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Int1,
+    ));
+
+    /// sys.int3 - KingbaseES MySQL-compatible domain
+    pub const MYSQL_INT3: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Int3,
+    ));
+
+    /// sys.mediumint - KingbaseES MySQL-compatible domain
+    pub const MYSQL_MEDIUMINT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Mediumint,
+    ));
+
+    /// sys.middleint - KingbaseES MySQL-compatible domain
+    pub const MYSQL_MIDDLEINT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Middleint,
+    ));
+
+    /// sys.longtext - KingbaseES MySQL-compatible domain
+    pub const MYSQL_LONGTEXT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Longtext,
+    ));
+
+    /// sys.mediumtext - KingbaseES MySQL-compatible domain
+    pub const MYSQL_MEDIUMTEXT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Mediumtext,
+    ));
+
+    /// sys.tinytext - KingbaseES MySQL-compatible domain
+    pub const MYSQL_TINYTEXT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Tinytext,
+    ));
+
+    /// sys.longblob - KingbaseES MySQL-compatible domain
+    pub const MYSQL_LONGBLOB: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Longblob,
+    ));
+
+    /// sys.mediumblob - KingbaseES MySQL-compatible domain
+    pub const MYSQL_MEDIUMBLOB: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Mediumblob,
+    ));
+
+    /// sys.tinyblob - KingbaseES MySQL-compatible domain
+    pub const MYSQL_TINYBLOB: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Tinyblob,
+    ));
+
+    /// sys.json - KingbaseES MySQL-compatible domain
+    pub const MYSQL_SYS_JSON: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlJson,
+    ));
+
+    /// sys.year - KingbaseES MySQL-compatible domain
+    pub const MYSQL_YEAR: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Year,
+    ));
+
+    /// sys.uint4 - KingbaseES MySQL-compatible type
+    pub const MYSQL_UINT4: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Uint4,
+    ));
+
+    /// sys._uint4 - KingbaseES MySQL-compatible array type
+    pub const MYSQL_UINT4_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Uint4Array,
+    ));
+
+    /// sys.uint8 - KingbaseES MySQL-compatible type
+    pub const MYSQL_UINT8: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Uint8,
+    ));
+
+    /// sys._uint8 - KingbaseES MySQL-compatible array type
+    pub const MYSQL_UINT8_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Uint8Array,
+    ));
+
+    /// sys.date - KingbaseES MySQL-compatible type
+    pub const MYSQL_SYS_DATE: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlDate,
+    ));
+
+    /// sys.time - KingbaseES MySQL-compatible type
+    pub const MYSQL_SYS_TIME: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlTime,
+    ));
+
+    /// sys._time - KingbaseES MySQL-compatible array type
+    pub const MYSQL_SYS_TIME_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlTimeArray,
+    ));
+
+    /// sys.datetime - KingbaseES MySQL-compatible type
+    pub const MYSQL_DATETIME: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Datetime,
+    ));
+
+    /// sys._datetime - KingbaseES MySQL-compatible array type
+    pub const MYSQL_DATETIME_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::DatetimeArray,
+    ));
+
+    /// sys.timestamp - KingbaseES MySQL-compatible type
+    pub const MYSQL_SYS_TIMESTAMP: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlTimestamp,
+    ));
+
+    /// sys._timestamp - KingbaseES MySQL-compatible array type
+    pub const MYSQL_SYS_TIMESTAMP_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlTimestampArray,
+    ));
+
+    /// sys.blob - KingbaseES MySQL-compatible domain
+    pub const MYSQL_BLOB: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Blob,
+    ));
+
+    /// sys.clob - KingbaseES MySQL-compatible domain
+    pub const MYSQL_CLOB: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Clob,
+    ));
+
+    /// sys.nclob - KingbaseES MySQL-compatible domain
+    pub const MYSQL_NCLOB: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Nclob,
+    ));
+
+    /// sys.bpcharbyte - KingbaseES MySQL-compatible type
+    pub const MYSQL_BPCHARBYTE: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Bpcharbyte,
+    ));
+
+    /// sys._bpcharbyte - KingbaseES MySQL-compatible array type
+    pub const MYSQL_BPCHARBYTE_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::BpcharbyteArray,
+    ));
+
+    /// sys.varcharbyte - KingbaseES MySQL-compatible type
+    pub const MYSQL_VARCHARBYTE: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Varcharbyte,
+    ));
+
+    /// sys._varcharbyte - KingbaseES MySQL-compatible array type
+    pub const MYSQL_VARCHARBYTE_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::VarcharbyteArray,
+    ));
+
+    /// sys.tinyint - KingbaseES MySQL-compatible type
+    pub const MYSQL_TINYINT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::Tinyint,
+    ));
+
+    /// sys._tinyint - KingbaseES MySQL-compatible array type
+    pub const MYSQL_TINYINT_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::TinyintArray,
+    ));
+
+    /// pg_catalog.rowid - KingbaseES Oracle-compatible ROWID type
+    pub const ORACLE_ROWID: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Rowid,
+    ));
+
+    /// pg_catalog._rowid - KingbaseES Oracle-compatible ROWID array type
+    pub const ORACLE_ROWID_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::RowidArray,
+    ));
+
+    /// pg_catalog.urowid - KingbaseES Oracle-compatible UROWID domain
+    pub const ORACLE_UROWID: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Urowid,
+    ));
+
+    /// pg_catalog._urowid - KingbaseES Oracle-compatible UROWID array type
+    pub const ORACLE_UROWID_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::UrowidArray,
+    ));
+
+    /// sys.dsinterval - KingbaseES Oracle-compatible DAY TO SECOND interval type
+    pub const ORACLE_DSINTERVAL: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Dsinterval,
+    ));
+
+    /// sys._dsinterval - KingbaseES Oracle-compatible DAY TO SECOND interval array type
+    pub const ORACLE_DSINTERVAL_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::DsintervalArray,
+    ));
+
+    /// sys.yminterval - KingbaseES Oracle-compatible YEAR TO MONTH interval type
+    pub const ORACLE_YMINTERVAL: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Yminterval,
+    ));
+
+    /// sys._yminterval - KingbaseES Oracle-compatible YEAR TO MONTH interval array type
+    pub const ORACLE_YMINTERVAL_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::YmintervalArray,
+    ));
+
+    /// pg_catalog.blob - KingbaseES Oracle-compatible BLOB domain
+    pub const ORACLE_BLOB: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Blob,
+    ));
+
+    /// pg_catalog.clob - KingbaseES Oracle-compatible CLOB domain
+    pub const ORACLE_CLOB: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Clob,
+    ));
+
+    /// pg_catalog.nclob - KingbaseES Oracle-compatible NCLOB domain
+    pub const ORACLE_NCLOB: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Nclob,
+    ));
+
+    /// sys.bpcharbyte - KingbaseES Oracle-compatible byte-length CHAR type
+    pub const ORACLE_BPCHARBYTE: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Bpcharbyte,
+    ));
+
+    /// sys._bpcharbyte - KingbaseES Oracle-compatible byte-length CHAR array type
+    pub const ORACLE_BPCHARBYTE_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::BpcharbyteArray,
+    ));
+
+    /// sys.varcharbyte - KingbaseES Oracle-compatible byte-length VARCHAR type
+    pub const ORACLE_VARCHARBYTE: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Varcharbyte,
+    ));
+
+    /// sys._varcharbyte - KingbaseES Oracle-compatible byte-length VARCHAR array type
+    pub const ORACLE_VARCHARBYTE_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::VarcharbyteArray,
+    ));
+
+    /// sys.date - KingbaseES Oracle-compatible DATE domain
+    pub const ORACLE_SYS_DATE: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::OraDate,
+    ));
+
+    /// sys._date - KingbaseES Oracle-compatible DATE array type
+    pub const ORACLE_SYS_DATE_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::OraDateArray,
+    ));
+
+    /// pg_catalog.bfile - KingbaseES Oracle-compatible BFILE locator type
+    pub const ORACLE_BFILE: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Bfile,
+    ));
+
+    /// pg_catalog._bfile - KingbaseES Oracle-compatible BFILE locator array type
+    pub const ORACLE_BFILE_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::BfileArray,
+    ));
+
+    /// pg_catalog.tinyint - KingbaseES Oracle-compatible TINYINT type
+    pub const ORACLE_TINYINT: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::Tinyint,
+    ));
+
+    /// pg_catalog._tinyint - KingbaseES Oracle-compatible TINYINT array type
+    pub const ORACLE_TINYINT_ARRAY: Type = Type(Inner::Oracle(
+        crate::oracle_type_gen::Inner::TinyintArray,
+    ));
+
+    /// sys.uniqueidentifier - KingbaseES SQL Server-compatible UNIQUEIDENTIFIER type
+    pub const SQLSERVER_UNIQUEIDENTIFIER: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Uniqueidentifier,
+    ));
+
+    /// sys.binary - KingbaseES SQL Server-compatible BINARY type
+    pub const SQLSERVER_BINARY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Binary,
+    ));
+
+    /// sys._binary - KingbaseES SQL Server-compatible BINARY array type
+    pub const SQLSERVER_BINARY_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::BinaryArray,
+    ));
+
+    /// sys.varbinary - KingbaseES SQL Server-compatible VARBINARY type
+    pub const SQLSERVER_VARBINARY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Varbinary,
+    ));
+
+    /// sys._varbinary - KingbaseES SQL Server-compatible VARBINARY array type
+    pub const SQLSERVER_VARBINARY_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::VarbinaryArray,
+    ));
+
+    /// sys.tinyint - KingbaseES SQL Server-compatible unsigned TINYINT type
+    pub const SQLSERVER_TINYINT: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Tinyint,
+    ));
+
+    /// sys._tinyint - KingbaseES SQL Server-compatible TINYINT array type
+    pub const SQLSERVER_TINYINT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::TinyintArray,
+    ));
+
+    /// sys.nchar - KingbaseES SQL Server-compatible NCHAR type
+    pub const SQLSERVER_NCHAR: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Nchar,
+    ));
+
+    /// sys._nchar - KingbaseES SQL Server-compatible NCHAR array type
+    pub const SQLSERVER_NCHAR_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::NcharArray,
+    ));
+
+    /// sys.nvarchar - KingbaseES SQL Server-compatible NVARCHAR type
+    pub const SQLSERVER_NVARCHAR: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Nvarchar,
+    ));
+
+    /// sys._nvarchar - KingbaseES SQL Server-compatible NVARCHAR array type
+    pub const SQLSERVER_NVARCHAR_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::NvarcharArray,
+    ));
+
+    /// sys.rowversion - KingbaseES SQL Server-compatible ROWVERSION type
+    pub const SQLSERVER_ROWVERSION: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Rowversion,
+    ));
+
+    /// sys._rowversion - KingbaseES SQL Server-compatible ROWVERSION array type
+    pub const SQLSERVER_ROWVERSION_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::RowversionArray,
+    ));
+
+    /// sys.smalldatetime - KingbaseES SQL Server-compatible SMALLDATETIME type
+    pub const SQLSERVER_SMALLDATETIME: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Smalldatetime,
+    ));
+
+    /// sys._smalldatetime - KingbaseES SQL Server-compatible SMALLDATETIME array type
+    pub const SQLSERVER_SMALLDATETIME_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SmalldatetimeArray,
+    ));
+
+    /// sys.money - KingbaseES SQL Server-compatible MONEY type
+    pub const SQLSERVER_SYS_MONEY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerMoney,
+    ));
+
+    /// sys._money - KingbaseES SQL Server-compatible MONEY array type
+    pub const SQLSERVER_SYS_MONEY_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerMoneyArray,
+    ));
+
+    /// sys._sysname - KingbaseES SQL Server-compatible SYSNAME array type
+    pub const SQLSERVER_SYSNAME_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SysnameArray,
+    ));
+
+    /// sys.sql_variant - KingbaseES SQL Server-compatible SQL_VARIANT type
+    pub const SQLSERVER_SQL_VARIANT: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlVariant,
+    ));
+
+    /// sys._sql_variant - KingbaseES SQL Server-compatible SQL_VARIANT array type
+    pub const SQLSERVER_SQL_VARIANT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlVariantArray,
+    ));
+
+    /// sys.sysname - KingbaseES SQL Server-compatible SYSNAME domain
+    pub const SQLSERVER_SYSNAME: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Sysname,
+    ));
+
+    /// sys._datetime2 - KingbaseES SQL Server-compatible DATETIME2 array type
+    pub const SQLSERVER_DATETIME2_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Datetime2Array,
+    ));
+
+    /// sys.datetime2 - KingbaseES SQL Server-compatible DATETIME2 type
+    pub const SQLSERVER_DATETIME2: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Datetime2,
+    ));
+
+    /// sys.date - KingbaseES SQL Server-compatible DATE type
+    pub const SQLSERVER_SYS_DATE: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerDate,
+    ));
+
+    /// sys.time - KingbaseES SQL Server-compatible TIME type
+    pub const SQLSERVER_SYS_TIME: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerTime,
+    ));
+
+    /// sys._date - KingbaseES SQL Server-compatible DATE array type
+    pub const SQLSERVER_SYS_DATE_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerDateArray,
+    ));
+
+    /// sys._time - KingbaseES SQL Server-compatible TIME array type
+    pub const SQLSERVER_SYS_TIME_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerTimeArray,
+    ));
+
+    /// sys.datetime - KingbaseES SQL Server-compatible DATETIME type
+    pub const SQLSERVER_DATETIME: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Datetime,
+    ));
+
+    /// sys._datetime - KingbaseES SQL Server-compatible DATETIME array type
+    pub const SQLSERVER_DATETIME_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::DatetimeArray,
+    ));
+
+    /// sys.bit - KingbaseES SQL Server-compatible BIT type
+    pub const SQLSERVER_SYS_BIT: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerBit,
+    ));
+
+    /// sys._bit - KingbaseES SQL Server-compatible BIT array type
+    pub const SQLSERVER_SYS_BIT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerBitArray,
+    ));
+
+    /// sys.bpcharbyte - KingbaseES SQL Server-compatible byte-length CHAR type
+    pub const SQLSERVER_BPCHARBYTE: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Bpcharbyte,
+    ));
+
+    /// sys._bpcharbyte - KingbaseES SQL Server-compatible byte-length CHAR array type
+    pub const SQLSERVER_BPCHARBYTE_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::BpcharbyteArray,
+    ));
+
+    /// sys.varcharbyte - KingbaseES SQL Server-compatible byte-length VARCHAR type
+    pub const SQLSERVER_VARCHARBYTE: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Varcharbyte,
+    ));
+
+    /// sys._varcharbyte - KingbaseES SQL Server-compatible byte-length VARCHAR array type
+    pub const SQLSERVER_VARCHARBYTE_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::VarcharbyteArray,
+    ));
+
+    /// sys_catalog._sys_lsn - KingbaseES SQL Server-compatible SYS_LSN array type
+    pub const SQLSERVER_SYS_LSN_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SysLsnArray,
+    ));
+
+    /// sys_catalog.sys_lsn - KingbaseES SQL Server-compatible SYS_LSN domain
+    pub const SQLSERVER_SYS_LSN: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SysLsn,
+    ));
+
+    /// sys._uniqueidentifier - KingbaseES SQL Server-compatible UNIQUEIDENTIFIER array type
+    pub const SQLSERVER_UNIQUEIDENTIFIER_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::UniqueidentifierArray,
+    ));}

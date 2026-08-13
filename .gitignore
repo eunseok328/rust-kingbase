@@ -3,3 +3,11 @@ target
 .idea
 *.iml
 .vscode
+
+.agent/
+target/
+**/target/
+.env
+*.log
+.agent/
+docs/

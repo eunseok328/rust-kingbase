@@ -1,0 +1,77 @@
+#----------------------------------------------------------------------
+#
+# kingbase_oracle_type.dat
+#    KingbaseES Oracle-compatible type metadata overlay.
+#
+# Shared PostgreSQL wire types are selected in type_gen.rs. This file records
+# the fixed registrations added by KbConnection for Oracle mode. ORACLE_RAW is
+# intentionally absent: JDBC resolves its OID from pg_type at connection time.
+#----------------------------------------------------------------------
+
+[
+
+{ oid => '6123', descr => 'KingbaseES Oracle-compatible ROWID type',
+  typname => 'rowid', variant => 'Rowid', typcategory => 'S',
+  schema => 'pg_catalog' },
+{ oid => '6124', descr => 'KingbaseES Oracle-compatible ROWID array type',
+  typname => '_rowid', variant => 'RowidArray', ident => 'ROWID_ARRAY',
+  typcategory => 'A', typbasetype => '6123', schema => 'pg_catalog' },
+{ oid => '6125', descr => 'KingbaseES Oracle-compatible UROWID domain',
+  typname => 'urowid', variant => 'Urowid', typcategory => 'M',
+  typbasetype => '1043', schema => 'pg_catalog' },
+{ oid => '6126', descr => 'KingbaseES Oracle-compatible UROWID array type',
+  typname => '_urowid', variant => 'UrowidArray', ident => 'UROWID_ARRAY',
+  typcategory => 'A', typbasetype => '6125', schema => 'pg_catalog' },
+{ oid => '8078', descr => 'KingbaseES Oracle-compatible BFILE locator type',
+  typname => 'bfile', variant => 'Bfile', typcategory => 'S',
+  schema => 'pg_catalog' },
+{ oid => '8079', descr => 'KingbaseES Oracle-compatible BFILE locator array type',
+  typname => '_bfile', variant => 'BfileArray', ident => 'BFILE_ARRAY',
+  typcategory => 'A', typbasetype => '8078', schema => 'pg_catalog' },
+{ oid => '7000', descr => 'KingbaseES Oracle-compatible DAY TO SECOND interval type',
+  typname => 'dsinterval', variant => 'Dsinterval', typcategory => 'S',
+  schema => 'sys' },
+{ oid => '7001', descr => 'KingbaseES Oracle-compatible DAY TO SECOND interval array type',
+  typname => '_dsinterval', variant => 'DsintervalArray', ident => 'DSINTERVAL_ARRAY',
+  typcategory => 'A', typbasetype => '7000', schema => 'sys' },
+{ oid => '7002', descr => 'KingbaseES Oracle-compatible YEAR TO MONTH interval type',
+  typname => 'yminterval', variant => 'Yminterval', typcategory => 'S',
+  schema => 'sys' },
+{ oid => '7003', descr => 'KingbaseES Oracle-compatible YEAR TO MONTH interval array type',
+  typname => '_yminterval', variant => 'YmintervalArray', ident => 'YMINTERVAL_ARRAY',
+  typcategory => 'A', typbasetype => '7002', schema => 'sys' },
+{ oid => '8013', descr => 'KingbaseES Oracle-compatible BLOB domain',
+  typname => 'blob', variant => 'Blob', typcategory => 'M',
+  typbasetype => '17', schema => 'pg_catalog' },
+{ oid => '8014', descr => 'KingbaseES Oracle-compatible CLOB domain',
+  typname => 'clob', variant => 'Clob', typcategory => 'M',
+  typbasetype => '25', schema => 'pg_catalog' },
+{ oid => '8015', descr => 'KingbaseES Oracle-compatible NCLOB domain',
+  typname => 'nclob', variant => 'Nclob', typcategory => 'M',
+  typbasetype => '25', schema => 'pg_catalog' },
+{ oid => '8016', descr => 'KingbaseES Oracle-compatible byte-length CHAR type',
+  typname => 'bpcharbyte', variant => 'Bpcharbyte', typcategory => 'S',
+  schema => 'sys' },
+{ oid => '8017', descr => 'KingbaseES Oracle-compatible byte-length CHAR array type',
+  typname => '_bpcharbyte', variant => 'BpcharbyteArray', ident => 'BPCHARBYTE_ARRAY',
+  typcategory => 'A', typbasetype => '8016', schema => 'sys' },
+{ oid => '8018', descr => 'KingbaseES Oracle-compatible byte-length VARCHAR type',
+  typname => 'varcharbyte', variant => 'Varcharbyte', typcategory => 'S',
+  schema => 'sys' },
+{ oid => '8019', descr => 'KingbaseES Oracle-compatible byte-length VARCHAR array type',
+  typname => '_varcharbyte', variant => 'VarcharbyteArray', ident => 'VARCHARBYTE_ARRAY',
+  typcategory => 'A', typbasetype => '8018', schema => 'sys' },
+{ oid => '8020', descr => 'KingbaseES Oracle-compatible DATE domain',
+  typname => 'date', variant => 'OraDate', ident => 'SYS_DATE', typcategory => 'M',
+  typbasetype => '1114', schema => 'sys' },
+{ oid => '8021', descr => 'KingbaseES Oracle-compatible DATE array type',
+  typname => '_date', variant => 'OraDateArray', ident => 'SYS_DATE_ARRAY',
+  typcategory => 'A', typbasetype => '8020', schema => 'sys' },
+{ oid => '8100', descr => 'KingbaseES Oracle-compatible TINYINT type',
+  typname => 'tinyint', variant => 'Tinyint', typcategory => 'S',
+  schema => 'pg_catalog' },
+{ oid => '8101', descr => 'KingbaseES Oracle-compatible TINYINT array type',
+  typname => '_tinyint', variant => 'TinyintArray', ident => 'TINYINT_ARRAY',
+  typcategory => 'A', typbasetype => '8100', schema => 'pg_catalog' },
+
+]

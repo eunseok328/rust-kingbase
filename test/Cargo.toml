@@ -1,0 +1,13 @@
+[package]
+name = "kingbase-domain-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+postgres-types = { path = "../postgres-types" }
+tokio-postgres = { path = "../tokio-postgres" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+bytes = "1"

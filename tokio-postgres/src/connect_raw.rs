@@ -1,13 +1,14 @@
 use crate::codec::{BackendMessage, BackendMessages, FrontendMessage, PostgresCodec};
 use crate::config::{self, Config};
 use crate::connect_tls::connect_tls;
+use crate::error::SqlState;
 use crate::maybe_tls_stream::MaybeTlsStream;
 use crate::tls::{TlsConnect, TlsStream};
-use crate::{Client, Connection, Error};
+use crate::{Client, Connection, Error, SimpleQueryMessage};
 use bytes::BytesMut;
 use fallible_iterator::FallibleIterator;
 use futures_channel::mpsc;
-use futures_util::{Sink, SinkExt, Stream, TryStreamExt};
+use futures_util::{FutureExt, Sink, SinkExt, Stream, TryStreamExt};
 use postgres_protocol::authentication;
 use postgres_protocol::authentication::sasl;
 use postgres_protocol::authentication::sasl::ScramSha256;
@@ -15,8 +16,9 @@ use postgres_protocol::message::backend::{AuthenticationSaslBody, Message};
 use postgres_protocol::message::frontend;
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
+use std::future;
 use std::io;
-use std::pin::Pin;
+use std::pin::{Pin, pin};
 use std::task::{Context, Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
@@ -121,9 +123,84 @@ where
         process_id,
         secret_key,
     );
-    let connection = Connection::new(stream.inner, stream.delayed, parameters, receiver);
+    let mut connection = Connection::new(stream.inner, stream.delayed, parameters, receiver);
+    probe_kingbase_compatibility(&client, &mut connection).await?;
 
     Ok((client, connection))
+}
+
+fn should_ignore_kingbase_probe_error(error: &Error) -> bool {
+    matches!(
+        error.code(),
+        Some(code)
+            if code == &SqlState::UNDEFINED_TABLE
+                || code == &SqlState::UNDEFINED_COLUMN
+                || code == &SqlState::INSUFFICIENT_PRIVILEGE
+                || code == &SqlState::FEATURE_NOT_SUPPORTED
+    )
+}
+
+async fn probe_kingbase_compatibility<S, T>(
+    client: &Client,
+    connection: &mut Connection<S, T>,
+) -> Result<(), Error>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    const KINGBASE_COMPATIBILITY_QUERY: &str = "\
+SELECT name, setting
+FROM pg_settings
+WHERE name = 'database_mode'
+   OR name = 'ora_input_emptystr_isnull'
+   OR name = 'enable_unpaired_comment'
+   OR name = 'sql_mode'
+   OR name = 'kdb_flashback.db_recyclebin'";
+
+    let mut settings = HashMap::new();
+    let mut rows = pin!(client.simple_query_raw(KINGBASE_COMPATIBILITY_QUERY));
+
+    let rows = match future::poll_fn(|cx| {
+        if connection.poll_unpin(cx)?.is_ready() {
+            return Poll::Ready(Err(Error::closed()));
+        }
+
+        rows.as_mut().poll(cx)
+    })
+    .await
+    {
+        Ok(rows) => rows,
+        Err(e) if should_ignore_kingbase_probe_error(&e) => return Ok(()),
+        Err(e) => return Err(e),
+    };
+    let mut rows = pin!(rows);
+
+    loop {
+        let next = future::poll_fn(|cx| {
+            if connection.poll_unpin(cx)?.is_ready() {
+                return Poll::Ready(Some(Err(Error::closed())));
+            }
+
+            rows.as_mut().poll_next(cx)
+        });
+
+        match next.await.transpose() {
+            Ok(Some(SimpleQueryMessage::Row(row))) => {
+                let name = row.try_get(0)?;
+                let setting = row.try_get(1)?;
+                if let (Some(name), Some(setting)) = (name, setting) {
+                    settings.insert(name.to_string(), setting.to_string());
+                }
+            }
+            Ok(Some(_)) => {}
+            Ok(None) => {
+                client.inner().set_kingbase_server_settings(settings);
+                return Ok(());
+            }
+            Err(e) if should_ignore_kingbase_probe_error(&e) => return Ok(()),
+            Err(e) => return Err(e),
+        }
+    }
 }
 
 async fn startup<S, T>(

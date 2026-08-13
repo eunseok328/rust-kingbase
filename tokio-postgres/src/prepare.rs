@@ -63,8 +63,17 @@ pub async fn prepare(
     query: &str,
     types: &[Type],
 ) -> Result<Statement, Error> {
+    let param_oids = types.iter().map(Type::oid).collect::<Vec<_>>();
+    prepare_with_param_oids(client, query, &param_oids).await
+}
+
+pub(crate) async fn prepare_with_param_oids(
+    client: &Arc<InnerClient>,
+    query: &str,
+    param_oids: &[Oid],
+) -> Result<Statement, Error> {
     let name = format!("s{}", NEXT_ID.fetch_add(1, Ordering::SeqCst));
-    let buf = encode(client, &name, query, types)?;
+    let buf = encode(client, &name, query, param_oids)?;
     let mut responses = client.send(RequestMessages::Single(FrontendMessage::Raw(buf)))?;
 
     match responses.next().await? {
@@ -117,15 +126,21 @@ fn prepare_rec<'a>(
     Box::pin(prepare(client, query, types))
 }
 
-fn encode(client: &InnerClient, name: &str, query: &str, types: &[Type]) -> Result<Bytes, Error> {
-    if types.is_empty() {
+fn encode(
+    client: &InnerClient,
+    name: &str,
+    query: &str,
+    param_oids: &[Oid],
+) -> Result<Bytes, Error> {
+    if param_oids.is_empty() {
         debug!("preparing query {name}: {query}");
     } else {
-        debug!("preparing query {name} with types {types:?}: {query}");
+        debug!("preparing query {name} with type OIDs {param_oids:?}: {query}");
     }
 
+    let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
     client.with_buf(|buf| {
-        frontend::parse(name, query, types.iter().map(Type::oid), buf).map_err(Error::encode)?;
+        frontend::parse(name, &query, param_oids.iter().copied(), buf).map_err(Error::encode)?;
         frontend::describe(b'S', name, buf).map_err(Error::encode)?;
         frontend::sync(buf);
         Ok(buf.split().freeze())
@@ -133,11 +148,25 @@ fn encode(client: &InnerClient, name: &str, query: &str, types: &[Type]) -> Resu
 }
 
 pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type, Error> {
-    if let Some(type_) = Type::from_oid(oid) {
+    if oid == 0 {
+        return Ok(Type::UNKNOWN);
+    }
+
+    let type_system = client.type_system();
+
+    // A compatibility overlay may intentionally reuse an OID occupied by a
+    // PostgreSQL catalog type in another type system (for example SQL Server
+    // nchar/money). Resolve the active mode's extension first; shared types
+    // fall through to the single PostgreSQL table below.
+    if let Some(type_) = Type::from_oid_in(type_system, oid) {
         return Ok(type_);
     }
 
-    if let Some(type_) = client.type_(oid) {
+    if let Some(type_) = Type::from_pg_oid(oid) {
+        return Ok(type_);
+    }
+
+    if let Some(type_) = client.type_(type_system, oid) {
         return Ok(type_);
     }
 
@@ -158,9 +187,21 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     let schema: String = row.try_get(5)?;
     let relid: Oid = row.try_get(6)?;
 
+    let compatible_mode = client.compatible_mode();
     let kind = if type_ == b'e' as i8 {
         let variants = get_enum_variants(client, oid).await?;
         Kind::Enum(variants)
+    } else if compatible_mode == crate::client::CompatibleMode::Mysql
+        && type_ == b'l' as i8
+        && name.starts_with("Enum_")
+    {
+        let variants = get_enum_variants(client, oid).await?;
+        Kind::MySqlEnum(variants)
+    } else if compatible_mode == crate::client::CompatibleMode::Mysql
+        && type_ == b'y' as i8
+        && name.starts_with("Set_")
+    {
+        Kind::MySqlSet
     } else if type_ == b'p' as i8 {
         Kind::Pseudo
     } else if basetype != 0 {
@@ -180,7 +221,7 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     };
 
     let type_ = Type::new(name, oid, kind, schema);
-    client.set_type(oid, &type_);
+    client.set_type(type_system, oid, &type_);
 
     Ok(type_)
 }
