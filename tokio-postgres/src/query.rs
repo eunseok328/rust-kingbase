@@ -1,8 +1,8 @@
-use crate::client::{InnerClient, Responses};
+use crate::client::{CompatibleMode, InnerClient, Responses};
 use crate::codec::FrontendMessage;
 use crate::connection::RequestMessages;
 use crate::prepare::get_type;
-use crate::types::{BorrowToSql, IsNull};
+use crate::types::{BorrowToSql, IsNull, Kind, TypeSystem};
 use crate::{Column, Error, Portal, Row, Statement};
 use bytes::{Bytes, BytesMut};
 use fallible_iterator::FallibleIterator;
@@ -40,6 +40,37 @@ where
     I: IntoIterator<Item = P>,
     I::IntoIter: ExactSizeIterator,
 {
+    query_with_result_format(client, statement, params, false).await
+}
+
+pub async fn query_text<P, I>(
+    client: &InnerClient,
+    statement: Statement,
+    params: I,
+) -> Result<RowStream, Error>
+where
+    P: BorrowToSql,
+    I: IntoIterator<Item = P>,
+    I::IntoIter: ExactSizeIterator,
+{
+    // Keep known PostgreSQL and mode-extension types in binary format. The
+    // adaptive formatter only requests text for unknown Kingbase simple types.
+    query_with_result_format(client, statement, params, true).await
+}
+
+async fn query_with_result_format<P, I>(
+    client: &InnerClient,
+    statement: Statement,
+    params: I,
+    adaptive_text: bool,
+) -> Result<RowStream, Error>
+where
+    P: BorrowToSql,
+    I: IntoIterator<Item = P>,
+    I::IntoIter: ExactSizeIterator,
+{
+    let (result_formats, text_columns) =
+        result_formats(client.type_system(), &statement, adaptive_text);
     let buf = if log_enabled!(Level::Debug) {
         let params = params.into_iter().collect::<Vec<_>>();
         debug!(
@@ -47,15 +78,16 @@ where
             statement.name(),
             BorrowToSqlParamsDebug(params.as_slice()),
         );
-        encode(client, &statement, params)?
+        encode(client, &statement, params, result_formats.clone())?
     } else {
-        encode(client, &statement, params)?
+        encode(client, &statement, params, result_formats)?
     };
     let responses = start(client, buf).await?;
     Ok(RowStream {
         statement,
         responses,
         rows_affected: None,
+        text_columns,
     })
 }
 
@@ -70,11 +102,15 @@ where
 {
     let buf = {
         let params = params.into_iter().collect::<Vec<_>>();
-        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
+        let param_oids = params
+            .iter()
+            .map(|(_, type_)| type_.oid())
+            .collect::<Vec<_>>();
 
+        let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
         client.with_buf(|buf| {
-            frontend::parse("", query, param_oids, buf).map_err(Error::parse)?;
-            encode_bind_raw("", params, "", buf)?;
+            frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
+            encode_bind_raw("", params, "", vec![1], false, buf)?;
             frontend::describe(b'S', "", buf).map_err(Error::encode)?;
             frontend::execute("", 0, buf).map_err(Error::encode)?;
             frontend::sync(buf);
@@ -93,6 +129,7 @@ where
                     statement: Statement::unnamed(vec![], vec![]),
                     responses,
                     rows_affected: None,
+                    text_columns: Arc::from([]),
                 });
             }
             Message::RowDescription(row_description) => {
@@ -109,10 +146,12 @@ where
                     };
                     columns.push(column);
                 }
+                let column_count = columns.len();
                 return Ok(RowStream {
                     statement: Statement::unnamed(vec![], columns),
                     responses,
                     rows_affected: None,
+                    text_columns: Arc::from(vec![false; column_count]),
                 });
             }
             _ => return Err(Error::unexpected_message()),
@@ -131,11 +170,15 @@ where
 {
     let buf = {
         let params = params.into_iter().collect::<Vec<_>>();
-        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
+        let param_oids = params
+            .iter()
+            .map(|(_, type_)| type_.oid())
+            .collect::<Vec<_>>();
 
+        let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
         client.with_buf(|buf| {
-            frontend::parse("", query, param_oids, buf).map_err(Error::parse)?;
-            encode_bind_raw("", params, "", buf)?;
+            frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
+            encode_bind_raw("", params, "", vec![1], false, buf)?;
             frontend::describe(b'S', "", buf).map_err(Error::encode)?;
             frontend::execute("", 0, buf).map_err(Error::encode)?;
             frontend::sync(buf);
@@ -189,6 +232,7 @@ pub async fn query_portal(
         statement: portal.statement().clone(),
         responses,
         rows_affected: None,
+        text_columns: Arc::from(vec![false; portal.statement().columns().len()]),
     })
 }
 
@@ -222,9 +266,9 @@ where
             statement.name(),
             BorrowToSqlParamsDebug(params.as_slice()),
         );
-        encode(client, &statement, params)?
+        encode(client, &statement, params, vec![1])?
     } else {
-        encode(client, &statement, params)?
+        encode(client, &statement, params, vec![1])?
     };
     let mut responses = start(client, buf).await?;
 
@@ -253,14 +297,26 @@ async fn start(client: &InnerClient, buf: Bytes) -> Result<Responses, Error> {
     Ok(responses)
 }
 
-pub fn encode<P, I>(client: &InnerClient, statement: &Statement, params: I) -> Result<Bytes, Error>
+pub fn encode<P, I>(
+    client: &InnerClient,
+    statement: &Statement,
+    params: I,
+    result_formats: Vec<i16>,
+) -> Result<Bytes, Error>
 where
     P: BorrowToSql,
     I: IntoIterator<Item = P>,
     I::IntoIter: ExactSizeIterator,
 {
     client.with_buf(|buf| {
-        encode_bind(statement, params, "", buf)?;
+        encode_bind(
+            statement,
+            params,
+            "",
+            result_formats,
+            client.compatible_mode() == CompatibleMode::Mysql,
+            buf,
+        )?;
         frontend::execute("", 0, buf).map_err(Error::encode)?;
         frontend::sync(buf);
         Ok(buf.split().freeze())
@@ -271,6 +327,8 @@ pub fn encode_bind<P, I>(
     statement: &Statement,
     params: I,
     portal: &str,
+    result_formats: Vec<i16>,
+    allow_text_fallback: bool,
     buf: &mut BytesMut,
 ) -> Result<(), Error>
 where
@@ -287,6 +345,8 @@ where
         statement.name(),
         params.zip(statement.params().iter().cloned()),
         portal,
+        result_formats,
+        allow_text_fallback,
         buf,
     )
 }
@@ -295,6 +355,8 @@ fn encode_bind_raw<P, I>(
     statement_name: &str,
     params: I,
     portal: &str,
+    result_formats: Vec<i16>,
+    allow_text_fallback: bool,
     buf: &mut BytesMut,
 ) -> Result<(), Error>
 where
@@ -304,7 +366,20 @@ where
 {
     let (param_formats, params): (Vec<_>, Vec<_>) = params
         .into_iter()
-        .map(|(p, ty)| (p.borrow_to_sql().encode_format(&ty) as i16, (p, ty)))
+        .map(|(param, type_)| {
+            let use_text_fallback = allow_text_fallback
+                && matches!(type_, Type::TEXT | Type::UNKNOWN)
+                && !param.borrow_to_sql().accepts_type(&type_)
+                && param.borrow_to_sql().supports_text_fallback(&type_);
+            (
+                if use_text_fallback {
+                    postgres_types::Format::Text as i16
+                } else {
+                    param.borrow_to_sql().encode_format(&type_) as i16
+                },
+                (param, type_, use_text_fallback),
+            )
+        })
         .unzip();
 
     let mut error_idx = 0;
@@ -313,15 +388,19 @@ where
         statement_name,
         param_formats,
         params.into_iter().enumerate(),
-        |(idx, (param, ty)), buf| match param.borrow_to_sql().to_sql_checked(&ty, buf) {
+        |(idx, (param, type_, use_text_fallback)), buf| match if use_text_fallback {
+            param.borrow_to_sql().to_sql_text_fallback(&type_, buf)
+        } else {
+            param.borrow_to_sql().to_sql_checked(&type_, buf)
+        } {
             Ok(IsNull::No) => Ok(postgres_protocol::IsNull::No),
             Ok(IsNull::Yes) => Ok(postgres_protocol::IsNull::Yes),
-            Err(e) => {
+            Err(error) => {
                 error_idx = idx;
-                Err(e)
+                Err(error)
             }
         },
-        Some(1),
+        result_formats,
         buf,
     );
     match r {
@@ -331,13 +410,40 @@ where
     }
 }
 
+fn result_formats(
+    type_system: TypeSystem,
+    statement: &Statement,
+    adaptive_text: bool,
+) -> (Vec<i16>, Arc<[bool]>) {
+    let mut text_columns = vec![false; statement.columns().len()];
+
+    if adaptive_text && type_system != TypeSystem::Pg {
+        let mut formats = Vec::with_capacity(statement.columns().len());
+        for (idx, column) in statement.columns().iter().enumerate() {
+            let ty = column.type_();
+            if ty.type_system().is_none() && matches!(ty.kind(), Kind::Simple) {
+                text_columns[idx] = true;
+                formats.push(0);
+            } else {
+                formats.push(1);
+            }
+        }
+        if text_columns.iter().any(|text| *text) {
+            return (formats, Arc::from(text_columns));
+        }
+    }
+
+    (vec![1], Arc::from(text_columns))
+}
+
 pin_project! {
     /// A stream of table rows.
     #[project(!Unpin)]
-    pub struct RowStream {
+pub struct RowStream {
         statement: Statement,
         responses: Responses,
         rows_affected: Option<u64>,
+        text_columns: Arc<[bool]>,
     }
 }
 
@@ -349,7 +455,11 @@ impl Stream for RowStream {
         loop {
             match ready!(this.responses.poll_next(cx)?) {
                 Message::DataRow(body) => {
-                    return Poll::Ready(Some(Ok(Row::new(this.statement.clone(), body)?)));
+                    return Poll::Ready(Some(Ok(Row::new(
+                        this.statement.clone(),
+                        body,
+                        this.text_columns.clone(),
+                    )?)));
                 }
                 Message::CommandComplete(body) => {
                     *this.rows_affected = Some(extract_row_affected(&body)?);

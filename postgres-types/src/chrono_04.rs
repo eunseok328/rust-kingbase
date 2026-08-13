@@ -22,7 +22,13 @@ impl<'a> FromSql<'a> for NaiveDateTime {
             .ok_or_else(|| "value too large to decode".into())
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(
+        TIMESTAMP,
+        MYSQL_DATETIME,
+        MYSQL_SYS_TIMESTAMP,
+        SQLSERVER_DATETIME,
+        SQLSERVER_SMALLDATETIME
+    );
 }
 
 impl ToSql for NaiveDateTime {
@@ -35,7 +41,13 @@ impl ToSql for NaiveDateTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIMESTAMP);
+    accepts!(
+        TIMESTAMP,
+        MYSQL_DATETIME,
+        MYSQL_SYS_TIMESTAMP,
+        SQLSERVER_DATETIME,
+        SQLSERVER_SMALLDATETIME
+    );
     to_sql_checked!();
 }
 
@@ -117,7 +129,7 @@ impl<'a> FromSql<'a> for NaiveDate {
             .ok_or_else(|| "value too large to decode".into())
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
 }
 
 impl ToSql for NaiveDate {
@@ -129,7 +141,7 @@ impl ToSql for NaiveDate {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE);
+    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
     to_sql_checked!();
 }
 
@@ -139,7 +151,7 @@ impl<'a> FromSql<'a> for NaiveTime {
         Ok(NaiveTime::from_hms_opt(0, 0, 0).unwrap() + Duration::microseconds(usec))
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_SYS_TIME);
 }
 
 impl ToSql for NaiveTime {
@@ -153,6 +165,6 @@ impl ToSql for NaiveTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME);
+    accepts!(TIME, MYSQL_SYS_TIME);
     to_sql_checked!();
 }

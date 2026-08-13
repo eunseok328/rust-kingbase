@@ -208,7 +208,7 @@ pub use postgres_protocol::Oid;
 pub use pg_lsn::PgLsn;
 
 pub use crate::special::{Date, Timestamp};
-use bytes::BytesMut;
+use bytes::{Buf, BufMut, BytesMut};
 
 // Number of seconds from 1970-01-01 to 2000-01-01
 const TIME_SEC_CONVERSION: u64 = 946_684_800;
@@ -221,7 +221,7 @@ const NSEC_PER_USEC: u64 = 1_000;
 macro_rules! accepts {
     ($($expected:ident),+) => (
         fn accepts(ty: &$crate::Type) -> bool {
-            matches!(*ty, $($crate::Type::$expected)|+)
+            false $(|| ty.is_equivalent_to(&$crate::Type::$expected))+
         }
     )
 }
@@ -232,6 +232,10 @@ macro_rules! accepts {
 #[macro_export]
 macro_rules! to_sql_checked {
     () => {
+        fn accepts_type(&self, ty: &$crate::Type) -> bool {
+            <Self as $crate::ToSql>::accepts(ty)
+        }
+
         fn to_sql_checked(
             &self,
             ty: &$crate::Type,
@@ -262,6 +266,8 @@ where
     v.to_sql(ty, out)
 }
 
+#[cfg(feature = "with-bigdecimal-0_4")]
+mod bigdecimal_04;
 #[cfg(feature = "with-bit-vec-0_6")]
 mod bit_vec_06;
 #[cfg(feature = "with-bit-vec-0_7")]
@@ -305,13 +311,31 @@ mod uuid_1;
 #[cfg(feature = "with-time-0_2")]
 extern crate time_02 as time;
 
+pub mod kingbase;
+mod mysql_type_gen;
+mod oracle_type_gen;
 mod pg_lsn;
+mod pg_type_gen;
 #[doc(hidden)]
 pub mod private;
 mod special;
+mod sqlserver_type_gen;
 mod type_gen;
 
-/// A Postgres type.
+/// A KingbaseES wire-protocol type table.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TypeSystem {
+    /// PostgreSQL-compatible type table.
+    Pg,
+    /// KingbaseES MySQL-compatible type table.
+    Mysql,
+    /// KingbaseES Oracle-compatible type table.
+    Oracle,
+    /// KingbaseES SQL Server-compatible type table.
+    SqlServer,
+}
+
+/// A KingbaseES type.
 #[derive(PartialEq, Eq, Clone, Hash)]
 pub struct Type(Inner);
 
@@ -345,7 +369,94 @@ impl Type {
     /// Returns the `Type` corresponding to the provided `Oid` if it
     /// corresponds to a built-in type.
     pub fn from_oid(oid: Oid) -> Option<Type> {
-        Inner::from_oid(oid).map(Type)
+        Type::from_pg_oid(oid)
+    }
+
+    /// Returns the PostgreSQL-compatible built-in type for an OID.
+    pub fn from_pg_oid(oid: Oid) -> Option<Type> {
+        pg_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Pg(inner)))
+    }
+
+    /// Returns the built-in `Type` for an `Oid` in a specific type system.
+    pub fn from_oid_in(type_system: TypeSystem, oid: Oid) -> Option<Type> {
+        match type_system {
+            TypeSystem::Pg => Self::from_pg_oid(oid),
+            // Compatibility extensions are checked first. Some Kingbase
+            // modes intentionally reuse OIDs that are assigned to unrelated
+            // PostgreSQL catalog types, so PG-first lookup would misclassify
+            // those values. Shared types then fall back to the PG table.
+            TypeSystem::Mysql => mysql_type_gen::Inner::from_oid(oid)
+                .map(|inner| Type(Inner::Mysql(inner)))
+                .or_else(|| Self::from_pg_oid(oid)),
+            TypeSystem::Oracle => oracle_type_gen::Inner::from_oid(oid)
+                .map(|inner| Type(Inner::Oracle(inner)))
+                .or_else(|| Self::from_pg_oid(oid)),
+            TypeSystem::SqlServer => sqlserver_type_gen::Inner::from_oid(oid)
+                .map(|inner| Type(Inner::SqlServer(inner)))
+                .or_else(|| Self::from_pg_oid(oid)),
+        }
+    }
+
+    /// Returns the KingbaseES MySQL-compatible built-in type for an OID.
+    pub fn from_mysql_oid(oid: Oid) -> Option<Type> {
+        mysql_type_gen::Inner::from_oid(oid)
+            .map(|inner| Type(Inner::Mysql(inner)))
+            .or_else(|| Self::from_pg_oid(oid))
+    }
+
+    /// Returns the KingbaseES Oracle-compatible built-in type for an OID.
+    pub fn from_oracle_oid(oid: Oid) -> Option<Type> {
+        oracle_type_gen::Inner::from_oid(oid)
+            .map(|inner| Type(Inner::Oracle(inner)))
+            .or_else(|| Self::from_pg_oid(oid))
+    }
+
+    /// Returns the KingbaseES SQL Server-compatible built-in type for an OID.
+    pub fn from_sqlserver_oid(oid: Oid) -> Option<Type> {
+        sqlserver_type_gen::Inner::from_oid(oid)
+            .map(|inner| Type(Inner::SqlServer(inner)))
+            .or_else(|| Self::from_pg_oid(oid))
+    }
+
+    /// Returns the `Type` corresponding to the provided KingbaseES MySQL-compatible
+    /// `Oid` if it corresponds to a built-in type in that compatibility mode.
+    ///
+    /// This intentionally does not affect [`Type::from_oid`], which remains scoped
+    /// to PostgreSQL built-in types. PostgreSQL built-ins are shared by every
+    /// compatibility mode and are therefore not duplicated in this extension table.
+    pub fn from_kingbase_mysql_oid(oid: Oid) -> Option<Type> {
+        mysql_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Mysql(inner)))
+    }
+
+    /// Returns only a KingbaseES Oracle-compatible extension type for an OID.
+    pub fn from_kingbase_oracle_oid(oid: Oid) -> Option<Type> {
+        oracle_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Oracle(inner)))
+    }
+
+    /// Returns the `Type` corresponding to the provided KingbaseES SQL Server-compatible
+    /// `Oid` if it corresponds to a built-in type in that compatibility mode.
+    pub fn from_kingbase_sqlserver_oid(oid: Oid) -> Option<Type> {
+        sqlserver_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::SqlServer(inner)))
+    }
+
+    /// Returns the built-in type system this type belongs to, if known.
+    pub fn type_system(&self) -> Option<TypeSystem> {
+        match self.0 {
+            Inner::Pg(_) => Some(TypeSystem::Pg),
+            Inner::Mysql(_) => Some(TypeSystem::Mysql),
+            Inner::Oracle(_) => Some(TypeSystem::Oracle),
+            Inner::SqlServer(_) => Some(TypeSystem::SqlServer),
+            Inner::Other(_) => None,
+        }
+    }
+
+    /// Returns true when this type can use the same Rust conversion as `expected`.
+    pub fn is_equivalent_to(&self, expected: &Type) -> bool {
+        if self == expected {
+            return true;
+        }
+
+        matches!(self.kind(), Kind::Domain(base) if base.is_equivalent_to(expected))
     }
 
     /// Returns the OID of the `Type`.
@@ -360,10 +471,7 @@ impl Type {
 
     /// Returns the schema of this type.
     pub fn schema(&self) -> &str {
-        match self.0 {
-            Inner::Other(ref u) => &u.schema,
-            _ => "pg_catalog",
-        }
+        self.0.schema()
     }
 
     /// Returns the name of this type.
@@ -380,6 +488,13 @@ pub enum Kind {
     Simple,
     /// An enumerated type along with its variants.
     Enum(Vec<String>),
+    /// A KingbaseES MySQL-compatible dynamic `ENUM` type along with its variants.
+    MySqlEnum(Vec<String>),
+    /// A KingbaseES MySQL-compatible dynamic `SET` type.
+    ///
+    /// The server represents a value as text that may contain multiple labels.
+    /// Its catalog entry does not expose the declared label set through `pg_enum`.
+    MySqlSet,
     /// A pseudo-type.
     Pseudo,
     /// An array type along with the type of its elements.
@@ -683,7 +798,13 @@ impl<'a> FromSql<'a> for Vec<u8> {
         Ok(types::bytea_from_sql(raw).to_owned())
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        SQLSERVER_BINARY,
+        SQLSERVER_VARBINARY
+    );
 }
 
 impl<'a> FromSql<'a> for &'a [u8] {
@@ -691,7 +812,13 @@ impl<'a> FromSql<'a> for &'a [u8] {
         Ok(types::bytea_from_sql(raw))
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        SQLSERVER_BINARY,
+        SQLSERVER_VARBINARY
+    );
 }
 
 impl<'a> FromSql<'a> for String {
@@ -727,18 +854,25 @@ impl<'a> FromSql<'a> for &'a str {
     }
 
     fn accepts(ty: &Type) -> bool {
-        match *ty {
-            Type::VARCHAR | Type::TEXT | Type::BPCHAR | Type::NAME | Type::UNKNOWN => true,
-            ref ty
-                if (ty.name() == "citext"
-                    || ty.name() == "ltree"
-                    || ty.name() == "lquery"
-                    || ty.name() == "ltxtquery") =>
-            {
-                true
-            }
-            _ => false,
-        }
+        ty.is_equivalent_to(&Type::VARCHAR)
+            || ty.is_equivalent_to(&Type::TEXT)
+            || ty.is_equivalent_to(&Type::BPCHAR)
+            || ty.is_equivalent_to(&Type::NAME)
+            || ty.is_equivalent_to(&Type::UNKNOWN)
+            || ty.is_equivalent_to(&Type::MYSQL_BPCHARBYTE)
+            || ty.is_equivalent_to(&Type::MYSQL_VARCHARBYTE)
+            || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
+            || ty == &Type::SQLSERVER_NVARCHAR
+            || ty == &Type::SQLSERVER_NCHAR
+            || ty == &Type::SQLSERVER_BPCHARBYTE
+            || ty == &Type::SQLSERVER_VARCHARBYTE
+            || ty == &Type::SQLSERVER_SYSNAME
+            || ty == &Type::ORACLE_BFILE
+            || ty == &Type::XML
+            || ty == &Type::MYSQL_XML
+            || ty == &Type::ORACLE_XML
+            || ty == &Type::SQLSERVER_XML
+            || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
     }
 }
 
@@ -764,12 +898,114 @@ macro_rules! simple_from {
     }
 }
 
-simple_from!(bool, bool_from_sql, BOOL);
-simple_from!(i8, char_from_sql, CHAR);
+fn numeric_to_i64(mut raw: &[u8]) -> Result<i64, Box<dyn Error + Sync + Send>> {
+    const SIGN_POS: u16 = 0x0000;
+    const SIGN_NEG: u16 = 0x4000;
+    const SIGN_NAN: u16 = 0xC000;
+
+    if raw.len() < 8 {
+        return Err("invalid NUMERIC value".into());
+    }
+
+    let ndigits = raw.get_i16();
+    let weight = raw.get_i16();
+    let sign = raw.get_u16();
+    let dscale = raw.get_i16();
+
+    if ndigits < 0 || dscale < 0 || raw.len() != ndigits as usize * 2 {
+        return Err("invalid NUMERIC value".into());
+    }
+    if sign == SIGN_NAN {
+        return Err("NaN NUMERIC values cannot be decoded as i64".into());
+    }
+    if sign != SIGN_POS && sign != SIGN_NEG {
+        return Err("invalid NUMERIC sign".into());
+    }
+
+    let mut digits = Vec::with_capacity(ndigits as usize);
+    for _ in 0..ndigits {
+        let digit = raw.get_i16();
+        if !(0..10000).contains(&digit) {
+            return Err("invalid NUMERIC digit".into());
+        }
+        digits.push(digit);
+    }
+
+    if digits.is_empty() {
+        return Ok(0);
+    }
+
+    let integer_groups =
+        usize::try_from((i32::from(weight) + 1).max(0)).map_err(|_| "invalid NUMERIC weight")?;
+    if digits
+        .get(integer_groups..)
+        .unwrap_or_default()
+        .iter()
+        .any(|&digit| digit != 0)
+    {
+        return Err("NUMERIC value is not an integer".into());
+    }
+
+    let limit = if sign == SIGN_NEG {
+        1_u64 << 63
+    } else {
+        i64::MAX as u64
+    };
+    let mut magnitude = 0_u64;
+    for index in 0..integer_groups {
+        let digit = digits.get(index).copied().unwrap_or(0) as u64;
+        magnitude = magnitude
+            .checked_mul(10_000)
+            .and_then(|value| value.checked_add(digit))
+            .filter(|&value| value <= limit)
+            .ok_or("NUMERIC value out of range for i64")?;
+    }
+
+    if sign == SIGN_NEG {
+        if magnitude == 1_u64 << 63 {
+            Ok(i64::MIN)
+        } else {
+            Ok(-(magnitude as i64))
+        }
+    } else {
+        Ok(magnitude as i64)
+    }
+}
+
+simple_from!(bool, bool_from_sql, BOOL, SQLSERVER_SYS_BIT);
+simple_from!(i8, char_from_sql, CHAR, MYSQL_TINYINT);
 simple_from!(i16, int2_from_sql, INT2);
-simple_from!(i32, int4_from_sql, INT4);
-simple_from!(u32, oid_from_sql, OID);
-simple_from!(i64, int8_from_sql, INT8);
+impl<'a> FromSql<'a> for i32 {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<i32, Box<dyn Error + Sync + Send>> {
+        types::int4_from_sql(raw)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty.is_equivalent_to(&Type::INT4) || ty.is_equivalent_to(&Type::MYSQL_YEAR)
+    }
+}
+simple_from!(u32, oid_from_sql, OID, MYSQL_UINT4);
+impl<'a> FromSql<'a> for u64 {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<u64, Box<dyn Error + Sync + Send>> {
+        let bytes: [u8; 8] = raw
+            .try_into()
+            .map_err(|_| format!("invalid mysql uint8 length: {}", raw.len()))?;
+        Ok(u64::from_be_bytes(bytes))
+    }
+
+    accepts!(MYSQL_UINT8);
+}
+impl<'a> FromSql<'a> for i64 {
+    fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<i64, Box<dyn Error + Sync + Send>> {
+        if ty.is_equivalent_to(&Type::NUMERIC) {
+            return numeric_to_i64(raw);
+        }
+
+        types::int8_from_sql(raw)
+    }
+
+    accepts!(INT8, NUMERIC);
+}
 simple_from!(f32, float4_from_sql, FLOAT4);
 simple_from!(f64, float8_from_sql, FLOAT8);
 
@@ -812,7 +1048,14 @@ impl<'a> FromSql<'a> for SystemTime {
         Ok(time)
     }
 
-    accepts!(TIMESTAMP, TIMESTAMPTZ);
+    accepts!(
+        TIMESTAMP,
+        TIMESTAMPTZ,
+        MYSQL_DATETIME,
+        MYSQL_SYS_TIMESTAMP,
+        SQLSERVER_DATETIME,
+        SQLSERVER_SMALLDATETIME
+    );
 }
 
 impl<'a> FromSql<'a> for IpAddr {
@@ -932,9 +1175,39 @@ pub trait ToSql: fmt::Debug {
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>>;
 
+    /// Object-safe bridge to `accepts` used by the bind encoder.
+    #[doc(hidden)]
+    fn accepts_type(&self, _ty: &Type) -> bool {
+        false
+    }
+
     /// Specify the encode format
     fn encode_format(&self, _ty: &Type) -> Format {
         Format::Binary
+    }
+
+    /// Returns whether this value has an explicit textual representation for
+    /// a server-inferred parameter type.
+    ///
+    /// This is an internal Kingbase compatibility hook. Normal PostgreSQL
+    /// encoding continues to use `accepts`, `to_sql_checked`, and
+    /// `encode_format`.
+    #[doc(hidden)]
+    fn supports_text_fallback(&self, _ty: &Type) -> bool {
+        false
+    }
+
+    /// Encodes this value using its textual representation.
+    ///
+    /// Callers must first check `supports_text_fallback` and must select the
+    /// text format code in the bind message.
+    #[doc(hidden)]
+    fn to_sql_text_fallback(
+        &self,
+        _ty: &Type,
+        _out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        Err("text parameter fallback is not supported for this Rust type".into())
     }
 }
 
@@ -969,6 +1242,18 @@ where
         (*self).encode_format(ty)
     }
 
+    fn supports_text_fallback(&self, ty: &Type) -> bool {
+        (*self).supports_text_fallback(ty)
+    }
+
+    fn to_sql_text_fallback(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        (*self).to_sql_text_fallback(ty, out)
+    }
+
     to_sql_checked!();
 }
 
@@ -992,6 +1277,24 @@ impl<T: ToSql> ToSql for Option<T> {
         match self {
             Some(val) => val.encode_format(ty),
             None => Format::Binary,
+        }
+    }
+
+    fn supports_text_fallback(&self, ty: &Type) -> bool {
+        match self {
+            Some(val) => val.supports_text_fallback(ty),
+            None => false,
+        }
+    }
+
+    fn to_sql_text_fallback(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        match self {
+            Some(val) => val.to_sql_text_fallback(ty, out),
+            None => Ok(IsNull::Yes),
         }
     }
 
@@ -1045,7 +1348,13 @@ impl ToSql for &[u8] {
         Ok(IsNull::No)
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        SQLSERVER_BINARY,
+        SQLSERVER_VARBINARY
+    );
 
     to_sql_checked!();
 }
@@ -1057,7 +1366,13 @@ impl<const N: usize> ToSql for [u8; N] {
         Ok(IsNull::No)
     }
 
-    accepts!(BYTEA);
+    accepts!(
+        BYTEA,
+        MYSQL_BINARY,
+        MYSQL_VARBINARY,
+        SQLSERVER_BINARY,
+        SQLSERVER_VARBINARY
+    );
 
     to_sql_checked!();
 }
@@ -1094,6 +1409,18 @@ impl<T: ToSql> ToSql for Box<T> {
 
     fn accepts(ty: &Type) -> bool {
         <&T as ToSql>::accepts(ty)
+    }
+
+    fn supports_text_fallback(&self, ty: &Type) -> bool {
+        (**self).supports_text_fallback(ty)
+    }
+
+    fn to_sql_text_fallback(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        (**self).to_sql_text_fallback(ty, out)
     }
 
     to_sql_checked!();
@@ -1147,10 +1474,27 @@ impl ToSql for &str {
     }
 
     fn accepts(ty: &Type) -> bool {
-        matches!(
-            *ty,
-            Type::VARCHAR | Type::TEXT | Type::BPCHAR | Type::NAME | Type::UNKNOWN
-        ) || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
+        ty.is_equivalent_to(&Type::VARCHAR)
+            || ty.is_equivalent_to(&Type::TEXT)
+            || ty.is_equivalent_to(&Type::BPCHAR)
+            || ty.is_equivalent_to(&Type::NAME)
+            || ty.is_equivalent_to(&Type::UNKNOWN)
+            || ty.is_equivalent_to(&Type::MYSQL_BPCHARBYTE)
+            || ty.is_equivalent_to(&Type::MYSQL_VARCHARBYTE)
+            || ty.is_equivalent_to(&Type::ORACLE_BPCHARBYTE)
+            || ty.is_equivalent_to(&Type::ORACLE_VARCHARBYTE)
+            || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
+            || ty == &Type::SQLSERVER_NVARCHAR
+            || ty == &Type::SQLSERVER_NCHAR
+            || ty == &Type::SQLSERVER_BPCHARBYTE
+            || ty == &Type::SQLSERVER_VARCHARBYTE
+            || ty == &Type::SQLSERVER_SYSNAME
+            || ty == &Type::ORACLE_BFILE
+            || ty == &Type::XML
+            || ty == &Type::MYSQL_XML
+            || ty == &Type::ORACLE_XML
+            || ty == &Type::SQLSERVER_XML
+            || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
     }
 
     to_sql_checked!();
@@ -1210,13 +1554,122 @@ macro_rules! simple_to {
     }
 }
 
-simple_to!(bool, bool_to_sql, BOOL);
-simple_to!(i8, char_to_sql, CHAR);
-simple_to!(i16, int2_to_sql, INT2);
-simple_to!(i32, int4_to_sql, INT4);
-simple_to!(u32, oid_to_sql, OID);
-simple_to!(i64, int8_to_sql, INT8);
-simple_to!(f32, float4_to_sql, FLOAT4);
+fn supports_text_parameter_fallback(ty: &Type) -> bool {
+    ty == &Type::TEXT || ty == &Type::UNKNOWN
+}
+
+fn to_sql_text_parameter<T>(value: T, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>>
+where
+    T: fmt::Display,
+{
+    out.extend_from_slice(value.to_string().as_bytes());
+    Ok(IsNull::No)
+}
+
+macro_rules! simple_to_with_text_fallback {
+    ($t:ty, $f:ident, $($expected:ident),+) => {
+        impl ToSql for $t {
+            fn to_sql(&self,
+                      _: &Type,
+                      w: &mut BytesMut)
+                      -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+                types::$f(*self, w);
+                Ok(IsNull::No)
+            }
+
+            accepts!($($expected),+);
+
+            fn supports_text_fallback(&self, ty: &Type) -> bool {
+                supports_text_parameter_fallback(ty)
+            }
+
+            fn to_sql_text_fallback(
+                &self,
+                _: &Type,
+                out: &mut BytesMut,
+            ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+                to_sql_text_parameter(*self, out)
+            }
+
+            to_sql_checked!();
+        }
+    }
+}
+
+simple_to!(bool, bool_to_sql, BOOL, SQLSERVER_SYS_BIT);
+simple_to_with_text_fallback!(i8, char_to_sql, CHAR, MYSQL_TINYINT);
+simple_to_with_text_fallback!(i16, int2_to_sql, INT2);
+impl ToSql for i32 {
+    fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        types::int4_to_sql(*self, w);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty.is_equivalent_to(&Type::INT4) || ty.is_equivalent_to(&Type::MYSQL_YEAR)
+    }
+
+    fn supports_text_fallback(&self, ty: &Type) -> bool {
+        supports_text_parameter_fallback(ty)
+    }
+
+    fn to_sql_text_fallback(
+        &self,
+        _: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        to_sql_text_parameter(*self, out)
+    }
+
+    to_sql_checked!();
+}
+simple_to!(u32, oid_to_sql, OID, MYSQL_UINT4);
+impl ToSql for u64 {
+    fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        w.put_u64(*self);
+        Ok(IsNull::No)
+    }
+
+    accepts!(MYSQL_UINT8);
+
+    to_sql_checked!();
+}
+simple_to_with_text_fallback!(i64, int8_to_sql, INT8);
+
+macro_rules! simple_float_to_with_text_fallback {
+    ($t:ty, $f:ident, $expected:ident) => {
+        impl ToSql for $t {
+            fn to_sql(&self,
+                      _: &Type,
+                      w: &mut BytesMut)
+                      -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+                types::$f(*self, w);
+                Ok(IsNull::No)
+            }
+
+            accepts!($expected);
+
+            fn supports_text_fallback(&self, ty: &Type) -> bool {
+                self.is_finite() && supports_text_parameter_fallback(ty)
+            }
+
+            fn to_sql_text_fallback(
+                &self,
+                _: &Type,
+                out: &mut BytesMut,
+            ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+                to_sql_text_parameter(*self, out)
+            }
+
+            to_sql_checked!();
+        }
+    }
+}
+
+simple_float_to_with_text_fallback!(f32, float4_to_sql, FLOAT4);
+// Kingbase MySQL mode compares TEXT parameters against DOUBLE values as text
+// in range predicates. Keep f64 on the normal binary-only path rather than
+// silently returning an incorrect result.
 simple_to!(f64, float8_to_sql, FLOAT8);
 
 impl<H> ToSql for HashMap<String, Option<String>, H>
@@ -1254,7 +1707,14 @@ impl ToSql for SystemTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIMESTAMP, TIMESTAMPTZ);
+    accepts!(
+        TIMESTAMP,
+        TIMESTAMPTZ,
+        MYSQL_DATETIME,
+        MYSQL_SYS_TIMESTAMP,
+        SQLSERVER_DATETIME,
+        SQLSERVER_SMALLDATETIME
+    );
 
     to_sql_checked!();
 }

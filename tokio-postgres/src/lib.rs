@@ -125,7 +125,11 @@
 #![warn(rust_2018_idioms, clippy::all, missing_docs)]
 
 pub use crate::cancel_token::CancelToken;
-pub use crate::client::Client;
+// ═══════════════════ [修改开始] KingbaseES 导出连接级兼容模式 ═══════════════════
+// 原代码保留：
+// pub use crate::client::Client;
+pub use crate::client::{Client, CompatibleMode};
+// ═══════════════════ [修改结束] KingbaseES 导出连接级兼容模式 ═══════════════════
 pub use crate::config::Config;
 pub use crate::connection::Connection;
 pub use crate::copy_in::CopyInSink;
@@ -180,6 +184,7 @@ pub mod row;
 mod simple_query;
 #[cfg(feature = "runtime")]
 mod socket;
+mod sql_compat;
 mod statement;
 pub mod tls;
 mod to_statement;
