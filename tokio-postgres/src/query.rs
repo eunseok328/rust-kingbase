@@ -1,4 +1,4 @@
-use crate::client::{CompatibleMode, InnerClient, Responses};
+use crate::client::{InnerClient, Responses};
 use crate::codec::FrontendMessage;
 use crate::connection::RequestMessages;
 use crate::prepare::get_type;
@@ -110,7 +110,7 @@ where
         let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
         client.with_buf(|buf| {
             frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
-            encode_bind_raw("", params, "", vec![1], false, buf)?;
+            encode_bind_raw("", params, "", vec![1], buf)?;
             frontend::describe(b'S', "", buf).map_err(Error::encode)?;
             frontend::execute("", 0, buf).map_err(Error::encode)?;
             frontend::sync(buf);
@@ -178,7 +178,7 @@ where
         let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
         client.with_buf(|buf| {
             frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
-            encode_bind_raw("", params, "", vec![1], false, buf)?;
+            encode_bind_raw("", params, "", vec![1], buf)?;
             frontend::describe(b'S', "", buf).map_err(Error::encode)?;
             frontend::execute("", 0, buf).map_err(Error::encode)?;
             frontend::sync(buf);
@@ -309,14 +309,7 @@ where
     I::IntoIter: ExactSizeIterator,
 {
     client.with_buf(|buf| {
-        encode_bind(
-            statement,
-            params,
-            "",
-            result_formats,
-            client.compatible_mode() == CompatibleMode::Mysql,
-            buf,
-        )?;
+        encode_bind(statement, params, "", result_formats, buf)?;
         frontend::execute("", 0, buf).map_err(Error::encode)?;
         frontend::sync(buf);
         Ok(buf.split().freeze())
@@ -328,7 +321,6 @@ pub fn encode_bind<P, I>(
     params: I,
     portal: &str,
     result_formats: Vec<i16>,
-    allow_text_fallback: bool,
     buf: &mut BytesMut,
 ) -> Result<(), Error>
 where
@@ -346,7 +338,6 @@ where
         params.zip(statement.params().iter().cloned()),
         portal,
         result_formats,
-        allow_text_fallback,
         buf,
     )
 }
@@ -356,7 +347,6 @@ fn encode_bind_raw<P, I>(
     params: I,
     portal: &str,
     result_formats: Vec<i16>,
-    allow_text_fallback: bool,
     buf: &mut BytesMut,
 ) -> Result<(), Error>
 where
@@ -367,17 +357,9 @@ where
     let (param_formats, params): (Vec<_>, Vec<_>) = params
         .into_iter()
         .map(|(param, type_)| {
-            let use_text_fallback = allow_text_fallback
-                && matches!(type_, Type::TEXT | Type::UNKNOWN)
-                && !param.borrow_to_sql().accepts_type(&type_)
-                && param.borrow_to_sql().supports_text_fallback(&type_);
             (
-                if use_text_fallback {
-                    postgres_types::Format::Text as i16
-                } else {
-                    param.borrow_to_sql().encode_format(&type_) as i16
-                },
-                (param, type_, use_text_fallback),
+                param.borrow_to_sql().encode_format(&type_) as i16,
+                (param, type_),
             )
         })
         .unzip();
@@ -388,11 +370,7 @@ where
         statement_name,
         param_formats,
         params.into_iter().enumerate(),
-        |(idx, (param, type_, use_text_fallback)), buf| match if use_text_fallback {
-            param.borrow_to_sql().to_sql_text_fallback(&type_, buf)
-        } else {
-            param.borrow_to_sql().to_sql_checked(&type_, buf)
-        } {
+        |(idx, (param, type_)), buf| match param.borrow_to_sql().to_sql_checked(&type_, buf) {
             Ok(IsNull::No) => Ok(postgres_protocol::IsNull::No),
             Ok(IsNull::Yes) => Ok(postgres_protocol::IsNull::Yes),
             Err(error) => {

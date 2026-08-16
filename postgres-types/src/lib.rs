@@ -221,7 +221,7 @@ const NSEC_PER_USEC: u64 = 1_000;
 macro_rules! accepts {
     ($($expected:ident),+) => (
         fn accepts(ty: &$crate::Type) -> bool {
-            false $(|| ty.is_equivalent_to(&$crate::Type::$expected))+
+            matches!(*ty, $($crate::Type::$expected)|+)
         }
     )
 }
@@ -232,10 +232,6 @@ macro_rules! accepts {
 #[macro_export]
 macro_rules! to_sql_checked {
     () => {
-        fn accepts_type(&self, ty: &$crate::Type) -> bool {
-            <Self as $crate::ToSql>::accepts(ty)
-        }
-
         fn to_sql_checked(
             &self,
             ty: &$crate::Type,
@@ -448,15 +444,6 @@ impl Type {
             Inner::SqlServer(_) => Some(TypeSystem::SqlServer),
             Inner::Other(_) => None,
         }
-    }
-
-    /// Returns true when this type can use the same Rust conversion as `expected`.
-    pub fn is_equivalent_to(&self, expected: &Type) -> bool {
-        if self == expected {
-            return true;
-        }
-
-        matches!(self.kind(), Kind::Domain(base) if base.is_equivalent_to(expected))
     }
 
     /// Returns the OID of the `Type`.
@@ -802,6 +789,11 @@ impl<'a> FromSql<'a> for Vec<u8> {
         BYTEA,
         MYSQL_BINARY,
         MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB,
+        ORACLE_BLOB,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -816,6 +808,11 @@ impl<'a> FromSql<'a> for &'a [u8] {
         BYTEA,
         MYSQL_BINARY,
         MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB,
+        ORACLE_BLOB,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -854,14 +851,24 @@ impl<'a> FromSql<'a> for &'a str {
     }
 
     fn accepts(ty: &Type) -> bool {
-        ty.is_equivalent_to(&Type::VARCHAR)
-            || ty.is_equivalent_to(&Type::TEXT)
-            || ty.is_equivalent_to(&Type::BPCHAR)
-            || ty.is_equivalent_to(&Type::NAME)
-            || ty.is_equivalent_to(&Type::UNKNOWN)
-            || ty.is_equivalent_to(&Type::MYSQL_BPCHARBYTE)
-            || ty.is_equivalent_to(&Type::MYSQL_VARCHARBYTE)
-            || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
+        matches!(
+            *ty,
+            Type::VARCHAR
+                | Type::TEXT
+                | Type::BPCHAR
+                | Type::NAME
+                | Type::UNKNOWN
+                | Type::MYSQL_BPCHARBYTE
+                | Type::MYSQL_VARCHARBYTE
+                | Type::MYSQL_LONGTEXT
+                | Type::MYSQL_MEDIUMTEXT
+                | Type::MYSQL_TINYTEXT
+                | Type::MYSQL_CLOB
+                | Type::MYSQL_NCLOB
+                | Type::ORACLE_UROWID
+                | Type::ORACLE_CLOB
+                | Type::ORACLE_NCLOB
+        ) || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
             || ty == &Type::SQLSERVER_NVARCHAR
             || ty == &Type::SQLSERVER_NCHAR
             || ty == &Type::SQLSERVER_BPCHARBYTE
@@ -869,9 +876,6 @@ impl<'a> FromSql<'a> for &'a str {
             || ty == &Type::SQLSERVER_SYSNAME
             || ty == &Type::ORACLE_BFILE
             || ty == &Type::XML
-            || ty == &Type::MYSQL_XML
-            || ty == &Type::ORACLE_XML
-            || ty == &Type::SQLSERVER_XML
             || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
     }
 }
@@ -981,7 +985,15 @@ impl<'a> FromSql<'a> for i32 {
     }
 
     fn accepts(ty: &Type) -> bool {
-        ty.is_equivalent_to(&Type::INT4) || ty.is_equivalent_to(&Type::MYSQL_YEAR)
+        matches!(
+            *ty,
+            Type::INT4
+                | Type::MYSQL_INT1
+                | Type::MYSQL_INT3
+                | Type::MYSQL_MEDIUMINT
+                | Type::MYSQL_MIDDLEINT
+                | Type::MYSQL_YEAR
+        )
     }
 }
 simple_from!(u32, oid_from_sql, OID, MYSQL_UINT4);
@@ -997,7 +1009,7 @@ impl<'a> FromSql<'a> for u64 {
 }
 impl<'a> FromSql<'a> for i64 {
     fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<i64, Box<dyn Error + Sync + Send>> {
-        if ty.is_equivalent_to(&Type::NUMERIC) {
+        if ty == &Type::NUMERIC {
             return numeric_to_i64(raw);
         }
 
@@ -1053,6 +1065,7 @@ impl<'a> FromSql<'a> for SystemTime {
         TIMESTAMPTZ,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );
@@ -1175,39 +1188,9 @@ pub trait ToSql: fmt::Debug {
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>>;
 
-    /// Object-safe bridge to `accepts` used by the bind encoder.
-    #[doc(hidden)]
-    fn accepts_type(&self, _ty: &Type) -> bool {
-        false
-    }
-
     /// Specify the encode format
     fn encode_format(&self, _ty: &Type) -> Format {
         Format::Binary
-    }
-
-    /// Returns whether this value has an explicit textual representation for
-    /// a server-inferred parameter type.
-    ///
-    /// This is an internal Kingbase compatibility hook. Normal PostgreSQL
-    /// encoding continues to use `accepts`, `to_sql_checked`, and
-    /// `encode_format`.
-    #[doc(hidden)]
-    fn supports_text_fallback(&self, _ty: &Type) -> bool {
-        false
-    }
-
-    /// Encodes this value using its textual representation.
-    ///
-    /// Callers must first check `supports_text_fallback` and must select the
-    /// text format code in the bind message.
-    #[doc(hidden)]
-    fn to_sql_text_fallback(
-        &self,
-        _ty: &Type,
-        _out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        Err("text parameter fallback is not supported for this Rust type".into())
     }
 }
 
@@ -1242,18 +1225,6 @@ where
         (*self).encode_format(ty)
     }
 
-    fn supports_text_fallback(&self, ty: &Type) -> bool {
-        (*self).supports_text_fallback(ty)
-    }
-
-    fn to_sql_text_fallback(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        (*self).to_sql_text_fallback(ty, out)
-    }
-
     to_sql_checked!();
 }
 
@@ -1277,24 +1248,6 @@ impl<T: ToSql> ToSql for Option<T> {
         match self {
             Some(val) => val.encode_format(ty),
             None => Format::Binary,
-        }
-    }
-
-    fn supports_text_fallback(&self, ty: &Type) -> bool {
-        match self {
-            Some(val) => val.supports_text_fallback(ty),
-            None => false,
-        }
-    }
-
-    fn to_sql_text_fallback(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        match self {
-            Some(val) => val.to_sql_text_fallback(ty, out),
-            None => Ok(IsNull::Yes),
         }
     }
 
@@ -1352,6 +1305,11 @@ impl ToSql for &[u8] {
         BYTEA,
         MYSQL_BINARY,
         MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB,
+        ORACLE_BLOB,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -1370,6 +1328,11 @@ impl<const N: usize> ToSql for [u8; N] {
         BYTEA,
         MYSQL_BINARY,
         MYSQL_VARBINARY,
+        MYSQL_BLOB,
+        MYSQL_LONGBLOB,
+        MYSQL_MEDIUMBLOB,
+        MYSQL_TINYBLOB,
+        ORACLE_BLOB,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -1409,18 +1372,6 @@ impl<T: ToSql> ToSql for Box<T> {
 
     fn accepts(ty: &Type) -> bool {
         <&T as ToSql>::accepts(ty)
-    }
-
-    fn supports_text_fallback(&self, ty: &Type) -> bool {
-        (**self).supports_text_fallback(ty)
-    }
-
-    fn to_sql_text_fallback(
-        &self,
-        ty: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        (**self).to_sql_text_fallback(ty, out)
     }
 
     to_sql_checked!();
@@ -1474,16 +1425,26 @@ impl ToSql for &str {
     }
 
     fn accepts(ty: &Type) -> bool {
-        ty.is_equivalent_to(&Type::VARCHAR)
-            || ty.is_equivalent_to(&Type::TEXT)
-            || ty.is_equivalent_to(&Type::BPCHAR)
-            || ty.is_equivalent_to(&Type::NAME)
-            || ty.is_equivalent_to(&Type::UNKNOWN)
-            || ty.is_equivalent_to(&Type::MYSQL_BPCHARBYTE)
-            || ty.is_equivalent_to(&Type::MYSQL_VARCHARBYTE)
-            || ty.is_equivalent_to(&Type::ORACLE_BPCHARBYTE)
-            || ty.is_equivalent_to(&Type::ORACLE_VARCHARBYTE)
-            || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
+        matches!(
+            *ty,
+            Type::VARCHAR
+                | Type::TEXT
+                | Type::BPCHAR
+                | Type::NAME
+                | Type::UNKNOWN
+                | Type::MYSQL_BPCHARBYTE
+                | Type::MYSQL_VARCHARBYTE
+                | Type::MYSQL_LONGTEXT
+                | Type::MYSQL_MEDIUMTEXT
+                | Type::MYSQL_TINYTEXT
+                | Type::MYSQL_CLOB
+                | Type::MYSQL_NCLOB
+                | Type::ORACLE_UROWID
+                | Type::ORACLE_CLOB
+                | Type::ORACLE_NCLOB
+                | Type::ORACLE_BPCHARBYTE
+                | Type::ORACLE_VARCHARBYTE
+        ) || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
             || ty == &Type::SQLSERVER_NVARCHAR
             || ty == &Type::SQLSERVER_NCHAR
             || ty == &Type::SQLSERVER_BPCHARBYTE
@@ -1491,9 +1452,6 @@ impl ToSql for &str {
             || ty == &Type::SQLSERVER_SYSNAME
             || ty == &Type::ORACLE_BFILE
             || ty == &Type::XML
-            || ty == &Type::MYSQL_XML
-            || ty == &Type::ORACLE_XML
-            || ty == &Type::SQLSERVER_XML
             || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
     }
 
@@ -1554,51 +1512,9 @@ macro_rules! simple_to {
     }
 }
 
-fn supports_text_parameter_fallback(ty: &Type) -> bool {
-    ty == &Type::TEXT || ty == &Type::UNKNOWN
-}
-
-fn to_sql_text_parameter<T>(value: T, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>>
-where
-    T: fmt::Display,
-{
-    out.extend_from_slice(value.to_string().as_bytes());
-    Ok(IsNull::No)
-}
-
-macro_rules! simple_to_with_text_fallback {
-    ($t:ty, $f:ident, $($expected:ident),+) => {
-        impl ToSql for $t {
-            fn to_sql(&self,
-                      _: &Type,
-                      w: &mut BytesMut)
-                      -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-                types::$f(*self, w);
-                Ok(IsNull::No)
-            }
-
-            accepts!($($expected),+);
-
-            fn supports_text_fallback(&self, ty: &Type) -> bool {
-                supports_text_parameter_fallback(ty)
-            }
-
-            fn to_sql_text_fallback(
-                &self,
-                _: &Type,
-                out: &mut BytesMut,
-            ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-                to_sql_text_parameter(*self, out)
-            }
-
-            to_sql_checked!();
-        }
-    }
-}
-
 simple_to!(bool, bool_to_sql, BOOL, SQLSERVER_SYS_BIT);
-simple_to_with_text_fallback!(i8, char_to_sql, CHAR, MYSQL_TINYINT);
-simple_to_with_text_fallback!(i16, int2_to_sql, INT2);
+simple_to!(i8, char_to_sql, CHAR, MYSQL_TINYINT);
+simple_to!(i16, int2_to_sql, INT2);
 impl ToSql for i32 {
     fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         types::int4_to_sql(*self, w);
@@ -1606,19 +1522,15 @@ impl ToSql for i32 {
     }
 
     fn accepts(ty: &Type) -> bool {
-        ty.is_equivalent_to(&Type::INT4) || ty.is_equivalent_to(&Type::MYSQL_YEAR)
-    }
-
-    fn supports_text_fallback(&self, ty: &Type) -> bool {
-        supports_text_parameter_fallback(ty)
-    }
-
-    fn to_sql_text_fallback(
-        &self,
-        _: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        to_sql_text_parameter(*self, out)
+        matches!(
+            *ty,
+            Type::INT4
+                | Type::MYSQL_INT1
+                | Type::MYSQL_INT3
+                | Type::MYSQL_MEDIUMINT
+                | Type::MYSQL_MIDDLEINT
+                | Type::MYSQL_YEAR
+        )
     }
 
     to_sql_checked!();
@@ -1634,42 +1546,8 @@ impl ToSql for u64 {
 
     to_sql_checked!();
 }
-simple_to_with_text_fallback!(i64, int8_to_sql, INT8);
-
-macro_rules! simple_float_to_with_text_fallback {
-    ($t:ty, $f:ident, $expected:ident) => {
-        impl ToSql for $t {
-            fn to_sql(&self,
-                      _: &Type,
-                      w: &mut BytesMut)
-                      -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-                types::$f(*self, w);
-                Ok(IsNull::No)
-            }
-
-            accepts!($expected);
-
-            fn supports_text_fallback(&self, ty: &Type) -> bool {
-                self.is_finite() && supports_text_parameter_fallback(ty)
-            }
-
-            fn to_sql_text_fallback(
-                &self,
-                _: &Type,
-                out: &mut BytesMut,
-            ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-                to_sql_text_parameter(*self, out)
-            }
-
-            to_sql_checked!();
-        }
-    }
-}
-
-simple_float_to_with_text_fallback!(f32, float4_to_sql, FLOAT4);
-// Kingbase MySQL mode compares TEXT parameters against DOUBLE values as text
-// in range predicates. Keep f64 on the normal binary-only path rather than
-// silently returning an incorrect result.
+simple_to!(i64, int8_to_sql, INT8);
+simple_to!(f32, float4_to_sql, FLOAT4);
 simple_to!(f64, float8_to_sql, FLOAT8);
 
 impl<H> ToSql for HashMap<String, Option<String>, H>
@@ -1712,6 +1590,7 @@ impl ToSql for SystemTime {
         TIMESTAMPTZ,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );

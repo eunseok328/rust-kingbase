@@ -58,6 +58,16 @@ ORDER BY attnum
 
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
+struct TypeInfo {
+    name: String,
+    type_: i8,
+    elem_oid: Oid,
+    rngsubtype: Option<Oid>,
+    basetype: Oid,
+    schema: String,
+    relid: Oid,
+}
+
 pub async fn prepare(
     client: &Arc<InnerClient>,
     query: &str,
@@ -154,11 +164,22 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
 
     let type_system = client.type_system();
 
+    if let Some(type_) = client.type_(type_system, oid) {
+        return Ok(type_);
+    }
+
     // A compatibility overlay may intentionally reuse an OID occupied by a
     // PostgreSQL catalog type in another type system (for example SQL Server
     // nchar/money). Resolve the active mode's extension first; shared types
     // fall through to the single PostgreSQL table below.
     if let Some(type_) = Type::from_oid_in(type_system, oid) {
+        if type_.type_system() == Some(type_system) && type_system != crate::types::TypeSystem::Pg {
+            let info = load_type_info(client, oid)
+                .await?
+                .ok_or_else(|| type_catalog_error(&type_, "OID is absent from pg_type"))?;
+            validate_extension_type(&type_, &info)?;
+            client.set_type(type_system, oid, &type_);
+        }
         return Ok(type_);
     }
 
@@ -166,64 +187,118 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
         return Ok(type_);
     }
 
-    if let Some(type_) = client.type_(type_system, oid) {
-        return Ok(type_);
-    }
-
-    let stmt = typeinfo_statement(client).await?;
-
-    let mut rows = pin!(query::query(client, stmt, slice_iter(&[&oid])).await?);
-
-    let row = match rows.try_next().await? {
-        Some(row) => row,
+    let info = match load_type_info(client, oid).await? {
+        Some(info) => info,
         None => return Err(Error::unexpected_message()),
     };
 
-    let name: String = row.try_get(0)?;
-    let type_: i8 = row.try_get(1)?;
-    let elem_oid: Oid = row.try_get(2)?;
-    let rngsubtype: Option<Oid> = row.try_get(3)?;
-    let basetype: Oid = row.try_get(4)?;
-    let schema: String = row.try_get(5)?;
-    let relid: Oid = row.try_get(6)?;
-
     let compatible_mode = client.compatible_mode();
-    let kind = if type_ == b'e' as i8 {
+    let kind = if info.type_ == b'e' as i8 {
         let variants = get_enum_variants(client, oid).await?;
         Kind::Enum(variants)
     } else if compatible_mode == crate::client::CompatibleMode::Mysql
-        && type_ == b'l' as i8
-        && name.starts_with("Enum_")
+        && info.type_ == b'l' as i8
+        && info.name.starts_with("Enum_")
     {
         let variants = get_enum_variants(client, oid).await?;
         Kind::MySqlEnum(variants)
     } else if compatible_mode == crate::client::CompatibleMode::Mysql
-        && type_ == b'y' as i8
-        && name.starts_with("Set_")
+        && info.type_ == b'y' as i8
+        && info.name.starts_with("Set_")
     {
         Kind::MySqlSet
-    } else if type_ == b'p' as i8 {
+    } else if info.type_ == b'p' as i8 {
         Kind::Pseudo
-    } else if basetype != 0 {
-        let type_ = get_type_rec(client, basetype).await?;
+    } else if info.basetype != 0 {
+        let type_ = get_type_rec(client, info.basetype).await?;
         Kind::Domain(type_)
-    } else if elem_oid != 0 {
-        let type_ = get_type_rec(client, elem_oid).await?;
+    } else if info.elem_oid != 0 {
+        let type_ = get_type_rec(client, info.elem_oid).await?;
         Kind::Array(type_)
-    } else if relid != 0 {
-        let fields = get_composite_fields(client, relid).await?;
+    } else if info.relid != 0 {
+        let fields = get_composite_fields(client, info.relid).await?;
         Kind::Composite(fields)
-    } else if let Some(rngsubtype) = rngsubtype {
+    } else if let Some(rngsubtype) = info.rngsubtype {
         let type_ = get_type_rec(client, rngsubtype).await?;
         Kind::Range(type_)
     } else {
         Kind::Simple
     };
 
-    let type_ = Type::new(name, oid, kind, schema);
+    let type_ = Type::new(info.name, oid, kind, info.schema);
     client.set_type(type_system, oid, &type_);
 
     Ok(type_)
+}
+
+async fn load_type_info(client: &Arc<InnerClient>, oid: Oid) -> Result<Option<TypeInfo>, Error> {
+    let stmt = typeinfo_statement(client).await?;
+    let mut rows = pin!(query::query(client, stmt, slice_iter(&[&oid])).await?);
+    let Some(row) = rows.try_next().await? else {
+        return Ok(None);
+    };
+
+    Ok(Some(TypeInfo {
+        name: row.try_get(0)?,
+        type_: row.try_get(1)?,
+        elem_oid: row.try_get(2)?,
+        rngsubtype: row.try_get(3)?,
+        basetype: row.try_get(4)?,
+        schema: row.try_get(5)?,
+        relid: row.try_get(6)?,
+    }))
+}
+
+fn validate_extension_type(expected: &Type, actual: &TypeInfo) -> Result<(), Error> {
+    if expected.name() != actual.name || expected.schema() != actual.schema {
+        return Err(type_catalog_error(
+            expected,
+            &format!("catalog contains {}.{} instead", actual.schema, actual.name),
+        ));
+    }
+
+    let kind_matches = match expected.kind() {
+        Kind::Simple => {
+            actual.basetype == 0
+                && actual.elem_oid == 0
+                && actual.rngsubtype.is_none()
+                && actual.relid == 0
+        }
+        Kind::Pseudo => actual.type_ == b'p' as i8,
+        Kind::Domain(base) => actual.type_ == b'd' as i8 && actual.basetype == base.oid(),
+        Kind::Array(member) => actual.elem_oid == member.oid(),
+        Kind::Range(member) => actual.rngsubtype == Some(member.oid()),
+        Kind::Enum(_) => actual.type_ == b'e' as i8,
+        Kind::MySqlEnum(_) => actual.type_ == b'l' as i8,
+        Kind::MySqlSet => actual.type_ == b'y' as i8,
+        Kind::Multirange(_) => false,
+        Kind::Composite(_) => actual.relid != 0,
+        _ => false,
+    };
+
+    if !kind_matches {
+        return Err(type_catalog_error(
+            expected,
+            &format!(
+                "catalog kind differs (typtype={}, typelem={}, typbasetype={}, typrelid={})",
+                actual.type_ as u8 as char, actual.elem_oid, actual.basetype, actual.relid
+            ),
+        ));
+    }
+
+    Ok(())
+}
+
+fn type_catalog_error(expected: &Type, detail: &str) -> Error {
+    Error::config(
+        format!(
+            "Kingbase type catalog mismatch for {}.{} (OID {}): {detail}",
+            expected.schema(),
+            expected.name(),
+            expected.oid()
+        )
+        .into(),
+    )
 }
 
 fn get_type_rec<'a>(

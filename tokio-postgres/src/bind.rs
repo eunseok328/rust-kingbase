@@ -1,4 +1,4 @@
-use crate::client::{CompatibleMode, InnerClient};
+use crate::client::InnerClient;
 use crate::codec::FrontendMessage;
 use crate::connection::RequestMessages;
 use crate::types::BorrowToSql;
@@ -22,14 +22,7 @@ where
 {
     let name = format!("p{}", NEXT_ID.fetch_add(1, Ordering::SeqCst));
     let buf = client.with_buf(|buf| {
-        query::encode_bind(
-            &statement,
-            params,
-            &name,
-            vec![1],
-            client.compatible_mode() == CompatibleMode::Mysql,
-            buf,
-        )?;
+        query::encode_bind(&statement, params, &name, vec![1], buf)?;
         frontend::sync(buf);
         Ok(buf.split().freeze())
     })?;

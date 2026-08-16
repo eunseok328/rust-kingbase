@@ -7,7 +7,8 @@ publish = false
 [workspace]
 
 [dependencies]
+chrono = "0.4"
 postgres-types = { path = "../postgres-types" }
-tokio-postgres = { path = "../tokio-postgres" }
+tokio-postgres = { path = "../tokio-postgres", features = ["with-chrono-0_4"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 bytes = "1"

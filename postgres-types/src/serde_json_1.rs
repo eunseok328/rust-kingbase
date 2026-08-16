@@ -11,7 +11,7 @@ use std::io::Read;
 pub struct Json<T>(pub T);
 
 fn is_jsonb(ty: &Type) -> bool {
-    ty.is_equivalent_to(&Type::JSONB)
+    matches!(*ty, Type::JSONB | Type::MYSQL_SYS_JSON)
 }
 
 impl<T: Serialize> Serialize for Json<T> {
@@ -44,7 +44,7 @@ where
             .map_err(Into::into)
     }
 
-    accepts!(JSON, JSONB);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON);
 }
 
 impl<T> ToSql for Json<T>
@@ -63,7 +63,7 @@ where
         Ok(IsNull::No)
     }
 
-    accepts!(JSON, JSONB);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON);
     to_sql_checked!();
 }
 
@@ -72,7 +72,7 @@ impl<'a> FromSql<'a> for Value {
         Json::<Value>::from_sql(ty, raw).map(|json| json.0)
     }
 
-    accepts!(JSON, JSONB);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON);
 }
 
 impl ToSql for Value {
@@ -84,6 +84,6 @@ impl ToSql for Value {
         Json(self).to_sql(ty, out)
     }
 
-    accepts!(JSON, JSONB);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON);
     to_sql_checked!();
 }

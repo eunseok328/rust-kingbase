@@ -50,6 +50,7 @@ impl<'a> FromSql<'a> for DateTime {
         TIMESTAMP,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );
@@ -70,6 +71,7 @@ impl ToSql for DateTime {
         TIMESTAMP,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );

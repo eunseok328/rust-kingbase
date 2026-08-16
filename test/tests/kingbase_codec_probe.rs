@@ -1,12 +1,24 @@
 //! Codec behavior tests kept outside the postgres-types implementation crate.
 
+use bytes::BytesMut;
 use postgres_types::kingbase::{
     MySqlBit, MySqlBitError, MySqlJsonPath, OracleDsInterval,
     OracleIntervalError, OracleRowId, OracleYmInterval, SqlServerDateTime2,
     SqlServerMoney, SqlServerRowVersion, SqlServerTime, SqlServerTinyInt, SqlServerVariant,
 };
 use postgres_types::{FromSql, IsNull, Kind, ToSql, Type};
-use bytes::BytesMut;
+
+fn assert_rejects_text_parameters<T>(value: &T)
+where
+    T: ToSql,
+{
+    for type_ in [Type::TEXT, Type::UNKNOWN] {
+        assert!(!T::accepts(&type_));
+        let mut out = BytesMut::new();
+        assert!(value.to_sql_checked(&type_, &mut out).is_err());
+        assert!(out.is_empty());
+    }
+}
 
 fn numeric(weight: i16, sign: u16, dscale: i16, digits: &[i16]) -> Vec<u8> {
     let mut raw = Vec::with_capacity(8 + digits.len() * 2);
@@ -21,14 +33,24 @@ fn numeric(weight: i16, sign: u16, dscale: i16, digits: &[i16]) -> Vec<u8> {
 }
 
 #[test]
+fn mysql_numeric_parameters_do_not_fallback_to_text() {
+    assert_rejects_text_parameters(&1_i8);
+    assert_rejects_text_parameters(&2_i16);
+    assert_rejects_text_parameters(&3_i32);
+    assert_rejects_text_parameters(&4_i64);
+    assert_rejects_text_parameters(&5.0_f32);
+    assert_rejects_text_parameters(&MySqlBit::new(1, [0x80]).unwrap());
+}
+
+#[test]
 fn mysql_numeric_i64_decodes_integral_values_exactly() {
     assert_eq!(
-        <i64 as FromSql>::from_sql(&Type::MYSQL_NUMERIC, &numeric(0, 0x0000, 2, &[42])).unwrap(),
+        <i64 as FromSql>::from_sql(&Type::NUMERIC, &numeric(0, 0x0000, 2, &[42])).unwrap(),
         42
     );
     assert_eq!(
         <i64 as FromSql>::from_sql(
-            &Type::MYSQL_NUMERIC,
+            &Type::NUMERIC,
             &numeric(4, 0x0000, 0, &[922, 3372, 368, 5477, 5807]),
         )
         .unwrap(),
@@ -36,7 +58,7 @@ fn mysql_numeric_i64_decodes_integral_values_exactly() {
     );
     assert_eq!(
         <i64 as FromSql>::from_sql(
-            &Type::MYSQL_NUMERIC,
+            &Type::NUMERIC,
             &numeric(4, 0x4000, 0, &[922, 3372, 368, 5477, 5808]),
         )
         .unwrap(),
@@ -47,16 +69,16 @@ fn mysql_numeric_i64_decodes_integral_values_exactly() {
 #[test]
 fn mysql_numeric_i64_rejects_fractional_and_invalid_values() {
     let fractional = numeric(0, 0x0000, 2, &[1, 2500]);
-    assert!(<i64 as FromSql>::from_sql(&Type::MYSQL_NUMERIC, &fractional).is_err());
+    assert!(<i64 as FromSql>::from_sql(&Type::NUMERIC, &fractional).is_err());
 
     let below_one = numeric(-1, 0x4000, 4, &[12]);
-    assert!(<i64 as FromSql>::from_sql(&Type::MYSQL_NUMERIC, &below_one).is_err());
+    assert!(<i64 as FromSql>::from_sql(&Type::NUMERIC, &below_one).is_err());
 
     let overflow = numeric(4, 0x0000, 0, &[922, 3372, 368, 5477, 5808]);
-    assert!(<i64 as FromSql>::from_sql(&Type::MYSQL_NUMERIC, &overflow).is_err());
+    assert!(<i64 as FromSql>::from_sql(&Type::NUMERIC, &overflow).is_err());
 
     let nan = numeric(0, 0xC000, 0, &[]);
-    assert!(<i64 as FromSql>::from_sql(&Type::MYSQL_NUMERIC, &nan).is_err());
+    assert!(<i64 as FromSql>::from_sql(&Type::NUMERIC, &nan).is_err());
 }
 
 #[test]
@@ -65,6 +87,23 @@ fn i8_accepts_mysql_tinyint() {
     assert!(<i8 as ToSql>::accepts(&Type::MYSQL_TINYINT));
     assert!(<i8 as FromSql>::accepts(&Type::CHAR));
     assert!(!<i8 as ToSql>::accepts(&Type::MYSQL_INT1));
+}
+
+#[test]
+fn mysql_int1_reuses_int4_codec_with_i32() {
+    assert!(<i32 as FromSql>::accepts(&Type::MYSQL_INT1));
+    assert!(<i32 as ToSql>::accepts(&Type::MYSQL_INT1));
+    assert!(!<i8 as FromSql>::accepts(&Type::MYSQL_INT1));
+    assert!(!<i8 as ToSql>::accepts(&Type::MYSQL_INT1));
+
+    let payload = [0xff, 0xff, 0xff, 0x80];
+    assert_eq!(<i32 as FromSql>::from_sql(&Type::MYSQL_INT1, &payload).unwrap(), -128);
+
+    let mut encoded = BytesMut::new();
+    127_i32
+        .to_sql(&Type::MYSQL_INT1, &mut encoded)
+        .unwrap();
+    assert_eq!(encoded.as_ref(), &[0, 0, 0, 127]);
 }
 
 #[test]
@@ -108,43 +147,40 @@ fn oracle_rowid_round_trips_binary_payload() {
 #[test]
 fn kingbase_xml_round_trips_utf8_payload() {
     let payload = b"<root><answer>42</answer></root>";
-    let xml = <String as FromSql>::from_sql(&Type::ORACLE_XML, payload).unwrap();
+    let xml = <String as FromSql>::from_sql(&Type::XML, payload).unwrap();
 
     assert_eq!(xml, "<root><answer>42</answer></root>");
-    assert!(<String as FromSql>::accepts(&Type::MYSQL_XML));
-    assert!(<String as ToSql>::accepts(&Type::ORACLE_XML));
-    assert!(<String as FromSql>::accepts(&Type::SQLSERVER_XML));
+    assert!(<String as FromSql>::accepts(&Type::XML));
+    assert!(<String as ToSql>::accepts(&Type::XML));
 
     let mut encoded = BytesMut::new();
     assert!(matches!(
-        xml.to_sql(&Type::MYSQL_XML, &mut encoded).unwrap(),
+        xml.to_sql(&Type::XML, &mut encoded).unwrap(),
         IsNull::No
     ));
     assert_eq!(encoded.as_ref(), payload);
-    assert!(<String as FromSql>::from_sql(&Type::MYSQL_XML, &[0xff]).is_err());
+    assert!(<String as FromSql>::from_sql(&Type::XML, &[0xff]).is_err());
 }
 
 #[test]
 fn mysql_jsonpath_round_trips_server_binary_payload() {
     let payload = [1, b'$', b'.', b'"', b'n', b'a', b'm', b'e', b'"'];
-    let value = <MySqlJsonPath as FromSql>::from_sql(&Type::MYSQL_JSONPATH, &payload).unwrap();
+    let value = <MySqlJsonPath as FromSql>::from_sql(&Type::JSONPATH, &payload).unwrap();
 
     assert_eq!(value.as_bytes(), payload);
-    assert!(<MySqlJsonPath as FromSql>::accepts(&Type::MYSQL_JSONPATH));
-    assert!(<MySqlJsonPath as ToSql>::accepts(&Type::MYSQL_JSONPATH));
-    assert!(!<MySqlJsonPath as ToSql>::accepts(
-        &Type::MYSQL_JSONPATH_ARRAY
-    ));
+    assert!(<MySqlJsonPath as FromSql>::accepts(&Type::JSONPATH));
+    assert!(<MySqlJsonPath as ToSql>::accepts(&Type::JSONPATH));
+    assert!(!<MySqlJsonPath as ToSql>::accepts(&Type::JSONPATH_ARRAY));
     assert!(<Vec<MySqlJsonPath> as FromSql>::accepts(
-        &Type::MYSQL_JSONPATH_ARRAY
+        &Type::JSONPATH_ARRAY
     ));
     assert!(<Vec<MySqlJsonPath> as ToSql>::accepts(
-        &Type::MYSQL_JSONPATH_ARRAY
+        &Type::JSONPATH_ARRAY
     ));
 
     let mut encoded = BytesMut::new();
     assert!(matches!(
-        value.to_sql(&Type::MYSQL_JSONPATH, &mut encoded).unwrap(),
+        value.to_sql(&Type::JSONPATH, &mut encoded).unwrap(),
         IsNull::No
     ));
     assert_eq!(encoded.as_ref(), payload);
@@ -475,7 +511,7 @@ fn u32_accepts_only_exact_mysql_uint4() {
     let wrong_kind = Type::new(
         Type::MYSQL_UINT4.name().to_string(),
         Type::MYSQL_UINT4.oid(),
-        Kind::Domain(Type::MYSQL_INT4),
+        Kind::Domain(Type::INT4),
         Type::MYSQL_UINT4.schema().to_string(),
     );
 
@@ -485,8 +521,6 @@ fn u32_accepts_only_exact_mysql_uint4() {
     assert!(<u32 as FromSql>::accepts(&Type::OID));
     assert!(!<u32 as ToSql>::accepts(&Type::INT4));
     assert!(!<u32 as FromSql>::accepts(&Type::INT4));
-    assert!(!<u32 as ToSql>::accepts(&Type::MYSQL_INT4));
-    assert!(!<u32 as FromSql>::accepts(&Type::MYSQL_INT4));
     assert!(!<u32 as ToSql>::accepts(&wrong_kind));
     assert!(!<u32 as FromSql>::accepts(&wrong_kind));
 
@@ -517,7 +551,7 @@ fn u64_accepts_only_exact_mysql_uint8() {
     let wrong_kind = Type::new(
         Type::MYSQL_UINT8.name().to_string(),
         Type::MYSQL_UINT8.oid(),
-        Kind::Domain(Type::MYSQL_INT8),
+        Kind::Domain(Type::INT8),
         Type::MYSQL_UINT8.schema().to_string(),
     );
 
@@ -527,8 +561,6 @@ fn u64_accepts_only_exact_mysql_uint8() {
     assert!(!<u64 as FromSql>::accepts(&Type::OID));
     assert!(!<u64 as ToSql>::accepts(&Type::INT8));
     assert!(!<u64 as FromSql>::accepts(&Type::INT8));
-    assert!(!<u64 as ToSql>::accepts(&Type::MYSQL_INT8));
-    assert!(!<u64 as FromSql>::accepts(&Type::MYSQL_INT8));
     assert!(!<u64 as ToSql>::accepts(&wrong_kind));
     assert!(!<u64 as FromSql>::accepts(&wrong_kind));
 

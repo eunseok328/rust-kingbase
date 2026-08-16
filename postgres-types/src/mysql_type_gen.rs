@@ -166,7 +166,7 @@ impl Inner {
                 &Kind::Array(Type(TypeInner::Mysql(Inner::Rowid)))
             }
             Inner::Int1 => {
-                &Kind::Simple
+                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
             }
             Inner::Int3 => {
                 &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
