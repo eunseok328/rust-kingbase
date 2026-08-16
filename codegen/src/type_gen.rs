@@ -862,13 +862,6 @@ fn make_consts(
         .unwrap();
     }
 
-    // Shared PostgreSQL builtins keep their single PG identity in every
-    // compatibility mode. Prefixed constants remain aliases for compatibility
-    // without generating duplicate mode-specific variants.
-    make_pg_alias_consts(w, types, "MYSQL");
-    make_pg_alias_consts(w, types, "ORACLE");
-    make_pg_alias_consts(w, types, "SQLSERVER");
-
     for mysql_type in mysql_types.values() {
         let ident = if mysql_type.schema != "pg_catalog"
             && types
@@ -898,17 +891,6 @@ fn make_consts(
     make_compatible_consts(w, types, sqlserver_types, Mode::SqlServer, "SQLSERVER");
 
     write!(w, "}}").unwrap();
-}
-
-fn make_pg_alias_consts(w: &mut BufWriter<File>, types: &BTreeMap<u32, Type>, prefix: &str) {
-    for type_ in types.values() {
-        writeln!(
-            w,
-            "\n\n    /// PostgreSQL-compatible {prefix} alias for {ident}.\n    pub const {prefix}_{ident}: Type = Type::{ident};",
-            ident = type_.ident,
-        )
-        .unwrap();
-    }
 }
 
 fn make_compatible_consts(

@@ -26,19 +26,6 @@ impl ToSql for BigDecimal {
 
     accepts!(NUMERIC);
 
-    fn supports_text_fallback(&self, ty: &Type) -> bool {
-        ty == &Type::TEXT || ty == &Type::UNKNOWN
-    }
-
-    fn to_sql_text_fallback(
-        &self,
-        _: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        out.extend_from_slice(self.to_plain_string().as_bytes());
-        Ok(IsNull::No)
-    }
-
     to_sql_checked!();
 }
 

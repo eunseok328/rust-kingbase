@@ -62,7 +62,7 @@ impl<'a> FromSql<'a> for PgLsn {
         Ok(v.into())
     }
 
-    accepts!(PG_LSN);
+    accepts!(PG_LSN, SQLSERVER_SYS_LSN);
 }
 
 impl ToSql for PgLsn {
@@ -71,7 +71,7 @@ impl ToSql for PgLsn {
         Ok(IsNull::No)
     }
 
-    accepts!(PG_LSN);
+    accepts!(PG_LSN, SQLSERVER_SYS_LSN);
 
     to_sql_checked!();
 }

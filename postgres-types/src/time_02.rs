@@ -20,6 +20,7 @@ impl<'a> FromSql<'a> for PrimitiveDateTime {
         TIMESTAMP,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );
@@ -39,6 +40,7 @@ impl ToSql for PrimitiveDateTime {
         TIMESTAMP,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );

@@ -426,7 +426,7 @@ fn accepts_mysql_bit(ty: &Type) -> bool {
 }
 
 fn accepts_mysql_jsonpath(ty: &Type) -> bool {
-    ty == &Type::MYSQL_JSONPATH
+    ty == &Type::JSONPATH
 }
 
 fn accepts_oracle_rowid(ty: &Type) -> bool {
@@ -791,24 +791,6 @@ impl ToSql for MySqlBit {
 
     fn accepts(ty: &Type) -> bool {
         accepts_mysql_bit(ty)
-    }
-
-    fn supports_text_fallback(&self, ty: &Type) -> bool {
-        ty == &Type::TEXT || ty == &Type::UNKNOWN
-    }
-
-    fn to_sql_text_fallback(
-        &self,
-        _: &Type,
-        out: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        let value = self
-            .payload
-            .iter()
-            .fold(0_u64, |value, byte| (value << 8) | u64::from(*byte));
-        let padding = self.payload.len() * 8 - self.bit_len as usize;
-        out.extend_from_slice((value >> padding).to_string().as_bytes());
-        Ok(IsNull::No)
     }
 
     to_sql_checked!();

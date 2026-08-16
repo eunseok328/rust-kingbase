@@ -34,32 +34,73 @@ fn generated_type_modes_dispatch_by_schema() {
 }
 
 #[test]
-fn compatible_types_reuse_only_verified_pg_wire_types() {
-    for (compatible, pg) in [
-        (&Type::MYSQL_INT3, &Type::INT4),
-        (&Type::MYSQL_LONGTEXT, &Type::TEXT),
-        (&Type::MYSQL_BLOB, &Type::BYTEA),
-        (&Type::MYSQL_SYS_JSON, &Type::JSONB),
-        (&Type::ORACLE_BLOB, &Type::BYTEA),
-        (&Type::ORACLE_CLOB, &Type::TEXT),
-        (&Type::ORACLE_SYS_DATE, &Type::TIMESTAMP),
+fn compatibility_domains_reuse_only_explicit_rust_conversions() {
+    for type_ in [
+        &Type::MYSQL_INT3,
+        &Type::MYSQL_MEDIUMINT,
+        &Type::MYSQL_MIDDLEINT,
+        &Type::MYSQL_YEAR,
     ] {
-        assert!(compatible.is_equivalent_to(pg), "{compatible:?} -> {pg:?}");
+        assert!(<i32 as FromSql<'_>>::accepts(type_), "{type_:?}");
+        assert!(<i32 as ToSql>::accepts(type_), "{type_:?}");
     }
 
-    for (compatible, pg) in [
-        (&Type::MYSQL_TINYINT, &Type::CHAR),
-        (&Type::MYSQL_UINT4, &Type::OID),
-        (&Type::MYSQL_BINARY, &Type::BYTEA),
-        (&Type::MYSQL_BPCHARBYTE, &Type::BPCHAR),
-        (&Type::MYSQL_SYS_DATE, &Type::DATE),
-        (&Type::MYSQL_SYS_TIMESTAMP, &Type::TIMESTAMP),
+    for type_ in [
+        &Type::MYSQL_LONGTEXT,
+        &Type::MYSQL_MEDIUMTEXT,
+        &Type::MYSQL_TINYTEXT,
+        &Type::MYSQL_CLOB,
+        &Type::MYSQL_NCLOB,
+        &Type::ORACLE_UROWID,
+        &Type::ORACLE_CLOB,
+        &Type::ORACLE_NCLOB,
+        &Type::SQLSERVER_SYSNAME,
     ] {
-        assert!(
-            !compatible.is_equivalent_to(pg),
-            "{compatible:?} must retain its dedicated codec path"
-        );
+        assert!(<&str as FromSql<'_>>::accepts(type_), "{type_:?}");
+        assert!(<&str as ToSql>::accepts(type_), "{type_:?}");
     }
+
+    for type_ in [
+        &Type::MYSQL_BLOB,
+        &Type::MYSQL_LONGBLOB,
+        &Type::MYSQL_MEDIUMBLOB,
+        &Type::MYSQL_TINYBLOB,
+        &Type::ORACLE_BLOB,
+    ] {
+        assert!(<Vec<u8> as FromSql<'_>>::accepts(type_), "{type_:?}");
+        assert!(<Vec<u8> as ToSql>::accepts(type_), "{type_:?}");
+    }
+
+    assert!(<SystemTime as FromSql<'_>>::accepts(&Type::ORACLE_SYS_DATE));
+    assert!(<SystemTime as ToSql>::accepts(&Type::ORACLE_SYS_DATE));
+    assert!(<PgLsn as FromSql<'_>>::accepts(&Type::SQLSERVER_SYS_LSN));
+    assert!(<PgLsn as ToSql>::accepts(&Type::SQLSERVER_SYS_LSN));
+    #[cfg(feature = "with-serde_json-1")]
+    {
+        assert!(<serde_json_1::Value as FromSql<'_>>::accepts(
+            &Type::MYSQL_SYS_JSON
+        ));
+        assert!(<serde_json_1::Value as ToSql>::accepts(
+            &Type::MYSQL_SYS_JSON
+        ));
+    }
+
+    let custom_int_domain = Type::new(
+        "account_id".to_string(),
+        90_001,
+        Kind::Domain(Type::INT4),
+        "public".to_string(),
+    );
+    let custom_text_domain = Type::new(
+        "label".to_string(),
+        90_002,
+        Kind::Domain(Type::TEXT),
+        "public".to_string(),
+    );
+    assert!(!<i32 as FromSql<'_>>::accepts(&custom_int_domain));
+    assert!(!<i32 as ToSql>::accepts(&custom_int_domain));
+    assert!(!<&str as FromSql<'_>>::accepts(&custom_text_domain));
+    assert!(!<&str as ToSql>::accepts(&custom_text_domain));
 }
 
 #[test]

@@ -26,6 +26,7 @@ impl<'a> FromSql<'a> for NaiveDateTime {
         TIMESTAMP,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );
@@ -45,6 +46,7 @@ impl ToSql for NaiveDateTime {
         TIMESTAMP,
         MYSQL_DATETIME,
         MYSQL_SYS_TIMESTAMP,
+        ORACLE_SYS_DATE,
         SQLSERVER_DATETIME,
         SQLSERVER_SMALLDATETIME
     );
