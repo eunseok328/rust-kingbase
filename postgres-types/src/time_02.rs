@@ -101,7 +101,7 @@ impl<'a> FromSql<'a> for Time {
         Ok(time!(00:00:00) + Duration::microseconds(usec))
     }
 
-    accepts!(TIME, MYSQL_SYS_TIME);
+    accepts!(TIME);
 }
 
 impl ToSql for Time {
@@ -115,6 +115,6 @@ impl ToSql for Time {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME, MYSQL_SYS_TIME);
+    accepts!(TIME);
     to_sql_checked!();
 }

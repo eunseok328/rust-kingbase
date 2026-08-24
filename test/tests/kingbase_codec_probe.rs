@@ -2,7 +2,7 @@
 
 use bytes::BytesMut;
 use postgres_types::kingbase::{
-    MySqlBit, MySqlBitError, MySqlJsonPath, OracleDsInterval,
+    Interval, MySqlBit, MySqlBitError, MySqlJsonPath, MySqlTime, OracleDsInterval,
     OracleIntervalError, OracleRowId, OracleYmInterval, SqlServerDateTime2,
     SqlServerMoney, SqlServerRowVersion, SqlServerTime, SqlServerTinyInt, SqlServerVariant,
 };
@@ -288,6 +288,28 @@ fn oracle_intervals_reject_incompatible_components() {
 }
 
 #[test]
+fn interval_round_trips_all_postgres_components() {
+    let payload = [
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfb, 0x2e, // -1_234 microseconds
+        0xff, 0xff, 0xff, 0xfe, // -2 days
+        0x00, 0x00, 0x00, 0x0e, // 14 months
+    ];
+    let value = <Interval as FromSql>::from_sql(&Type::INTERVAL, &payload).unwrap();
+    assert_eq!(value.microseconds(), -1_234);
+    assert_eq!(value.days(), -2);
+    assert_eq!(value.months(), 14);
+
+    let mut encoded = BytesMut::new();
+    value.to_sql(&Type::INTERVAL, &mut encoded).unwrap();
+    assert_eq!(encoded.as_ref(), payload);
+
+    assert!(<Interval as FromSql>::accepts(&Type::INTERVAL));
+    assert!(<Interval as ToSql>::accepts(&Type::INTERVAL));
+    assert!(!<Interval as FromSql>::accepts(&Type::ORACLE_DSINTERVAL));
+    assert!(!<Interval as ToSql>::accepts(&Type::ORACLE_YMINTERVAL));
+}
+
+#[test]
 fn sqlserver_datetime2_round_trips_100_nanosecond_ticks() {
     let payload = [0x00, 0x1a, 0xe9, 0x3d, 0x32, 0xee, 0x57, 0x07];
     let value = <SqlServerDateTime2 as FromSql>::from_sql(&Type::SQLSERVER_DATETIME2, &payload)
@@ -498,12 +520,110 @@ fn mysql_bit_normalizes_payload_and_accepts_only_sys_bit() {
         MySqlBit::new(8, Vec::<u8>::new()).unwrap_err(),
         MySqlBitError::InvalidPayloadLength { .. }
     ));
-    assert!(MySqlBit::new(0, Vec::<u8>::new()).is_ok());
+    assert_eq!(
+        MySqlBit::new(0, Vec::<u8>::new()).unwrap_err(),
+        MySqlBitError::InvalidBitLength { bit_len: 0 }
+    );
 
     assert!(<MySqlBit as ToSql>::accepts(&Type::MYSQL_SYS_BIT));
     assert!(<MySqlBit as FromSql>::accepts(&Type::MYSQL_SYS_BIT));
     assert!(!<MySqlBit as ToSql>::accepts(&Type::BIT));
     assert!(!<MySqlBit as FromSql>::accepts(&Type::VARBIT));
+
+    let cases = [
+        (
+            "0000",
+            [0, 0, 0, 4, 0, 0, 0, 0, 0].as_slice(),
+            MySqlBit::new(4, [0]).unwrap(),
+        ),
+        (
+            "0001",
+            [0, 0, 0, 3, 0, 0, 0, 1, 0x80].as_slice(),
+            MySqlBit::new(4, [0x10]).unwrap(),
+        ),
+        (
+            "0101",
+            [0, 0, 0, 1, 0, 0, 0, 3, 0xa0].as_slice(),
+            MySqlBit::new(4, [0x50]).unwrap(),
+        ),
+        (
+            "1111",
+            [0, 0, 0, 0, 0, 0, 0, 4, 0xf0].as_slice(),
+            MySqlBit::new(4, [0xf0]).unwrap(),
+        ),
+    ];
+    for (_, wire, expected) in cases {
+        assert_eq!(
+            <MySqlBit as FromSql>::from_sql(&Type::MYSQL_SYS_BIT, wire).unwrap(),
+            expected
+        );
+        let mut encoded = BytesMut::new();
+        expected
+            .to_sql(&Type::MYSQL_SYS_BIT, &mut encoded)
+            .unwrap();
+        let canonical = if expected.payload().iter().all(|byte| *byte == 0) {
+            let mut value = vec![0, 0, 0, 0, 0, 0, 0, expected.bit_len() as u8];
+            value.resize(8 + expected.bit_len().div_ceil(8) as usize, 0);
+            value
+        } else {
+            wire.to_vec()
+        };
+        assert_eq!(encoded.as_ref(), canonical.as_slice());
+    }
+
+    let mut false_encoded = BytesMut::new();
+    MySqlBit::from_bool(false)
+        .to_sql(&Type::MYSQL_SYS_BIT, &mut false_encoded)
+        .unwrap();
+    assert_eq!(false_encoded.as_ref(), &[0, 0, 0, 0, 0, 0, 0, 1, 0]);
+}
+
+#[test]
+fn mysql_bit_rejects_zero_length_and_nonzero_unused_wire_bits() {
+    let zero_length_wire = [0; 8];
+    assert!(<MySqlBit as FromSql>::from_sql(&Type::MYSQL_SYS_BIT, &zero_length_wire).is_err());
+
+    // The payload has room for the complete 16-bit declared width, but only
+    // its first four bits are significant. Every remaining payload bit must
+    // be zero, including those in subsequent bytes.
+    let dirty_unused_bits = [0, 0, 0, 12, 0, 0, 0, 4, 0xa0, 0x80];
+    assert!(<MySqlBit as FromSql>::from_sql(&Type::MYSQL_SYS_BIT, &dirty_unused_bits).is_err());
+
+    let invalid_length = [0, 0, 0, 4, 0, 0, 0, 4];
+    let error = <MySqlBit as FromSql>::from_sql(&Type::MYSQL_SYS_BIT, &invalid_length)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("bit length 8"));
+}
+
+#[test]
+fn mysql_time_round_trips_signed_microseconds() {
+    for micros in [-MySqlTime::MAX_MICROS, -1, 0, 1, MySqlTime::MAX_MICROS] {
+        let value = MySqlTime::new(micros).unwrap();
+        let mut encoded = BytesMut::new();
+        value.to_sql(&Type::MYSQL_SYS_TIME, &mut encoded).unwrap();
+        assert_eq!(encoded.as_ref(), micros.to_be_bytes());
+        assert_eq!(
+            <MySqlTime as FromSql>::from_sql(&Type::MYSQL_SYS_TIME, &encoded).unwrap(),
+            value
+        );
+    }
+
+    assert_eq!(
+        MySqlTime::new(MySqlTime::MAX_MICROS + 1)
+            .unwrap_err()
+            .micros(),
+        MySqlTime::MAX_MICROS + 1,
+    );
+    assert!(<MySqlTime as FromSql>::from_sql(
+        &Type::MYSQL_SYS_TIME,
+        &(MySqlTime::MAX_MICROS + 1).to_be_bytes(),
+    )
+    .is_err());
+    assert!(<MySqlTime as ToSql>::accepts(&Type::MYSQL_SYS_TIME));
+    assert!(<MySqlTime as FromSql>::accepts(&Type::MYSQL_SYS_TIME));
+    assert!(!<MySqlTime as ToSql>::accepts(&Type::TIME));
+    assert!(!<MySqlTime as FromSql>::accepts(&Type::TIME));
 }
 
 #[test]

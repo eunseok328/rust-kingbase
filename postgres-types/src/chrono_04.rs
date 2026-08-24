@@ -153,7 +153,7 @@ impl<'a> FromSql<'a> for NaiveTime {
         Ok(NaiveTime::from_hms_opt(0, 0, 0).unwrap() + Duration::microseconds(usec))
     }
 
-    accepts!(TIME, MYSQL_SYS_TIME);
+    accepts!(TIME);
 }
 
 impl ToSql for NaiveTime {
@@ -167,6 +167,6 @@ impl ToSql for NaiveTime {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME, MYSQL_SYS_TIME);
+    accepts!(TIME);
     to_sql_checked!();
 }

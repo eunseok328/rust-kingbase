@@ -136,7 +136,7 @@ impl<'a> FromSql<'a> for Time {
             .map_err(decode_err)
     }
 
-    accepts!(TIME, MYSQL_SYS_TIME);
+    accepts!(TIME);
 }
 
 impl ToSql for Time {
@@ -150,6 +150,6 @@ impl ToSql for Time {
         Ok(IsNull::No)
     }
 
-    accepts!(TIME, MYSQL_SYS_TIME);
+    accepts!(TIME);
     to_sql_checked!();
 }
