@@ -101,6 +101,44 @@ impl OracleDsInterval {
     }
 }
 
+/// A PostgreSQL `INTERVAL` value.
+///
+/// PostgreSQL intervals retain independent microsecond, day, and month
+/// components. This representation preserves those components without
+/// converting calendar units into a fixed duration.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Interval {
+    microseconds: i64,
+    days: i32,
+    months: i32,
+}
+
+impl Interval {
+    /// Creates an interval from its microsecond, day, and month components.
+    pub fn new(microseconds: i64, days: i32, months: i32) -> Interval {
+        Interval {
+            microseconds,
+            days,
+            months,
+        }
+    }
+
+    /// Returns the microsecond component.
+    pub fn microseconds(self) -> i64 {
+        self.microseconds
+    }
+
+    /// Returns the day component.
+    pub fn days(self) -> i32 {
+        self.days
+    }
+
+    /// Returns the month component.
+    pub fn months(self) -> i32 {
+        self.months
+    }
+}
+
 /// A KingbaseES SQL Server-compatible `sys.datetime2` value.
 ///
 /// The PostgreSQL wire protocol stores the value as signed 100-nanosecond
@@ -296,6 +334,11 @@ impl Error for OracleIntervalError {}
 /// An error returned when constructing or decoding a [`MySqlBit`] value fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MySqlBitError {
+    /// The logical bit length is outside MySQL BIT's supported range of 1 to 64 bits.
+    InvalidBitLength {
+        /// The rejected logical bit length.
+        bit_len: u64,
+    },
     /// The logical bit length exceeds the supported maximum of 64 bits.
     TooLong {
         /// The rejected logical bit length.
@@ -310,7 +353,14 @@ pub enum MySqlBitError {
         /// The actual payload length in bytes.
         actual: usize,
     },
-    /// The binary value is shorter than the 8-byte length header.
+    /// The numeric value cannot fit in the requested logical bit width.
+    ValueTooLarge {
+        /// The requested logical bit width.
+        bit_len: u64,
+        /// The rejected numeric value.
+        value: u64,
+    },
+    /// The binary value is shorter than the 8-byte metadata header.
     MissingLengthHeader {
         /// The actual wire payload length in bytes.
         actual: usize,
@@ -320,6 +370,12 @@ pub enum MySqlBitError {
 impl fmt::Display for MySqlBitError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            MySqlBitError::InvalidBitLength { bit_len } => {
+                write!(
+                    f,
+                    "bit length {bit_len} is outside the supported range of 1 to 64"
+                )
+            }
             MySqlBitError::TooLong { bit_len } => {
                 write!(
                     f,
@@ -334,6 +390,9 @@ impl fmt::Display for MySqlBitError {
                 f,
                 "payload length {actual} does not match bit length {bit_len}; expected {expected}"
             ),
+            MySqlBitError::ValueTooLarge { bit_len, value } => {
+                write!(f, "value {value} does not fit in {bit_len} bits")
+            }
             MySqlBitError::MissingLengthHeader { actual } => {
                 write!(
                     f,
@@ -345,6 +404,59 @@ impl fmt::Display for MySqlBitError {
 }
 
 impl Error for MySqlBitError {}
+
+/// An error returned when constructing or decoding a [`MySqlTime`] value
+/// outside KingbaseES MySQL TIME's supported range.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct MySqlTimeError {
+    micros: i64,
+}
+
+impl MySqlTimeError {
+    /// Returns the rejected signed microsecond duration.
+    pub fn micros(self) -> i64 {
+        self.micros
+    }
+}
+
+impl fmt::Display for MySqlTimeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "mysql time duration is out of range: {} microseconds",
+            self.micros
+        )
+    }
+}
+
+impl Error for MySqlTimeError {}
+
+/// A KingbaseES MySQL-compatible `sys.time` duration.
+///
+/// MySQL TIME is a signed duration rather than a time of day. Its valid range
+/// is `-838:59:59.999999` through `838:59:59.999999`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MySqlTime {
+    micros: i64,
+}
+
+impl MySqlTime {
+    /// The largest magnitude MySQL TIME duration, in microseconds.
+    pub const MAX_MICROS: i64 = 3_020_399_999_999;
+
+    /// Creates a MySQL TIME duration from signed microseconds.
+    pub fn new(micros: i64) -> Result<MySqlTime, MySqlTimeError> {
+        if !(-Self::MAX_MICROS..=Self::MAX_MICROS).contains(&micros) {
+            return Err(MySqlTimeError { micros });
+        }
+        Ok(MySqlTime { micros })
+    }
+
+    /// Returns the signed duration in microseconds.
+    pub fn micros(self) -> i64 {
+        self.micros
+    }
+}
 
 /// A KingbaseES MySQL-compatible `sys.bit` value.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -372,6 +484,27 @@ impl MySqlBit {
         })
     }
 
+    /// Creates a bit value from an unsigned integer.
+    ///
+    /// The integer is represented as a logical MSB-first bit string of
+    /// exactly `bit_len` bits. This is distinct from [`MySqlBit::new`]'s
+    /// payload-oriented API and is convenient when the SQL value is treated
+    /// as a number rather than as an opaque bit string.
+    pub fn from_u64(bit_len: u64, value: u64) -> Result<MySqlBit, MySqlBitError> {
+        let payload_len = bit_payload_len(bit_len)?;
+        if bit_len < 64 && value >= (1_u64 << bit_len) {
+            return Err(MySqlBitError::ValueTooLarge { bit_len, value });
+        }
+
+        let mut payload = vec![0; payload_len];
+        for index in 0..bit_len as usize {
+            if value & (1_u64 << (bit_len as usize - 1 - index)) != 0 {
+                payload[index / 8] |= 0x80 >> (index % 8);
+            }
+        }
+        Ok(MySqlBit { bit_len, payload })
+    }
+
     /// Creates a one-bit value from a boolean.
     pub fn from_bool(value: bool) -> MySqlBit {
         MySqlBit {
@@ -390,6 +523,17 @@ impl MySqlBit {
         &self.payload
     }
 
+    /// Returns the logical bit string as an unsigned integer.
+    pub fn to_u64(&self) -> u64 {
+        let mut value = 0;
+        for index in 0..self.bit_len as usize {
+            if self.payload[index / 8] & (0x80 >> (index % 8)) != 0 {
+                value |= 1_u64 << (self.bit_len as usize - 1 - index);
+            }
+        }
+        value
+    }
+
     /// Returns this value as a boolean when its logical bit length is exactly 1.
     pub fn as_bool(&self) -> Option<bool> {
         if self.bit_len == 1 {
@@ -401,6 +545,9 @@ impl MySqlBit {
 }
 
 fn bit_payload_len(bit_len: u64) -> Result<usize, MySqlBitError> {
+    if bit_len == 0 {
+        return Err(MySqlBitError::InvalidBitLength { bit_len });
+    }
     if bit_len > 64 {
         return Err(MySqlBitError::TooLong { bit_len });
     }
@@ -603,6 +750,30 @@ impl ToSql for OracleDsInterval {
     to_sql_checked!();
 }
 
+impl<'a> FromSql<'a> for Interval {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<Interval, Box<dyn Error + Sync + Send>> {
+        let (microseconds, days, months) = decode_interval(raw)?;
+        Ok(Interval::new(microseconds, days, months))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::INTERVAL
+    }
+}
+
+impl ToSql for Interval {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        encode_interval(self.microseconds, self.days, self.months, out);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::INTERVAL
+    }
+
+    to_sql_checked!();
+}
+
 impl<'a> FromSql<'a> for SqlServerDateTime2 {
     fn from_sql(
         _: &Type,
@@ -757,24 +928,72 @@ impl ToSql for SqlServerTinyInt {
     to_sql_checked!();
 }
 
+impl<'a> FromSql<'a> for MySqlTime {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<MySqlTime, Box<dyn Error + Sync + Send>> {
+        MySqlTime::new(postgres_protocol::types::time_from_sql(raw)?).map_err(Into::into)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::MYSQL_SYS_TIME
+    }
+}
+
+impl ToSql for MySqlTime {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        postgres_protocol::types::time_to_sql(self.micros, out);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::MYSQL_SYS_TIME
+    }
+
+    to_sql_checked!();
+}
+
 impl<'a> FromSql<'a> for MySqlBit {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<MySqlBit, Box<dyn Error + Sync + Send>> {
         if raw.len() < 8 {
             return Err(MySqlBitError::MissingLengthHeader { actual: raw.len() }.into());
         }
 
-        let bit_len = u64::from_be_bytes(raw[..8].try_into().unwrap());
+        // Kingbase MySQL BIT uses two uint32 metadata fields rather than the
+        // PostgreSQL BIT/VARBIT wire format: leading zero bits followed by
+        // the number of significant bits and their MSB-aligned payload.
+        let leading_zero_bits = u32::from_be_bytes(raw[..4].try_into().unwrap()) as u64;
+        let significant_bits = u32::from_be_bytes(raw[4..8].try_into().unwrap()) as u64;
+        let bit_len = leading_zero_bits
+            .checked_add(significant_bits)
+            .ok_or(MySqlBitError::TooLong { bit_len: u64::MAX })?;
+        // The payload is sized for the declared bit width (including an
+        // all-zero value whose significant-bit count is zero).
         let expected = bit_payload_len(bit_len)?;
-        let payload =
-            raw[8..]
-                .get(..expected)
-                .ok_or_else(|| MySqlBitError::InvalidPayloadLength {
-                    bit_len,
-                    expected,
-                    actual: raw.len() - 8,
-                })?;
+        if raw.len() != 8 + expected {
+            return Err(MySqlBitError::InvalidPayloadLength {
+                bit_len,
+                expected,
+                actual: raw.len() - 8,
+            }
+            .into());
+        }
 
-        MySqlBit::new(bit_len, payload.to_vec()).map_err(Into::into)
+        let significant = &raw[8..];
+        if (significant_bits as usize..significant.len() * 8)
+            .any(|index| significant[index / 8] & (0x80 >> (index % 8)) != 0)
+        {
+            return Err("mysql bit payload has non-zero unused bits".into());
+        }
+
+        let total_len = bit_payload_len(bit_len)?;
+        let mut payload = vec![0; total_len];
+        for index in 0..significant_bits as usize {
+            if significant[index / 8] & (0x80 >> (index % 8)) != 0 {
+                let position = leading_zero_bits as usize + index;
+                payload[position / 8] |= 0x80 >> (position % 8);
+            }
+        }
+
+        MySqlBit::new(bit_len, payload).map_err(Into::into)
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -784,8 +1003,33 @@ impl<'a> FromSql<'a> for MySqlBit {
 
 impl ToSql for MySqlBit {
     fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        out.put_u64(self.bit_len);
-        out.extend_from_slice(&self.payload);
+        let mut leading_zero_bits = self.bit_len;
+        for index in 0..self.bit_len as usize {
+            if self.payload[index / 8] & (0x80 >> (index % 8)) != 0 {
+                leading_zero_bits = index as u64;
+                break;
+            }
+        }
+        // Kingbase accepts/returns the canonical parameter form for an
+        // all-zero value as leading=0, significant=bit_len, zero payload.
+        if leading_zero_bits == self.bit_len {
+            leading_zero_bits = 0;
+        }
+        let significant_bits = self.bit_len - leading_zero_bits;
+        out.put_u32(leading_zero_bits as u32);
+        out.put_u32(significant_bits as u32);
+
+        if significant_bits > 0 {
+            let significant_len = bit_payload_len(significant_bits).expect("validated bit length");
+            let mut significant = vec![0; significant_len];
+            for index in 0..significant_bits as usize {
+                let source = leading_zero_bits as usize + index;
+                if self.payload[source / 8] & (0x80 >> (source % 8)) != 0 {
+                    significant[index / 8] |= 0x80 >> (index % 8);
+                }
+            }
+            out.extend_from_slice(&significant);
+        }
         Ok(IsNull::No)
     }
 
