@@ -100,7 +100,6 @@ pub struct Row {
     statement: Statement,
     body: DataRowBody,
     ranges: Vec<Option<Range<usize>>>,
-    text_columns: Arc<[bool]>,
 }
 
 impl fmt::Debug for Row {
@@ -112,17 +111,12 @@ impl fmt::Debug for Row {
 }
 
 impl Row {
-    pub(crate) fn new(
-        statement: Statement,
-        body: DataRowBody,
-        text_columns: Arc<[bool]>,
-    ) -> Result<Row, Error> {
+    pub(crate) fn new(statement: Statement, body: DataRowBody) -> Result<Row, Error> {
         let ranges = body.ranges().collect().map_err(Error::parse)?;
         Ok(Row {
             statement,
             body,
             ranges,
-            text_columns,
         })
     }
 
@@ -180,23 +174,14 @@ impl Row {
         };
 
         let ty = self.columns()[idx].type_();
-        let decode_ty = if self.text_columns.get(idx).copied().unwrap_or(false)
-            && !T::accepts(ty)
-            && T::accepts(&Type::TEXT)
-        {
-            &Type::TEXT
-        } else {
-            ty
-        };
-        if !T::accepts(decode_ty) {
+        if !T::accepts(ty) {
             return Err(Error::from_sql(
                 Box::new(WrongType::new::<T>(ty.clone())),
                 idx,
             ));
         }
 
-        FromSql::from_sql_nullable(decode_ty, self.col_buffer(idx))
-            .map_err(|e| Error::from_sql(e, idx))
+        FromSql::from_sql_nullable(ty, self.col_buffer(idx)).map_err(|e| Error::from_sql(e, idx))
     }
 
     /// Returns the raw size of the row in bytes.

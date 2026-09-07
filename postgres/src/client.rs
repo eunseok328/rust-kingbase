@@ -191,20 +191,6 @@ impl Client {
             .block_on(self.client.query_one(query, params))
     }
 
-    /// Executes a statement requesting text only for unknown simple Kingbase
-    /// result types. Known types remain in binary format.
-    pub fn query_text<T>(
-        &mut self,
-        query: &T,
-        params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Vec<Row>, Error>
-    where
-        T: ?Sized + ToStatement,
-    {
-        self.connection
-            .block_on(self.client.query_text(query, params))
-    }
-
     /// Executes a statement which returns zero or one rows, returning it.
     ///
     /// Returns an error if the query returns more than one row.
@@ -310,20 +296,6 @@ impl Client {
         let stream = self
             .connection
             .block_on(self.client.query_raw(query, params))?;
-        Ok(RowIter::new(self.connection.as_ref(), stream))
-    }
-
-    /// The streaming form of [`Client::query_text`].
-    pub fn query_text_raw<T, P, I>(&mut self, query: &T, params: I) -> Result<RowIter<'_>, Error>
-    where
-        T: ?Sized + ToStatement,
-        P: BorrowToSql,
-        I: IntoIterator<Item = P>,
-        I::IntoIter: ExactSizeIterator,
-    {
-        let stream = self
-            .connection
-            .block_on(self.client.query_text_raw(query, params))?;
         Ok(RowIter::new(self.connection.as_ref(), stream))
     }
 

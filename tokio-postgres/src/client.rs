@@ -361,27 +361,6 @@ impl Client {
             .await
     }
 
-    /// Executes a statement with the adaptive Kingbase result format.
-    ///
-    /// Known PostgreSQL and mode-extension types remain binary. Unknown
-    /// simple Kingbase types are requested as text so they can be read as
-    /// [`String`]. Use the regular [`Client::query`] path when a custom
-    /// [`FromSql`](crate::types::FromSql) implementation expects the unknown
-    /// type's binary payload.
-    pub async fn query_text<T>(
-        &self,
-        statement: &T,
-        params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Vec<Row>, Error>
-    where
-        T: ?Sized + ToStatement,
-    {
-        self.query_text_raw(statement, slice_iter(params))
-            .await?
-            .try_collect()
-            .await
-    }
-
     /// Returns a vector of scalars.
     pub async fn query_scalar<R: FromSqlOwned, T>(
         &self,
@@ -548,22 +527,6 @@ impl Client {
     {
         let statement = statement.__convert().into_statement(&self.inner).await?;
         query::query(&self.inner, statement, params).await
-    }
-
-    /// The streaming form of [`Client::query_text`].
-    pub async fn query_text_raw<T, P, I>(
-        &self,
-        statement: &T,
-        params: I,
-    ) -> Result<RowStream, Error>
-    where
-        T: ?Sized + ToStatement,
-        P: BorrowToSql,
-        I: IntoIterator<Item = P>,
-        I::IntoIter: ExactSizeIterator,
-    {
-        let statement = statement.__convert().into_statement(&self.inner).await?;
-        query::query_text(&self.inner, statement, params).await
     }
 
     /// Like `query`, but requires the types of query parameters to be explicitly specified.
