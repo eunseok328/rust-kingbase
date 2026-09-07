@@ -868,6 +868,8 @@ impl<'a> FromSql<'a> for &'a str {
                 | Type::ORACLE_UROWID
                 | Type::ORACLE_CLOB
                 | Type::ORACLE_NCLOB
+                | Type::ORACLE_BPCHARBYTE
+                | Type::ORACLE_VARCHARBYTE
         ) || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
             || ty == &Type::SQLSERVER_NVARCHAR
             || ty == &Type::SQLSERVER_NCHAR
@@ -977,7 +979,7 @@ fn numeric_to_i64(mut raw: &[u8]) -> Result<i64, Box<dyn Error + Sync + Send>> {
 }
 
 simple_from!(bool, bool_from_sql, BOOL, SQLSERVER_SYS_BIT);
-simple_from!(i8, char_from_sql, CHAR, MYSQL_TINYINT);
+simple_from!(i8, char_from_sql, CHAR, MYSQL_TINYINT, ORACLE_TINYINT);
 simple_from!(i16, int2_from_sql, INT2);
 impl<'a> FromSql<'a> for i32 {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<i32, Box<dyn Error + Sync + Send>> {
@@ -1513,7 +1515,7 @@ macro_rules! simple_to {
 }
 
 simple_to!(bool, bool_to_sql, BOOL, SQLSERVER_SYS_BIT);
-simple_to!(i8, char_to_sql, CHAR, MYSQL_TINYINT);
+simple_to!(i8, char_to_sql, CHAR, MYSQL_TINYINT, ORACLE_TINYINT);
 simple_to!(i16, int2_to_sql, INT2);
 impl ToSql for i32 {
     fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
