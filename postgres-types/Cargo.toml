@@ -20,6 +20,7 @@ with-bit-vec-0_7 = ["bit-vec-07"]
 with-bit-vec-0_8 = ["bit-vec-08"]
 with-bit-vec-0_9 = ["bit-vec-09"]
 with-bigdecimal-0_4 = ["bigdecimal-04"]
+with-rust_decimal-1 = ["rust-decimal-1"]
 with-cidr-0_2 = ["cidr-02"]
 with-cidr-0_3 = ["cidr-03"]
 with-chrono-0_4 = ["chrono-04"]
@@ -48,6 +49,7 @@ bit-vec-07 = { version = "0.7", package = "bit-vec", optional = true }
 bit-vec-08 = { version = "0.8", package = "bit-vec", optional = true }
 bit-vec-09 = { version = "0.9", package = "bit-vec", optional = true }
 bigdecimal-04 = { version = "0.4", package = "bigdecimal", optional = true }
+rust-decimal-1 = { version = "1", package = "rust_decimal", optional = true }
 chrono-04 = { version = "0.4.33", package = "chrono", default-features = false, features = [
   "clock",
 ], optional = true }

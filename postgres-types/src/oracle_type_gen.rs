@@ -2,7 +2,6 @@
 use crate::type_gen::Inner as TypeInner;
 use crate::{Kind, Oid, Type};
 
-
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Inner {
     Rowid,
@@ -26,34 +25,38 @@ pub enum Inner {
     BfileArray,
     Tinyint,
     TinyintArray,
+    Raw,
+    RawArray,
 }
 
 impl Inner {
     pub fn from_oid(oid: Oid) -> Option<Inner> {
-    match oid {
-        6123 => Some(Inner::Rowid),
-        6124 => Some(Inner::RowidArray),
-        6125 => Some(Inner::Urowid),
-        6126 => Some(Inner::UrowidArray),
-        7000 => Some(Inner::Dsinterval),
-        7001 => Some(Inner::DsintervalArray),
-        7002 => Some(Inner::Yminterval),
-        7003 => Some(Inner::YmintervalArray),
-        8013 => Some(Inner::Blob),
-        8014 => Some(Inner::Clob),
-        8015 => Some(Inner::Nclob),
-        8016 => Some(Inner::Bpcharbyte),
-        8017 => Some(Inner::BpcharbyteArray),
-        8018 => Some(Inner::Varcharbyte),
-        8019 => Some(Inner::VarcharbyteArray),
-        8020 => Some(Inner::OraDate),
-        8021 => Some(Inner::OraDateArray),
-        8078 => Some(Inner::Bfile),
-        8079 => Some(Inner::BfileArray),
-        8100 => Some(Inner::Tinyint),
-        8101 => Some(Inner::TinyintArray),
-        _ => None,
-    }
+        match oid {
+            6123 => Some(Inner::Rowid),
+            6124 => Some(Inner::RowidArray),
+            6125 => Some(Inner::Urowid),
+            6126 => Some(Inner::UrowidArray),
+            7000 => Some(Inner::Dsinterval),
+            7001 => Some(Inner::DsintervalArray),
+            7002 => Some(Inner::Yminterval),
+            7003 => Some(Inner::YmintervalArray),
+            8013 => Some(Inner::Blob),
+            8014 => Some(Inner::Clob),
+            8015 => Some(Inner::Nclob),
+            8016 => Some(Inner::Bpcharbyte),
+            8017 => Some(Inner::BpcharbyteArray),
+            8018 => Some(Inner::Varcharbyte),
+            8019 => Some(Inner::VarcharbyteArray),
+            8020 => Some(Inner::OraDate),
+            8021 => Some(Inner::OraDateArray),
+            8078 => Some(Inner::Bfile),
+            8079 => Some(Inner::BfileArray),
+            8100 => Some(Inner::Tinyint),
+            8101 => Some(Inner::TinyintArray),
+            49641 => Some(Inner::Raw),
+            49669 => Some(Inner::RawArray),
+            _ => None,
+        }
     }
 
     pub fn oid(&self) -> Oid {
@@ -79,74 +82,38 @@ impl Inner {
             Inner::BfileArray => 8079,
             Inner::Tinyint => 8100,
             Inner::TinyintArray => 8101,
+            Inner::Raw => 49641,
+            Inner::RawArray => 49669,
         }
     }
 
     pub fn kind(&self) -> &Kind {
         match *self {
-            Inner::Rowid => {
-                &Kind::Simple
-            }
-            Inner::RowidArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Rowid)))
-            }
-            Inner::Urowid => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Varchar)))
-            }
-            Inner::UrowidArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Urowid)))
-            }
-            Inner::Dsinterval => {
-                &Kind::Simple
-            }
-            Inner::DsintervalArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Dsinterval)))
-            }
-            Inner::Yminterval => {
-                &Kind::Simple
-            }
-            Inner::YmintervalArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Yminterval)))
-            }
-            Inner::Blob => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Bytea)))
-            }
-            Inner::Clob => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
-            }
-            Inner::Nclob => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
-            }
-            Inner::Bpcharbyte => {
-                &Kind::Simple
-            }
-            Inner::BpcharbyteArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Bpcharbyte)))
-            }
-            Inner::Varcharbyte => {
-                &Kind::Simple
-            }
-            Inner::VarcharbyteArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Varcharbyte)))
-            }
+            Inner::Rowid => &Kind::Simple,
+            Inner::RowidArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Rowid))),
+            Inner::Urowid => &Kind::Simple,
+            Inner::UrowidArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Urowid))),
+            Inner::Dsinterval => &Kind::Simple,
+            Inner::DsintervalArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Dsinterval))),
+            Inner::Yminterval => &Kind::Simple,
+            Inner::YmintervalArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Yminterval))),
+            Inner::Blob => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Bytea))),
+            Inner::Clob => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text))),
+            Inner::Nclob => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text))),
+            Inner::Bpcharbyte => &Kind::Simple,
+            Inner::BpcharbyteArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Bpcharbyte))),
+            Inner::Varcharbyte => &Kind::Simple,
+            Inner::VarcharbyteArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Varcharbyte))),
             Inner::OraDate => {
                 &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Timestamp)))
             }
-            Inner::OraDateArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::OraDate)))
-            }
-            Inner::Bfile => {
-                &Kind::Simple
-            }
-            Inner::BfileArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Bfile)))
-            }
-            Inner::Tinyint => {
-                &Kind::Simple
-            }
-            Inner::TinyintArray => {
-                &Kind::Array(Type(TypeInner::Oracle(Inner::Tinyint)))
-            }
+            Inner::OraDateArray => &Kind::Array(Type(TypeInner::Oracle(Inner::OraDate))),
+            Inner::Bfile => &Kind::Simple,
+            Inner::BfileArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Bfile))),
+            Inner::Tinyint => &Kind::Simple,
+            Inner::TinyintArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Tinyint))),
+            Inner::Raw => &Kind::Simple,
+            Inner::RawArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Raw))),
         }
     }
 
@@ -173,6 +140,8 @@ impl Inner {
             Inner::BfileArray => "_bfile",
             Inner::Tinyint => "tinyint",
             Inner::TinyintArray => "_tinyint",
+            Inner::Raw => "raw",
+            Inner::RawArray => "_raw",
         }
     }
 
@@ -199,6 +168,8 @@ impl Inner {
             Inner::BfileArray => "pg_catalog",
             Inner::Tinyint => "pg_catalog",
             Inner::TinyintArray => "pg_catalog",
+            Inner::Raw => "sys",
+            Inner::RawArray => "sys",
         }
     }
 }

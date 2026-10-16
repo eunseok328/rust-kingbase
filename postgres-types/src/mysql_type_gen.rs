@@ -2,7 +2,6 @@
 use crate::type_gen::Inner as TypeInner;
 use crate::{Kind, Oid, Type};
 
-
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Inner {
     Binary,
@@ -13,6 +12,7 @@ pub enum Inner {
     MysqlBitArray,
     Rowid,
     RowidArray,
+    MysqlDateArray,
     Int1,
     Int3,
     Mediumint,
@@ -49,49 +49,50 @@ pub enum Inner {
 
 impl Inner {
     pub fn from_oid(oid: Oid) -> Option<Inner> {
-    match oid {
-        3383 => Some(Inner::Binary),
-        3384 => Some(Inner::Varbinary),
-        3385 => Some(Inner::BinaryArray),
-        3386 => Some(Inner::VarbinaryArray),
-        4655 => Some(Inner::MysqlBit),
-        4656 => Some(Inner::MysqlBitArray),
-        6123 => Some(Inner::Rowid),
-        6124 => Some(Inner::RowidArray),
-        7014 => Some(Inner::Int1),
-        7015 => Some(Inner::Int3),
-        7016 => Some(Inner::Mediumint),
-        7017 => Some(Inner::Middleint),
-        7018 => Some(Inner::Longtext),
-        7019 => Some(Inner::Mediumtext),
-        7020 => Some(Inner::Tinytext),
-        7021 => Some(Inner::Longblob),
-        7022 => Some(Inner::Mediumblob),
-        7023 => Some(Inner::Tinyblob),
-        7024 => Some(Inner::MysqlJson),
-        7025 => Some(Inner::Year),
-        7082 => Some(Inner::Uint4),
-        7083 => Some(Inner::Uint4Array),
-        7084 => Some(Inner::Uint8),
-        7085 => Some(Inner::Uint8Array),
-        7944 => Some(Inner::MysqlDate),
-        7950 => Some(Inner::MysqlTime),
-        7951 => Some(Inner::MysqlTimeArray),
-        7952 => Some(Inner::Datetime),
-        7953 => Some(Inner::DatetimeArray),
-        7954 => Some(Inner::MysqlTimestamp),
-        7955 => Some(Inner::MysqlTimestampArray),
-        8013 => Some(Inner::Blob),
-        8014 => Some(Inner::Clob),
-        8015 => Some(Inner::Nclob),
-        8016 => Some(Inner::Bpcharbyte),
-        8017 => Some(Inner::BpcharbyteArray),
-        8018 => Some(Inner::Varcharbyte),
-        8019 => Some(Inner::VarcharbyteArray),
-        8100 => Some(Inner::Tinyint),
-        8101 => Some(Inner::TinyintArray),
-        _ => None,
-    }
+        match oid {
+            3383 => Some(Inner::Binary),
+            3384 => Some(Inner::Varbinary),
+            3385 => Some(Inner::BinaryArray),
+            3386 => Some(Inner::VarbinaryArray),
+            4655 => Some(Inner::MysqlBit),
+            4656 => Some(Inner::MysqlBitArray),
+            6123 => Some(Inner::Rowid),
+            6124 => Some(Inner::RowidArray),
+            6165 => Some(Inner::MysqlDateArray),
+            7014 => Some(Inner::Int1),
+            7015 => Some(Inner::Int3),
+            7016 => Some(Inner::Mediumint),
+            7017 => Some(Inner::Middleint),
+            7018 => Some(Inner::Longtext),
+            7019 => Some(Inner::Mediumtext),
+            7020 => Some(Inner::Tinytext),
+            7021 => Some(Inner::Longblob),
+            7022 => Some(Inner::Mediumblob),
+            7023 => Some(Inner::Tinyblob),
+            7024 => Some(Inner::MysqlJson),
+            7025 => Some(Inner::Year),
+            7082 => Some(Inner::Uint4),
+            7083 => Some(Inner::Uint4Array),
+            7084 => Some(Inner::Uint8),
+            7085 => Some(Inner::Uint8Array),
+            7944 => Some(Inner::MysqlDate),
+            7950 => Some(Inner::MysqlTime),
+            7951 => Some(Inner::MysqlTimeArray),
+            7952 => Some(Inner::Datetime),
+            7953 => Some(Inner::DatetimeArray),
+            7954 => Some(Inner::MysqlTimestamp),
+            7955 => Some(Inner::MysqlTimestampArray),
+            8013 => Some(Inner::Blob),
+            8014 => Some(Inner::Clob),
+            8015 => Some(Inner::Nclob),
+            8016 => Some(Inner::Bpcharbyte),
+            8017 => Some(Inner::BpcharbyteArray),
+            8018 => Some(Inner::Varcharbyte),
+            8019 => Some(Inner::VarcharbyteArray),
+            8100 => Some(Inner::Tinyint),
+            8101 => Some(Inner::TinyintArray),
+            _ => None,
+        }
     }
 
     pub fn oid(&self) -> Oid {
@@ -104,6 +105,7 @@ impl Inner {
             Inner::MysqlBitArray => 4656,
             Inner::Rowid => 6123,
             Inner::RowidArray => 6124,
+            Inner::MysqlDateArray => 6165,
             Inner::Int1 => 7014,
             Inner::Int3 => 7015,
             Inner::Mediumint => 7016,
@@ -141,126 +143,53 @@ impl Inner {
 
     pub fn kind(&self) -> &Kind {
         match *self {
-            Inner::Binary => {
-                &Kind::Simple
-            }
-            Inner::Varbinary => {
-                &Kind::Simple
-            }
-            Inner::BinaryArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Binary)))
-            }
-            Inner::VarbinaryArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Varbinary)))
-            }
-            Inner::MysqlBit => {
-                &Kind::Simple
-            }
-            Inner::MysqlBitArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::MysqlBit)))
-            }
-            Inner::Rowid => {
-                &Kind::Simple
-            }
-            Inner::RowidArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Rowid)))
-            }
-            Inner::Int1 => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
-            }
-            Inner::Int3 => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
-            }
-            Inner::Mediumint => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
-            }
-            Inner::Middleint => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
-            }
-            Inner::Longtext => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
-            }
+            Inner::Binary => &Kind::Simple,
+            Inner::Varbinary => &Kind::Simple,
+            Inner::BinaryArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Binary))),
+            Inner::VarbinaryArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Varbinary))),
+            Inner::MysqlBit => &Kind::Simple,
+            Inner::MysqlBitArray => &Kind::Array(Type(TypeInner::Mysql(Inner::MysqlBit))),
+            Inner::Rowid => &Kind::Simple,
+            Inner::RowidArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Rowid))),
+            Inner::MysqlDateArray => &Kind::Array(Type(TypeInner::Mysql(Inner::MysqlDate))),
+            Inner::Int1 => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4))),
+            Inner::Int3 => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4))),
+            Inner::Mediumint => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4))),
+            Inner::Middleint => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4))),
+            Inner::Longtext => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text))),
             Inner::Mediumtext => {
                 &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
             }
-            Inner::Tinytext => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
-            }
-            Inner::Longblob => {
-                &Kind::Domain(Type(TypeInner::Mysql(Inner::Blob)))
-            }
-            Inner::Mediumblob => {
-                &Kind::Domain(Type(TypeInner::Mysql(Inner::Blob)))
-            }
-            Inner::Tinyblob => {
-                &Kind::Domain(Type(TypeInner::Mysql(Inner::Blob)))
-            }
+            Inner::Tinytext => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text))),
+            Inner::Longblob => &Kind::Domain(Type(TypeInner::Mysql(Inner::Blob))),
+            Inner::Mediumblob => &Kind::Domain(Type(TypeInner::Mysql(Inner::Blob))),
+            Inner::Tinyblob => &Kind::Domain(Type(TypeInner::Mysql(Inner::Blob))),
             Inner::MysqlJson => {
                 &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Jsonb)))
             }
-            Inner::Year => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4)))
-            }
-            Inner::Uint4 => {
-                &Kind::Simple
-            }
-            Inner::Uint4Array => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Uint4)))
-            }
-            Inner::Uint8 => {
-                &Kind::Simple
-            }
-            Inner::Uint8Array => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Uint8)))
-            }
-            Inner::MysqlDate => {
-                &Kind::Simple
-            }
-            Inner::MysqlTime => {
-                &Kind::Simple
-            }
-            Inner::MysqlTimeArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::MysqlTime)))
-            }
-            Inner::Datetime => {
-                &Kind::Simple
-            }
-            Inner::DatetimeArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Datetime)))
-            }
-            Inner::MysqlTimestamp => {
-                &Kind::Simple
-            }
+            Inner::Year => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Int4))),
+            Inner::Uint4 => &Kind::Simple,
+            Inner::Uint4Array => &Kind::Array(Type(TypeInner::Mysql(Inner::Uint4))),
+            Inner::Uint8 => &Kind::Simple,
+            Inner::Uint8Array => &Kind::Array(Type(TypeInner::Mysql(Inner::Uint8))),
+            Inner::MysqlDate => &Kind::Simple,
+            Inner::MysqlTime => &Kind::Simple,
+            Inner::MysqlTimeArray => &Kind::Array(Type(TypeInner::Mysql(Inner::MysqlTime))),
+            Inner::Datetime => &Kind::Simple,
+            Inner::DatetimeArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Datetime))),
+            Inner::MysqlTimestamp => &Kind::Simple,
             Inner::MysqlTimestampArray => {
                 &Kind::Array(Type(TypeInner::Mysql(Inner::MysqlTimestamp)))
             }
-            Inner::Blob => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Bytea)))
-            }
-            Inner::Clob => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
-            }
-            Inner::Nclob => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text)))
-            }
-            Inner::Bpcharbyte => {
-                &Kind::Simple
-            }
-            Inner::BpcharbyteArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Bpcharbyte)))
-            }
-            Inner::Varcharbyte => {
-                &Kind::Simple
-            }
-            Inner::VarcharbyteArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Varcharbyte)))
-            }
-            Inner::Tinyint => {
-                &Kind::Simple
-            }
-            Inner::TinyintArray => {
-                &Kind::Array(Type(TypeInner::Mysql(Inner::Tinyint)))
-            }
+            Inner::Blob => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Bytea))),
+            Inner::Clob => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text))),
+            Inner::Nclob => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::Text))),
+            Inner::Bpcharbyte => &Kind::Simple,
+            Inner::BpcharbyteArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Bpcharbyte))),
+            Inner::Varcharbyte => &Kind::Simple,
+            Inner::VarcharbyteArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Varcharbyte))),
+            Inner::Tinyint => &Kind::Simple,
+            Inner::TinyintArray => &Kind::Array(Type(TypeInner::Mysql(Inner::Tinyint))),
         }
     }
 
@@ -271,9 +200,10 @@ impl Inner {
             Inner::BinaryArray => "_binary",
             Inner::VarbinaryArray => "_varbinary",
             Inner::MysqlBit => "bit",
-            Inner::MysqlBitArray => "_bit",
+            Inner::MysqlBitArray => "_mysql_bit",
             Inner::Rowid => "rowid",
             Inner::RowidArray => "_rowid",
+            Inner::MysqlDateArray => "_date",
             Inner::Int1 => "int1",
             Inner::Int3 => "int3",
             Inner::Mediumint => "mediumint",
@@ -319,6 +249,7 @@ impl Inner {
             Inner::MysqlBitArray => "sys",
             Inner::Rowid => "sys",
             Inner::RowidArray => "sys",
+            Inner::MysqlDateArray => "sys",
             Inner::Int1 => "sys",
             Inner::Int3 => "sys",
             Inner::Mediumint => "sys",

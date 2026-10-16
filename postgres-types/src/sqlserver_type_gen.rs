@@ -2,7 +2,6 @@
 use crate::type_gen::Inner as TypeInner;
 use crate::{Kind, Oid, Type};
 
-
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Inner {
     Uniqueidentifier,
@@ -47,47 +46,47 @@ pub enum Inner {
 
 impl Inner {
     pub fn from_oid(oid: Oid) -> Option<Inner> {
-    match oid {
-        4193 => Some(Inner::Uniqueidentifier),
-        5022 => Some(Inner::Binary),
-        5023 => Some(Inner::BinaryArray),
-        5024 => Some(Inner::Varbinary),
-        5025 => Some(Inner::VarbinaryArray),
-        5026 => Some(Inner::Tinyint),
-        5027 => Some(Inner::TinyintArray),
-        5039 => Some(Inner::Nchar),
-        5040 => Some(Inner::NcharArray),
-        5041 => Some(Inner::Nvarchar),
-        5042 => Some(Inner::NvarcharArray),
-        5043 => Some(Inner::Rowversion),
-        5044 => Some(Inner::RowversionArray),
-        5045 => Some(Inner::Smalldatetime),
-        5046 => Some(Inner::SmalldatetimeArray),
-        5069 => Some(Inner::SqlServerMoney),
-        5070 => Some(Inner::SqlServerMoneyArray),
-        6080 => Some(Inner::SysnameArray),
-        6661 => Some(Inner::SqlVariant),
-        6662 => Some(Inner::SqlVariantArray),
-        7141 => Some(Inner::Sysname),
-        7680 => Some(Inner::Datetime2Array),
-        7690 => Some(Inner::Datetime2),
-        7754 => Some(Inner::SqlServerDate),
-        7755 => Some(Inner::SqlServerTime),
-        7764 => Some(Inner::SqlServerDateArray),
-        7765 => Some(Inner::SqlServerTimeArray),
-        7881 => Some(Inner::Datetime),
-        7891 => Some(Inner::DatetimeArray),
-        7915 => Some(Inner::SqlServerBit),
-        7916 => Some(Inner::SqlServerBitArray),
-        8016 => Some(Inner::Bpcharbyte),
-        8017 => Some(Inner::BpcharbyteArray),
-        8018 => Some(Inner::Varcharbyte),
-        8019 => Some(Inner::VarcharbyteArray),
-        12464 => Some(Inner::SysLsnArray),
-        12465 => Some(Inner::SysLsn),
-        12476 => Some(Inner::UniqueidentifierArray),
-        _ => None,
-    }
+        match oid {
+            4193 => Some(Inner::Uniqueidentifier),
+            5022 => Some(Inner::Binary),
+            5023 => Some(Inner::BinaryArray),
+            5024 => Some(Inner::Varbinary),
+            5025 => Some(Inner::VarbinaryArray),
+            5026 => Some(Inner::Tinyint),
+            5027 => Some(Inner::TinyintArray),
+            5039 => Some(Inner::Nchar),
+            5040 => Some(Inner::NcharArray),
+            5041 => Some(Inner::Nvarchar),
+            5042 => Some(Inner::NvarcharArray),
+            5043 => Some(Inner::Rowversion),
+            5044 => Some(Inner::RowversionArray),
+            5045 => Some(Inner::Smalldatetime),
+            5046 => Some(Inner::SmalldatetimeArray),
+            5069 => Some(Inner::SqlServerMoney),
+            5070 => Some(Inner::SqlServerMoneyArray),
+            6080 => Some(Inner::SysnameArray),
+            6661 => Some(Inner::SqlVariant),
+            6662 => Some(Inner::SqlVariantArray),
+            7141 => Some(Inner::Sysname),
+            7680 => Some(Inner::Datetime2Array),
+            7690 => Some(Inner::Datetime2),
+            7754 => Some(Inner::SqlServerDate),
+            7755 => Some(Inner::SqlServerTime),
+            7764 => Some(Inner::SqlServerDateArray),
+            7765 => Some(Inner::SqlServerTimeArray),
+            7881 => Some(Inner::Datetime),
+            7891 => Some(Inner::DatetimeArray),
+            7915 => Some(Inner::SqlServerBit),
+            7916 => Some(Inner::SqlServerBitArray),
+            8016 => Some(Inner::Bpcharbyte),
+            8017 => Some(Inner::BpcharbyteArray),
+            8018 => Some(Inner::Varcharbyte),
+            8019 => Some(Inner::VarcharbyteArray),
+            12464 => Some(Inner::SysLsnArray),
+            12465 => Some(Inner::SysLsn),
+            12476 => Some(Inner::UniqueidentifierArray),
+            _ => None,
+        }
     }
 
     pub fn oid(&self) -> Oid {
@@ -135,117 +134,53 @@ impl Inner {
 
     pub fn kind(&self) -> &Kind {
         match *self {
-            Inner::Uniqueidentifier => {
-                &Kind::Simple
-            }
-            Inner::Binary => {
-                &Kind::Simple
-            }
-            Inner::BinaryArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Binary)))
-            }
-            Inner::Varbinary => {
-                &Kind::Simple
-            }
-            Inner::VarbinaryArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Varbinary)))
-            }
-            Inner::Tinyint => {
-                &Kind::Simple
-            }
-            Inner::TinyintArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Tinyint)))
-            }
-            Inner::Nchar => {
-                &Kind::Simple
-            }
-            Inner::NcharArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Nchar)))
-            }
-            Inner::Nvarchar => {
-                &Kind::Simple
-            }
-            Inner::NvarcharArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Nvarchar)))
-            }
-            Inner::Rowversion => {
-                &Kind::Simple
-            }
-            Inner::RowversionArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Rowversion)))
-            }
-            Inner::Smalldatetime => {
-                &Kind::Simple
-            }
+            Inner::Uniqueidentifier => &Kind::Simple,
+            Inner::Binary => &Kind::Simple,
+            Inner::BinaryArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Binary))),
+            Inner::Varbinary => &Kind::Simple,
+            Inner::VarbinaryArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Varbinary))),
+            Inner::Tinyint => &Kind::Simple,
+            Inner::TinyintArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Tinyint))),
+            Inner::Nchar => &Kind::Simple,
+            Inner::NcharArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Nchar))),
+            Inner::Nvarchar => &Kind::Simple,
+            Inner::NvarcharArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Nvarchar))),
+            Inner::Rowversion => &Kind::Simple,
+            Inner::RowversionArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Rowversion))),
+            Inner::Smalldatetime => &Kind::Simple,
             Inner::SmalldatetimeArray => {
                 &Kind::Array(Type(TypeInner::SqlServer(Inner::Smalldatetime)))
             }
-            Inner::SqlServerMoney => {
-                &Kind::Simple
-            }
+            Inner::SqlServerMoney => &Kind::Simple,
             Inner::SqlServerMoneyArray => {
                 &Kind::Array(Type(TypeInner::SqlServer(Inner::SqlServerMoney)))
             }
-            Inner::SysnameArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Sysname)))
-            }
-            Inner::SqlVariant => {
-                &Kind::Simple
-            }
-            Inner::SqlVariantArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::SqlVariant)))
-            }
-            Inner::Sysname => {
-                &Kind::Domain(Type(TypeInner::SqlServer(Inner::Nvarchar)))
-            }
-            Inner::Datetime2Array => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Datetime2)))
-            }
-            Inner::Datetime2 => {
-                &Kind::Simple
-            }
-            Inner::SqlServerDate => {
-                &Kind::Simple
-            }
-            Inner::SqlServerTime => {
-                &Kind::Simple
-            }
+            Inner::SysnameArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Sysname))),
+            Inner::SqlVariant => &Kind::Simple,
+            Inner::SqlVariantArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::SqlVariant))),
+            Inner::Sysname => &Kind::Domain(Type(TypeInner::SqlServer(Inner::Nvarchar))),
+            Inner::Datetime2Array => &Kind::Array(Type(TypeInner::SqlServer(Inner::Datetime2))),
+            Inner::Datetime2 => &Kind::Simple,
+            Inner::SqlServerDate => &Kind::Simple,
+            Inner::SqlServerTime => &Kind::Simple,
             Inner::SqlServerDateArray => {
                 &Kind::Array(Type(TypeInner::SqlServer(Inner::SqlServerDate)))
             }
             Inner::SqlServerTimeArray => {
                 &Kind::Array(Type(TypeInner::SqlServer(Inner::SqlServerTime)))
             }
-            Inner::Datetime => {
-                &Kind::Simple
-            }
-            Inner::DatetimeArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Datetime)))
-            }
-            Inner::SqlServerBit => {
-                &Kind::Simple
-            }
+            Inner::Datetime => &Kind::Simple,
+            Inner::DatetimeArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Datetime))),
+            Inner::SqlServerBit => &Kind::Simple,
             Inner::SqlServerBitArray => {
                 &Kind::Array(Type(TypeInner::SqlServer(Inner::SqlServerBit)))
             }
-            Inner::Bpcharbyte => {
-                &Kind::Simple
-            }
-            Inner::BpcharbyteArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Bpcharbyte)))
-            }
-            Inner::Varcharbyte => {
-                &Kind::Simple
-            }
-            Inner::VarcharbyteArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::Varcharbyte)))
-            }
-            Inner::SysLsnArray => {
-                &Kind::Array(Type(TypeInner::SqlServer(Inner::SysLsn)))
-            }
-            Inner::SysLsn => {
-                &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::PgLsn)))
-            }
+            Inner::Bpcharbyte => &Kind::Simple,
+            Inner::BpcharbyteArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Bpcharbyte))),
+            Inner::Varcharbyte => &Kind::Simple,
+            Inner::VarcharbyteArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::Varcharbyte))),
+            Inner::SysLsnArray => &Kind::Array(Type(TypeInner::SqlServer(Inner::SysLsn))),
+            Inner::SysLsn => &Kind::Domain(Type(TypeInner::Pg(crate::pg_type_gen::Inner::PgLsn))),
             Inner::UniqueidentifierArray => {
                 &Kind::Array(Type(TypeInner::SqlServer(Inner::Uniqueidentifier)))
             }

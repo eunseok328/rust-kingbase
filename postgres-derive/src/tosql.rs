@@ -185,12 +185,18 @@ fn composite_body(fields: &[Field]) -> TokenStream {
 
             let base = buf.len();
             buf.extend_from_slice(&[0; 4]);
-            let r = match field.name() {
+            let r = (|| {
                 #(
-                    #field_names => postgres_types::ToSql::to_sql(&self.#field_idents, field.type_(), buf),
+                    if field.matches_name(#field_names) {
+                        return postgres_types::ToSql::to_sql(
+                            &self.#field_idents,
+                            field.type_(),
+                            buf,
+                        );
+                    }
                 )*
-                _ => unreachable!(),
-            };
+                unreachable!();
+            })();
 
             let count = match r? {
                 postgres_types::IsNull::Yes => -1,

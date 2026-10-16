@@ -217,15 +217,14 @@ fn composite_body(ident: &Ident, fields: &[Field]) -> TokenStream {
                 return std::result::Result::Err(std::convert::Into::into("unexpected OID"));
             }
 
-            match field.name() {
-                #(
-                    #field_names => {
-                        #temp_vars = std::option::Option::Some(
-                            postgres_types::private::read_value(field.type_(), &mut buf)?);
-                    }
-                )*
-                _ => unreachable!(),
-            }
+            #(
+                if field.matches_name(#field_names) {
+                    #temp_vars = std::option::Option::Some(
+                        postgres_types::private::read_value(field.type_(), &mut buf)?);
+                    continue;
+                }
+            )*
+            unreachable!();
         }
 
         std::result::Result::Ok(#ident {

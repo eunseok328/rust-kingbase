@@ -148,7 +148,8 @@ fn encode(
         debug!("preparing query {name} with type OIDs {param_oids:?}: {query}");
     }
 
-    let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query);
+    let query =
+        crate::sql_compat::rewrite_query(client.compatible_mode(), query).map_err(Error::encode)?;
     client.with_buf(|buf| {
         frontend::parse(name, &query, param_oids.iter().copied(), buf).map_err(Error::encode)?;
         frontend::describe(b'S', name, buf).map_err(Error::encode)?;
@@ -201,12 +202,11 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
         && info.name.starts_with("Enum_")
     {
         let variants = get_enum_variants(client, oid).await?;
-        Kind::MySqlEnum(variants)
+        Kind::Enum(variants)
     } else if compatible_mode == crate::client::CompatibleMode::Mysql
-        && info.type_ == b'y' as i8
-        && info.name.starts_with("Set_")
+        && (info.type_ == b's' as i8 || info.type_ == b'y' as i8)
     {
-        Kind::MySqlSet
+        Kind::Set
     } else if info.type_ == b'p' as i8 {
         Kind::Pseudo
     } else if info.basetype != 0 {
@@ -257,6 +257,21 @@ fn validate_extension_type(expected: &Type, actual: &TypeInfo) -> Result<(), Err
         ));
     }
 
+    // Kingbase Oracle mode exposes UROWID as a base catalog type whose
+    // typbasetype points at VARCHAR, rather than as PostgreSQL's normal
+    // domain (typtype = 'd'). Keep the regular Type/Kind model intact and
+    // accept this server-specific catalog representation here.
+    if expected == &Type::ORACLE_UROWID {
+        let kind_matches = actual.type_ == b'b' as i8
+            && actual.basetype == Type::VARCHAR.oid()
+            && actual.elem_oid == 0
+            && actual.rngsubtype.is_none()
+            && actual.relid == 0;
+        if kind_matches {
+            return Ok(());
+        }
+    }
+
     let kind_matches = match expected.kind() {
         Kind::Simple => {
             actual.basetype == 0
@@ -268,9 +283,8 @@ fn validate_extension_type(expected: &Type, actual: &TypeInfo) -> Result<(), Err
         Kind::Domain(base) => actual.type_ == b'd' as i8 && actual.basetype == base.oid(),
         Kind::Array(member) => actual.elem_oid == member.oid(),
         Kind::Range(member) => actual.rngsubtype == Some(member.oid()),
-        Kind::Enum(_) => actual.type_ == b'e' as i8,
-        Kind::MySqlEnum(_) => actual.type_ == b'l' as i8,
-        Kind::MySqlSet => actual.type_ == b'y' as i8,
+        Kind::Enum(_) => actual.type_ == b'e' as i8 || actual.type_ == b'l' as i8,
+        Kind::Set => actual.type_ == b's' as i8 || actual.type_ == b'y' as i8,
         Kind::Multirange(_) => false,
         Kind::Composite(_) => actual.relid != 0,
         _ => false,
@@ -365,7 +379,11 @@ async fn get_composite_fields(client: &Arc<InnerClient>, oid: Oid) -> Result<Vec
         let name = row.try_get(0)?;
         let oid = row.try_get(1)?;
         let type_ = get_type_rec(client, oid).await?;
-        fields.push(Field::new(name, type_));
+        let field = match client.compatible_mode() {
+            crate::client::CompatibleMode::Oracle => Field::new_oracle(name, type_),
+            _ => Field::new(name, type_),
+        };
+        fields.push(field);
     }
 
     Ok(fields)

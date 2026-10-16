@@ -290,6 +290,8 @@ mod geo_types_07;
 mod jiff_01;
 #[cfg(feature = "with-jiff-0_2")]
 mod jiff_02;
+#[cfg(feature = "with-rust_decimal-1")]
+mod rust_decimal_1;
 #[cfg(feature = "with-serde_json-1")]
 mod serde_json_1;
 #[cfg(feature = "with-smol_str-01")]
@@ -475,13 +477,8 @@ pub enum Kind {
     Simple,
     /// An enumerated type along with its variants.
     Enum(Vec<String>),
-    /// A KingbaseES MySQL-compatible dynamic `ENUM` type along with its variants.
-    MySqlEnum(Vec<String>),
-    /// A KingbaseES MySQL-compatible dynamic `SET` type.
-    ///
-    /// The server represents a value as text that may contain multiple labels.
-    /// Its catalog entry does not expose the declared label set through `pg_enum`.
-    MySqlSet,
+    /// A KingbaseES MySQL-compatible `SET` type.
+    Set,
     /// A pseudo-type.
     Pseudo,
     /// An array type along with the type of its elements.
@@ -501,17 +498,60 @@ pub enum Kind {
 pub struct Field {
     name: String,
     type_: Type,
+    name_match: FieldNameMatch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum FieldNameMatch {
+    Exact,
+    OracleFoldedUppercase,
 }
 
 impl Field {
     /// Creates a new `Field`.
     pub fn new(name: String, type_: Type) -> Field {
-        Field { name, type_ }
+        Field {
+            name,
+            type_,
+            name_match: FieldNameMatch::Exact,
+        }
+    }
+
+    /// Creates a new `Field` using KingbaseES Oracle-compatible identifier matching.
+    ///
+    /// In Oracle compatibility mode, KingbaseES stores quoted, all-uppercase
+    /// composite field names in lowercase. This policy allows an expected
+    /// all-uppercase identifier to match that lowercase catalog spelling while
+    /// preserving exact matching for mixed-case identifiers.
+    pub fn new_oracle(name: String, type_: Type) -> Field {
+        Field {
+            name,
+            type_,
+            name_match: FieldNameMatch::OracleFoldedUppercase,
+        }
     }
 
     /// Returns the name of the field.
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// Returns whether this field's catalog name matches an expected name.
+    pub fn matches_name(&self, expected: &str) -> bool {
+        if self.name == expected {
+            return true;
+        }
+
+        match self.name_match {
+            FieldNameMatch::Exact => false,
+            FieldNameMatch::OracleFoldedUppercase => {
+                expected.bytes().any(|b| b.is_ascii_uppercase())
+                    && expected
+                        .bytes()
+                        .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+                    && self.name == expected.to_ascii_lowercase()
+            }
+        }
     }
 
     /// Returns the type of the field.
@@ -794,6 +834,7 @@ impl<'a> FromSql<'a> for Vec<u8> {
         MYSQL_MEDIUMBLOB,
         MYSQL_TINYBLOB,
         ORACLE_BLOB,
+        ORACLE_RAW,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -813,6 +854,7 @@ impl<'a> FromSql<'a> for &'a [u8] {
         MYSQL_MEDIUMBLOB,
         MYSQL_TINYBLOB,
         ORACLE_BLOB,
+        ORACLE_RAW,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -870,7 +912,7 @@ impl<'a> FromSql<'a> for &'a str {
                 | Type::ORACLE_NCLOB
                 | Type::ORACLE_BPCHARBYTE
                 | Type::ORACLE_VARCHARBYTE
-        ) || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
+        ) || matches!(ty.kind(), Kind::Enum(_) | Kind::Set)
             || ty == &Type::SQLSERVER_NVARCHAR
             || ty == &Type::SQLSERVER_NCHAR
             || ty == &Type::SQLSERVER_BPCHARBYTE
@@ -1312,6 +1354,7 @@ impl ToSql for &[u8] {
         MYSQL_MEDIUMBLOB,
         MYSQL_TINYBLOB,
         ORACLE_BLOB,
+        ORACLE_RAW,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -1335,6 +1378,7 @@ impl<const N: usize> ToSql for [u8; N] {
         MYSQL_MEDIUMBLOB,
         MYSQL_TINYBLOB,
         ORACLE_BLOB,
+        ORACLE_RAW,
         SQLSERVER_BINARY,
         SQLSERVER_VARBINARY
     );
@@ -1446,7 +1490,7 @@ impl ToSql for &str {
                 | Type::ORACLE_NCLOB
                 | Type::ORACLE_BPCHARBYTE
                 | Type::ORACLE_VARCHARBYTE
-        ) || matches!(ty.kind(), Kind::MySqlEnum(_) | Kind::MySqlSet)
+        ) || matches!(ty.kind(), Kind::Enum(_) | Kind::Set)
             || ty == &Type::SQLSERVER_NVARCHAR
             || ty == &Type::SQLSERVER_NCHAR
             || ty == &Type::SQLSERVER_BPCHARBYTE

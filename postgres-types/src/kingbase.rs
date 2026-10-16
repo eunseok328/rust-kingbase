@@ -3,10 +3,16 @@
 use bytes::{BufMut, BytesMut};
 use std::error::Error;
 use std::fmt;
+use std::str::FromStr;
+use std::time::Duration;
 
 use crate::{FromSql, IsNull, Kind, ToSql, Type};
 
 /// A KingbaseES SQL Server-compatible unsigned `sys.tinyint` value.
+///
+/// A wrapper is required because implementing `FromSql`/`ToSql` directly for
+/// `u8` would overlap rust-postgres's generic `Vec<T>` array implementation
+/// with its existing specialized `Vec<u8>` binary-value implementation.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SqlServerTinyInt(pub u8);
 
@@ -37,15 +43,103 @@ impl MySqlJsonPath {
 
 /// A KingbaseES Oracle-compatible `pg_catalog.rowid` value.
 ///
-/// The PostgreSQL protocol represents this value in binary form. Use
-/// [`OracleRowId::as_bytes`] to inspect the opaque server-generated value.
+/// The PostgreSQL protocol represents this value in a compact binary form,
+/// while SQL displays it as a canonical 23-character string.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OracleRowId(Vec<u8>);
 
+/// An error converting an Oracle-compatible ROWID between binary and text forms.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OracleRowIdError {
+    /// The binary value has an impossible size.
+    InvalidBinaryLength {
+        /// The received number of bytes.
+        actual: usize,
+    },
+    /// The binary length header does not match the received value.
+    InvalidLengthHeader {
+        /// The number of following bytes declared by the header.
+        declared: usize,
+        /// The actual number of bytes following the header.
+        actual: usize,
+    },
+    /// The field lengths encoded in the binary descriptor are invalid.
+    InvalidFieldLengths,
+    /// A textual ROWID is not exactly 23 ASCII characters.
+    InvalidTextLength {
+        /// The received UTF-8 byte length.
+        actual: usize,
+    },
+    /// A textual ROWID contains a character outside its 64-character alphabet.
+    InvalidCharacter {
+        /// The zero-based byte position of the invalid character.
+        index: usize,
+        /// The invalid byte.
+        byte: u8,
+    },
+    /// A textual field exceeds the range of its corresponding integer.
+    FieldOutOfRange,
+    /// Transaction ID zero is not a valid ROWID component.
+    InvalidTransactionId,
+}
+
+impl fmt::Display for OracleRowIdError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            OracleRowIdError::InvalidBinaryLength { actual } => {
+                write!(f, "invalid Oracle ROWID binary length: {actual}")
+            }
+            OracleRowIdError::InvalidLengthHeader { declared, actual } => write!(
+                f,
+                "invalid Oracle ROWID length header: declared {declared}, actual {actual}"
+            ),
+            OracleRowIdError::InvalidFieldLengths => {
+                f.write_str("invalid Oracle ROWID field lengths")
+            }
+            OracleRowIdError::InvalidTextLength { actual } => {
+                write!(f, "invalid Oracle ROWID text length: {actual}")
+            }
+            OracleRowIdError::InvalidCharacter { index, byte } => write!(
+                f,
+                "invalid Oracle ROWID character at index {index}: 0x{byte:02x}"
+            ),
+            OracleRowIdError::FieldOutOfRange => f.write_str("Oracle ROWID field is out of range"),
+            OracleRowIdError::InvalidTransactionId => {
+                f.write_str("Oracle ROWID transaction ID cannot be zero")
+            }
+        }
+    }
+}
+
+impl Error for OracleRowIdError {}
+
 impl OracleRowId {
-    /// Creates an Oracle ROWID from its PostgreSQL-protocol binary payload.
+    /// Creates an Oracle ROWID from its PostgreSQL-protocol binary payload
+    /// without validating it.
+    ///
+    /// Prefer [`OracleRowId::try_from_bytes`] for values that do not come
+    /// directly from a trusted KingbaseES server.
     pub fn new(bytes: impl Into<Vec<u8>>) -> OracleRowId {
         OracleRowId(bytes.into())
+    }
+
+    /// Creates an Oracle ROWID from a validated PostgreSQL-protocol binary payload.
+    pub fn try_from_bytes(bytes: impl Into<Vec<u8>>) -> Result<OracleRowId, OracleRowIdError> {
+        let bytes = bytes.into();
+        decode_oracle_rowid_binary(&bytes)?;
+        Ok(OracleRowId(bytes))
+    }
+
+    /// Parses the canonical 23-character Oracle ROWID representation.
+    pub fn from_text(value: &str) -> Result<OracleRowId, OracleRowIdError> {
+        let parts = decode_oracle_rowid_text(value)?;
+        Ok(OracleRowId(encode_oracle_rowid_binary(parts)))
+    }
+
+    /// Returns the canonical 23-character Oracle ROWID representation.
+    pub fn to_text(&self) -> Result<String, OracleRowIdError> {
+        let parts = decode_oracle_rowid_binary(&self.0)?;
+        Ok(encode_oracle_rowid_text(parts))
     }
 
     /// Returns the PostgreSQL-protocol binary payload.
@@ -59,6 +153,194 @@ impl OracleRowId {
     }
 }
 
+impl FromStr for OracleRowId {
+    type Err = OracleRowIdError;
+
+    fn from_str(value: &str) -> Result<OracleRowId, OracleRowIdError> {
+        OracleRowId::from_text(value)
+    }
+}
+
+impl fmt::Display for OracleRowId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.to_text().map_err(|_| fmt::Error)?)
+    }
+}
+
+const ORACLE_ROWID_ALPHABET: &[u8; 64] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct OracleRowIdParts {
+    rollback: u32,
+    transaction_id: u32,
+    count: u64,
+}
+
+fn decode_oracle_rowid_binary(raw: &[u8]) -> Result<OracleRowIdParts, OracleRowIdError> {
+    if !(4..=18).contains(&raw.len()) {
+        return Err(OracleRowIdError::InvalidBinaryLength { actual: raw.len() });
+    }
+
+    let declared = usize::from(raw[0]);
+    let actual = raw.len() - 1;
+    if declared != actual {
+        return Err(OracleRowIdError::InvalidLengthHeader { declared, actual });
+    }
+
+    let descriptor = raw[1];
+    let rollback_len = usize::from(descriptor >> 5);
+    let transaction_id_len = usize::from((descriptor >> 3) & 0x03) + 1;
+    let count_len = usize::from(descriptor & 0x07) + 1;
+    if rollback_len > 4 || 2 + rollback_len + transaction_id_len + count_len != raw.len() {
+        return Err(OracleRowIdError::InvalidFieldLengths);
+    }
+
+    let mut offset = 2;
+    let rollback = decode_oracle_rowid_binary_field(&raw[offset..offset + rollback_len]) as u32;
+    offset += rollback_len;
+    let transaction_id =
+        decode_oracle_rowid_binary_field(&raw[offset..offset + transaction_id_len]) as u32;
+    offset += transaction_id_len;
+    let count = decode_oracle_rowid_binary_field(&raw[offset..offset + count_len]);
+
+    if transaction_id == 0 {
+        return Err(OracleRowIdError::InvalidTransactionId);
+    }
+
+    Ok(OracleRowIdParts {
+        rollback,
+        transaction_id,
+        count,
+    })
+}
+
+fn decode_oracle_rowid_binary_field(raw: &[u8]) -> u64 {
+    raw.iter()
+        .fold(0, |value, byte| (value << 8) | u64::from(*byte))
+}
+
+fn decode_oracle_rowid_text(value: &str) -> Result<OracleRowIdParts, OracleRowIdError> {
+    let raw = value.as_bytes();
+    if raw.len() != 23 {
+        return Err(OracleRowIdError::InvalidTextLength { actual: raw.len() });
+    }
+
+    let rollback = decode_oracle_rowid_text_field(&raw[..6], 0)?;
+    let transaction_id = decode_oracle_rowid_text_field(&raw[6..12], 6)?;
+    let count = decode_oracle_rowid_text_field(&raw[12..], 12)?;
+    let rollback = u32::try_from(rollback).map_err(|_| OracleRowIdError::FieldOutOfRange)?;
+    let transaction_id =
+        u32::try_from(transaction_id).map_err(|_| OracleRowIdError::FieldOutOfRange)?;
+    if transaction_id == 0 {
+        return Err(OracleRowIdError::InvalidTransactionId);
+    }
+
+    Ok(OracleRowIdParts {
+        rollback,
+        transaction_id,
+        count,
+    })
+}
+
+fn decode_oracle_rowid_text_field(raw: &[u8], base_index: usize) -> Result<u64, OracleRowIdError> {
+    raw.iter()
+        .enumerate()
+        .try_fold(0_u64, |value, (index, byte)| {
+            let digit = match *byte {
+                b'A'..=b'Z' => *byte - b'A',
+                b'a'..=b'z' => *byte - b'a' + 26,
+                b'0'..=b'9' => *byte - b'0' + 52,
+                b'+' => 62,
+                b'/' => 63,
+                _ => {
+                    return Err(OracleRowIdError::InvalidCharacter {
+                        index: base_index + index,
+                        byte: *byte,
+                    });
+                }
+            };
+            value
+                .checked_mul(64)
+                .and_then(|value| value.checked_add(u64::from(digit)))
+                .ok_or(OracleRowIdError::FieldOutOfRange)
+        })
+}
+
+fn encode_oracle_rowid_binary(parts: OracleRowIdParts) -> Vec<u8> {
+    let rollback = minimal_oracle_rowid_bytes(u64::from(parts.rollback), true);
+    let transaction_id = minimal_oracle_rowid_bytes(u64::from(parts.transaction_id), false);
+    let count = minimal_oracle_rowid_bytes(parts.count, false);
+    let descriptor = ((rollback.len() as u8) << 5)
+        | (((transaction_id.len() - 1) as u8) << 3)
+        | ((count.len() - 1) as u8);
+    let payload_len = 1 + rollback.len() + transaction_id.len() + count.len();
+
+    let mut raw = Vec::with_capacity(payload_len + 1);
+    raw.push(payload_len as u8);
+    raw.push(descriptor);
+    raw.extend_from_slice(&rollback);
+    raw.extend_from_slice(&transaction_id);
+    raw.extend_from_slice(&count);
+    raw
+}
+
+fn minimal_oracle_rowid_bytes(value: u64, empty_zero: bool) -> Vec<u8> {
+    if value == 0 {
+        return if empty_zero { Vec::new() } else { vec![0] };
+    }
+
+    let bytes = value.to_be_bytes();
+    let first = bytes.iter().position(|byte| *byte != 0).unwrap();
+    bytes[first..].to_vec()
+}
+
+fn encode_oracle_rowid_text(parts: OracleRowIdParts) -> String {
+    let mut raw = [b'A'; 23];
+    encode_oracle_rowid_text_field(u64::from(parts.rollback), &mut raw[..6]);
+    encode_oracle_rowid_text_field(u64::from(parts.transaction_id), &mut raw[6..12]);
+    encode_oracle_rowid_text_field(parts.count, &mut raw[12..]);
+    String::from_utf8(raw.to_vec()).expect("Oracle ROWID alphabet is ASCII")
+}
+
+fn encode_oracle_rowid_text_field(mut value: u64, output: &mut [u8]) {
+    for byte in output.iter_mut().rev() {
+        *byte = ORACLE_ROWID_ALPHABET[(value & 0x3f) as usize];
+        value >>= 6;
+    }
+    debug_assert_eq!(value, 0);
+}
+
+/// A KingbaseES Oracle-compatible XMLType value.
+///
+/// Kingbase exposes XMLType as a PostgreSQL composite with one field named
+/// `xml_data` whose type is XML. The wrapper therefore uses the same composite
+/// binary layout as rust-postgres derives: field count, field OID, field
+/// length, and field payload.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OracleXmlType {
+    xml_data: String,
+}
+
+impl OracleXmlType {
+    /// Creates an XMLType value from its XML text.
+    pub fn new(xml_data: impl Into<String>) -> OracleXmlType {
+        OracleXmlType {
+            xml_data: xml_data.into(),
+        }
+    }
+
+    /// Returns the XML text stored in this XMLType value.
+    pub fn xml_data(&self) -> &str {
+        &self.xml_data
+    }
+
+    /// Consumes this value and returns its XML text.
+    pub fn into_xml_data(self) -> String {
+        self.xml_data
+    }
+}
+
 /// A KingbaseES Oracle-compatible `sys.yminterval` value.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OracleYmInterval {
@@ -69,6 +351,34 @@ impl OracleYmInterval {
     /// Creates a YEAR TO MONTH interval from its total number of months.
     pub fn new(months: i32) -> OracleYmInterval {
         OracleYmInterval { months }
+    }
+
+    /// Creates a YEAR TO MONTH interval from separate Oracle components.
+    ///
+    /// The month component must be in `-11..=11`, and all components must
+    /// have the same sign (or be zero), matching Oracle's interval rules.
+    pub fn from_parts(years: i32, months: i32) -> Result<OracleYmInterval, OracleIntervalError> {
+        if !(-11..=11).contains(&months) {
+            return Err(OracleIntervalError::InvalidYearMonthComponents { years, months });
+        }
+        if (years > 0 && months < 0) || (years < 0 && months > 0) {
+            return Err(OracleIntervalError::InvalidYearMonthComponents { years, months });
+        }
+        let total = years
+            .checked_mul(12)
+            .and_then(|value| value.checked_add(months))
+            .ok_or(OracleIntervalError::InvalidYearMonthComponents { years, months })?;
+        Ok(OracleYmInterval::new(total))
+    }
+
+    /// Returns the signed whole-year component.
+    pub fn years(self) -> i32 {
+        self.months / 12
+    }
+
+    /// Returns the signed remaining month component (`-11..=11`).
+    pub fn months_part(self) -> i32 {
+        self.months % 12
     }
 
     /// Returns the interval's total number of months.
@@ -90,6 +400,53 @@ impl OracleDsInterval {
         OracleDsInterval { days, nanoseconds }
     }
 
+    /// Creates a DAY TO SECOND interval from Oracle-style components.
+    ///
+    /// Components must be uniformly non-negative or uniformly non-positive,
+    /// and follow Oracle's day/hour/minute/second/nanosecond ranges.
+    pub fn from_parts(
+        days: i32,
+        hours: i32,
+        minutes: i32,
+        seconds: i32,
+        nanoseconds: i32,
+    ) -> Result<OracleDsInterval, OracleIntervalError> {
+        let valid_ranges = (-999_999_999..=999_999_999).contains(&days)
+            && (-23..=23).contains(&hours)
+            && (-59..=59).contains(&minutes)
+            && (-59..=59).contains(&seconds)
+            && (-999_999_999..=999_999_999).contains(&nanoseconds);
+        let same_sign = [days, hours, minutes, seconds, nanoseconds]
+            .iter()
+            .all(|&value| value >= 0)
+            || [days, hours, minutes, seconds, nanoseconds]
+                .iter()
+                .all(|&value| value <= 0);
+        if !valid_ranges || !same_sign {
+            return Err(OracleIntervalError::InvalidDaySecondComponents {
+                days,
+                hours,
+                minutes,
+                seconds,
+                nanoseconds,
+            });
+        }
+
+        let subday = i64::from(hours)
+            .checked_mul(3_600_000_000_000)
+            .and_then(|value| value.checked_add(i64::from(minutes) * 60_000_000_000))
+            .and_then(|value| value.checked_add(i64::from(seconds) * 1_000_000_000))
+            .and_then(|value| value.checked_add(i64::from(nanoseconds)))
+            .ok_or(OracleIntervalError::InvalidDaySecondComponents {
+                days,
+                hours,
+                minutes,
+                seconds,
+                nanoseconds,
+            })?;
+        Ok(OracleDsInterval::new(days, subday))
+    }
+
     /// Returns the interval's whole-day component.
     pub fn days(self) -> i32 {
         self.days
@@ -98,6 +455,26 @@ impl OracleDsInterval {
     /// Returns the interval's sub-day component in nanoseconds.
     pub fn nanoseconds(self) -> i64 {
         self.nanoseconds
+    }
+
+    /// Returns the signed hour component within the day.
+    pub fn hours(self) -> i32 {
+        (self.nanoseconds / 3_600_000_000_000) as i32
+    }
+
+    /// Returns the signed minute component within the hour.
+    pub fn minutes(self) -> i32 {
+        ((self.nanoseconds.abs() / 60_000_000_000) % 60) as i32 * self.nanoseconds.signum() as i32
+    }
+
+    /// Returns the signed second component within the minute.
+    pub fn seconds(self) -> i32 {
+        ((self.nanoseconds.abs() / 1_000_000_000) % 60) as i32 * self.nanoseconds.signum() as i32
+    }
+
+    /// Returns the signed nanosecond component within the second.
+    pub fn subsecond_nanoseconds(self) -> i32 {
+        (self.nanoseconds.abs() % 1_000_000_000) as i32 * self.nanoseconds.signum() as i32
     }
 }
 
@@ -139,6 +516,119 @@ impl Interval {
     }
 }
 
+/// A PostgreSQL-compatible `MONEY` value.
+///
+/// The wire representation stores the amount as an integer scaled by 100.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Money {
+    scaled_value: i64,
+}
+
+impl Money {
+    /// The number of stored units in one monetary unit.
+    pub const SCALE: i64 = 100;
+
+    /// Creates a MONEY value from its exact scaled integer representation.
+    pub fn new(scaled_value: i64) -> Money {
+        Money { scaled_value }
+    }
+
+    /// Returns the exact integer scaled by [`Money::SCALE`].
+    pub fn scaled_value(self) -> i64 {
+        self.scaled_value
+    }
+}
+
+/// A PostgreSQL-compatible `TIMETZ` value.
+///
+/// The public offset uses the conventional seconds east of UTC representation,
+/// while the PostgreSQL wire format stores seconds west of UTC.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TimeTz {
+    microseconds: i64,
+    utc_offset_seconds: i32,
+}
+
+impl TimeTz {
+    /// The number of microseconds in one day.
+    pub const MICROSECONDS_PER_DAY: i64 = 86_400_000_000;
+
+    /// Creates a TIMETZ value from microseconds since midnight and seconds east of UTC.
+    pub fn new(microseconds: i64, utc_offset_seconds: i32) -> Result<TimeTz, TimeTzError> {
+        if !(0..Self::MICROSECONDS_PER_DAY).contains(&microseconds) {
+            return Err(TimeTzError::TimeOutOfRange { microseconds });
+        }
+        if !(-57_599..=57_599).contains(&utc_offset_seconds) {
+            return Err(TimeTzError::OffsetOutOfRange { utc_offset_seconds });
+        }
+        Ok(TimeTz {
+            microseconds,
+            utc_offset_seconds,
+        })
+    }
+
+    /// Returns the number of microseconds since midnight.
+    pub fn microseconds(self) -> i64 {
+        self.microseconds
+    }
+
+    /// Returns the time-zone offset in seconds east of UTC.
+    pub fn utc_offset_seconds(self) -> i32 {
+        self.utc_offset_seconds
+    }
+}
+
+/// An error returned when a TIMETZ component is outside its valid range.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TimeTzError {
+    /// The time-of-day value is outside one day.
+    TimeOutOfRange {
+        /// The supplied number of microseconds since midnight.
+        microseconds: i64,
+    },
+    /// The UTC offset exceeds PostgreSQL's maximum displacement.
+    OffsetOutOfRange {
+        /// The supplied number of seconds east of UTC.
+        utc_offset_seconds: i32,
+    },
+}
+
+impl fmt::Display for TimeTzError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            TimeTzError::TimeOutOfRange { microseconds } => {
+                write!(f, "invalid TIMETZ time-of-day microseconds: {microseconds}")
+            }
+            TimeTzError::OffsetOutOfRange { utc_offset_seconds } => {
+                write!(f, "invalid TIMETZ UTC offset seconds: {utc_offset_seconds}")
+            }
+        }
+    }
+}
+
+impl Error for TimeTzError {}
+
+/// A PostgreSQL-compatible `REFCURSOR` portal name.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RefCursor(String);
+
+impl RefCursor {
+    /// Creates a REFCURSOR value from a portal name.
+    pub fn new(name: impl Into<String>) -> RefCursor {
+        RefCursor(name.into())
+    }
+
+    /// Returns the portal name.
+    pub fn name(&self) -> &str {
+        &self.0
+    }
+
+    /// Consumes the value and returns the portal name.
+    pub fn into_name(self) -> String {
+        self.0
+    }
+}
+
 /// A KingbaseES SQL Server-compatible `sys.datetime2` value.
 ///
 /// The PostgreSQL wire protocol stores the value as signed 100-nanosecond
@@ -152,22 +642,18 @@ impl SqlServerDateTime2 {
     /// The number of DATETIME2 ticks in one second.
     pub const TICKS_PER_SECOND: i64 = 10_000_000;
 
-    /// Creates a DATETIME2 value from signed 100-nanosecond ticks relative to
-    /// `2000-01-01 00:00:00`.
+    /// Creates a DATETIME2 value from signed 100-nanosecond ticks.
     pub fn new(ticks: i64) -> SqlServerDateTime2 {
         SqlServerDateTime2 { ticks }
     }
 
-    /// Returns the signed 100-nanosecond ticks relative to `2000-01-01 00:00:00`.
+    /// Returns the signed 100-nanosecond ticks relative to `2000-01-01`.
     pub fn ticks(self) -> i64 {
         self.ticks
     }
 }
 
 /// A KingbaseES SQL Server-compatible `sys.time` value.
-///
-/// The PostgreSQL wire protocol stores the value as unsigned-in-practice,
-/// 100-nanosecond ticks since midnight.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SqlServerTime {
     ticks: i64,
@@ -176,8 +662,7 @@ pub struct SqlServerTime {
 impl SqlServerTime {
     /// The number of TIME ticks in one second.
     pub const TICKS_PER_SECOND: i64 = 10_000_000;
-
-    const TICKS_PER_DAY: i64 = 24 * 60 * 60 * Self::TICKS_PER_SECOND;
+    const TICKS_PER_DAY: i64 = 86_400 * Self::TICKS_PER_SECOND;
 
     /// Creates a TIME value from 100-nanosecond ticks since midnight.
     pub fn new(ticks: i64) -> Result<SqlServerTime, SqlServerTimeError> {
@@ -200,7 +685,7 @@ pub struct SqlServerTimeError {
 }
 
 impl SqlServerTimeError {
-    /// Returns the invalid 100-nanosecond tick value.
+    /// Returns the invalid tick value.
     pub fn ticks(self) -> i64 {
         self.ticks
     }
@@ -215,9 +700,6 @@ impl fmt::Display for SqlServerTimeError {
 impl Error for SqlServerTimeError {}
 
 /// A KingbaseES SQL Server-compatible `sys.money` value.
-///
-/// The PostgreSQL wire protocol stores the value as a signed integer scaled
-/// by 10,000. This type preserves that exact scaled representation.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SqlServerMoney {
     scaled_value: i64,
@@ -307,6 +789,26 @@ pub enum OracleIntervalError {
         /// The unexpected month component.
         months: i32,
     },
+    /// YEAR TO MONTH components violate Oracle's range or sign rules.
+    InvalidYearMonthComponents {
+        /// The supplied year component.
+        years: i32,
+        /// The supplied month component.
+        months: i32,
+    },
+    /// DAY TO SECOND components violate Oracle's range or sign rules.
+    InvalidDaySecondComponents {
+        /// The supplied day component.
+        days: i32,
+        /// The supplied hour component.
+        hours: i32,
+        /// The supplied minute component.
+        minutes: i32,
+        /// The supplied second component.
+        seconds: i32,
+        /// The supplied nanosecond component.
+        nanoseconds: i32,
+    },
 }
 
 impl fmt::Display for OracleIntervalError {
@@ -325,6 +827,20 @@ impl fmt::Display for OracleIntervalError {
             OracleIntervalError::DaySecondContainsMonths { months } => {
                 write!(f, "Oracle DAY TO SECOND interval contains months={months}")
             }
+            OracleIntervalError::InvalidYearMonthComponents { years, months } => write!(
+                f,
+                "invalid Oracle YEAR TO MONTH components: years={years}, months={months}"
+            ),
+            OracleIntervalError::InvalidDaySecondComponents {
+                days,
+                hours,
+                minutes,
+                seconds,
+                nanoseconds,
+            } => write!(
+                f,
+                "invalid Oracle DAY TO SECOND components: days={days}, hours={hours}, minutes={minutes}, seconds={seconds}, nanoseconds={nanoseconds}"
+            ),
         }
     }
 }
@@ -431,6 +947,56 @@ impl fmt::Display for MySqlTimeError {
 
 impl Error for MySqlTimeError {}
 
+/// A MySQL `YEAR` value.
+///
+/// MySQL represents `YEAR` as either `0` or a four-digit year in the range
+/// `1901..=2155`.  This wrapper keeps that semantic constraint separate from
+/// the existing `i32` implementation, which remains available for backwards
+/// compatibility with the PostgreSQL-style type table.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MySqlYear(i32);
+
+/// An error returned when constructing a [`MySqlYear`] outside MySQL's range.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct MySqlYearError {
+    year: i32,
+}
+
+impl MySqlYearError {
+    /// Returns the rejected year.
+    pub fn year(self) -> i32 {
+        self.year
+    }
+}
+
+impl fmt::Display for MySqlYearError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid MySQL YEAR value: {}", self.year)
+    }
+}
+
+impl Error for MySqlYearError {}
+
+impl MySqlYear {
+    /// Creates a MySQL YEAR value.
+    ///
+    /// `0` is accepted for MySQL compatibility.  Whether it can be stored is
+    /// a server-mode policy; current Kingbase MySQL mode rejects zero years at
+    /// the domain constraint layer.
+    pub fn new(year: i32) -> Result<MySqlYear, MySqlYearError> {
+        if year == 0 || (1901..=2155).contains(&year) {
+            Ok(MySqlYear(year))
+        } else {
+            Err(MySqlYearError { year })
+        }
+    }
+
+    /// Returns the numeric year.
+    pub fn year(self) -> i32 {
+        self.0
+    }
+}
+
 /// A KingbaseES MySQL-compatible `sys.time` duration.
 ///
 /// MySQL TIME is a signed duration rather than a time of day. Its valid range
@@ -452,9 +1018,96 @@ impl MySqlTime {
         Ok(MySqlTime { micros })
     }
 
+    /// Creates a TIME value from MySQL-style components.
+    ///
+    /// The sign applies to the complete magnitude.  Minutes, seconds and
+    /// microseconds are validated using the same ranges as mature MySQL
+    /// drivers; the Kingbase wire representation is still the signed
+    /// microsecond value handled by [`FromSql`] and [`ToSql`] below.
+    pub fn from_parts(
+        negative: bool,
+        hours: u32,
+        minutes: u8,
+        seconds: u8,
+        microseconds: u32,
+    ) -> Result<MySqlTime, MySqlTimeError> {
+        if minutes >= 60 || seconds >= 60 || microseconds >= 1_000_000 {
+            return Err(MySqlTimeError { micros: i64::MAX });
+        }
+
+        let magnitude = i64::from(hours)
+            .checked_mul(3_600_000_000)
+            .and_then(|value| value.checked_add(i64::from(minutes) * 60_000_000))
+            .and_then(|value| value.checked_add(i64::from(seconds) * 1_000_000))
+            .and_then(|value| value.checked_add(i64::from(microseconds)))
+            .ok_or(MySqlTimeError { micros: i64::MAX })?;
+        if negative && magnitude == 0 {
+            return Err(MySqlTimeError { micros: 0 });
+        }
+        let micros = if negative { -magnitude } else { magnitude };
+        MySqlTime::new(micros)
+    }
+
     /// Returns the signed duration in microseconds.
     pub fn micros(self) -> i64 {
         self.micros
+    }
+
+    /// Returns whether this TIME value is negative.
+    pub fn is_negative(self) -> bool {
+        self.micros < 0
+    }
+
+    /// Returns whether this TIME value is zero.
+    pub fn is_zero(self) -> bool {
+        self.micros == 0
+    }
+
+    /// Returns the absolute number of whole hours (0 through 838).
+    pub fn hours(self) -> u32 {
+        (self.micros.unsigned_abs() / 3_600_000_000) as u32
+    }
+
+    /// Returns the minute component (0 through 59).
+    pub fn minutes(self) -> u8 {
+        ((self.micros.unsigned_abs() / 60_000_000) % 60) as u8
+    }
+
+    /// Returns the second component (0 through 59).
+    pub fn seconds(self) -> u8 {
+        ((self.micros.unsigned_abs() / 1_000_000) % 60) as u8
+    }
+
+    /// Returns the microsecond component (0 through 999,999).
+    pub fn microseconds(self) -> u32 {
+        (self.micros.unsigned_abs() % 1_000_000) as u32
+    }
+
+    /// Returns whether this value can be represented as a non-negative time
+    /// of day (`00:00:00` through `23:59:59.999999`).
+    pub fn is_valid_time_of_day(self) -> bool {
+        !self.is_negative() && self.hours() < 24
+    }
+
+    /// Converts a non-negative MySQL TIME value into a standard duration.
+    /// Negative MySQL TIME values cannot be represented by
+    /// [`std::time::Duration`].
+    pub fn to_duration(self) -> Option<Duration> {
+        if self.is_negative() {
+            return None;
+        }
+        Some(Duration::from_micros(self.micros as u64))
+    }
+
+    /// Creates a positive MySQL TIME value from a standard duration.
+    pub fn from_duration(duration: Duration) -> Result<MySqlTime, MySqlTimeError> {
+        let micros = duration
+            .as_secs()
+            .checked_mul(1_000_000)
+            .and_then(|value| value.checked_add(u64::from(duration.subsec_micros())))
+            .and_then(|value| i64::try_from(value).ok())
+            .ok_or(MySqlTimeError { micros: i64::MAX })?;
+        MySqlTime::new(micros)
     }
 }
 
@@ -534,6 +1187,30 @@ impl MySqlBit {
         value
     }
 
+    /// Returns the value as `u8`, rejecting values that do not fit.
+    pub fn to_u8(&self) -> Result<u8, MySqlBitError> {
+        u8::try_from(self.to_u64()).map_err(|_| MySqlBitError::ValueTooLarge {
+            bit_len: 8,
+            value: self.to_u64(),
+        })
+    }
+
+    /// Returns the value as `u16`, rejecting values that do not fit.
+    pub fn to_u16(&self) -> Result<u16, MySqlBitError> {
+        u16::try_from(self.to_u64()).map_err(|_| MySqlBitError::ValueTooLarge {
+            bit_len: 16,
+            value: self.to_u64(),
+        })
+    }
+
+    /// Returns the value as `u32`, rejecting values that do not fit.
+    pub fn to_u32(&self) -> Result<u32, MySqlBitError> {
+        u32::try_from(self.to_u64()).map_err(|_| MySqlBitError::ValueTooLarge {
+            bit_len: 32,
+            value: self.to_u64(),
+        })
+    }
+
     /// Returns this value as a boolean when its logical bit length is exactly 1.
     pub fn as_bool(&self) -> Option<bool> {
         if self.bit_len == 1 {
@@ -583,6 +1260,19 @@ fn accepts_oracle_rowid(ty: &Type) -> bool {
         && matches!(ty.kind(), Kind::Simple)
 }
 
+fn accepts_oracle_xmltype(ty: &Type) -> bool {
+    if ty.name() != "xmltype" || ty.schema() != "public" {
+        return false;
+    }
+
+    match ty.kind() {
+        Kind::Composite(fields) if fields.len() == 1 => {
+            fields[0].name() == "xml_data" && fields[0].type_() == &Type::XML
+        }
+        _ => false,
+    }
+}
+
 fn accepts_oracle_yminterval(ty: &Type) -> bool {
     ty.oid() == Type::ORACLE_YMINTERVAL.oid()
         && ty.name() == Type::ORACLE_YMINTERVAL.name()
@@ -621,14 +1311,14 @@ fn accepts_sqlserver_tinyint(ty: &Type) -> bool {
     ty == &Type::SQLSERVER_TINYINT
 }
 
-fn decode_sqlserver_i64(raw: &[u8], type_name: &str) -> Result<i64, Box<dyn Error + Sync + Send>> {
+fn decode_i64(raw: &[u8], type_name: &str) -> Result<i64, Box<dyn Error + Sync + Send>> {
     let bytes: [u8; 8] = raw
         .try_into()
-        .map_err(|_| format!("invalid SQL Server {type_name} length: {}", raw.len()))?;
+        .map_err(|_| format!("invalid {type_name} length: {}", raw.len()))?;
     Ok(i64::from_be_bytes(bytes))
 }
 
-fn encode_sqlserver_i64(value: i64, out: &mut BytesMut) {
+fn encode_i64(value: i64, out: &mut BytesMut) {
     out.put_i64(value);
 }
 
@@ -650,7 +1340,7 @@ fn encode_interval(time: i64, days: i32, months: i32, out: &mut BytesMut) {
 
 impl<'a> FromSql<'a> for OracleRowId {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<OracleRowId, Box<dyn Error + Sync + Send>> {
-        Ok(OracleRowId(raw.to_vec()))
+        OracleRowId::try_from_bytes(raw.to_vec()).map_err(Into::into)
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -660,12 +1350,85 @@ impl<'a> FromSql<'a> for OracleRowId {
 
 impl ToSql for OracleRowId {
     fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        decode_oracle_rowid_binary(&self.0)?;
         out.extend_from_slice(&self.0);
         Ok(IsNull::No)
     }
 
     fn accepts(ty: &Type) -> bool {
         accepts_oracle_rowid(ty)
+    }
+
+    to_sql_checked!();
+}
+
+impl<'a> FromSql<'a> for OracleXmlType {
+    fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<OracleXmlType, Box<dyn Error + Sync + Send>> {
+        if !accepts_oracle_xmltype(ty) {
+            return Err("invalid XMLType metadata".into());
+        }
+
+        let fields = match ty.kind() {
+            Kind::Composite(fields) => fields,
+            _ => unreachable!(),
+        };
+        let mut buf = raw;
+        let count = crate::private::read_be_i32(&mut buf)?;
+        if count != 1 {
+            return Err(format!("invalid XMLType field count: {count}").into());
+        }
+
+        let oid = crate::private::read_be_i32(&mut buf)? as u32;
+        if oid != fields[0].type_().oid() {
+            return Err("unexpected XMLType field OID".into());
+        }
+
+        let xml_data: String = crate::private::read_value(fields[0].type_(), &mut buf)?;
+        if !buf.is_empty() {
+            return Err("trailing bytes in XMLType value".into());
+        }
+        Ok(OracleXmlType::new(xml_data))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        accepts_oracle_xmltype(ty)
+    }
+}
+
+impl ToSql for OracleXmlType {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        if !accepts_oracle_xmltype(ty) {
+            return Err("invalid XMLType metadata".into());
+        }
+
+        let fields = match ty.kind() {
+            Kind::Composite(fields) => fields,
+            _ => unreachable!(),
+        };
+        out.extend_from_slice(&1_i32.to_be_bytes());
+        out.extend_from_slice(&fields[0].type_().oid().to_be_bytes());
+        let length_offset = out.len();
+        out.extend_from_slice(&[0; 4]);
+        let payload_start = out.len();
+        match self.xml_data.to_sql(fields[0].type_(), out)? {
+            IsNull::Yes => {
+                out[length_offset..length_offset + 4].copy_from_slice(&(-1_i32).to_be_bytes());
+            }
+            IsNull::No => {
+                let len = out.len() - payload_start;
+                let len = i32::try_from(len).map_err(|_| "XMLType value too large to transmit")?;
+                out[length_offset..length_offset + 4].copy_from_slice(&len.to_be_bytes());
+            }
+        }
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        accepts_oracle_xmltype(ty)
     }
 
     to_sql_checked!();
@@ -693,6 +1456,32 @@ impl ToSql for MySqlJsonPath {
 
     to_sql_checked!();
 }
+
+/*
+impl<'a> FromSql<'a> for MySqlYear {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<MySqlYear, Box<dyn Error + Sync + Send>> {
+        let value = postgres_protocol::types::int4_from_sql(raw)?;
+        MySqlYear::new(value).map_err(Into::into)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        matches!(*ty, Type::MYSQL_YEAR | Type::INT4)
+    }
+}
+
+impl ToSql for MySqlYear {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        postgres_protocol::types::int4_to_sql(self.0, out);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        matches!(*ty, Type::MYSQL_YEAR | Type::INT4)
+    }
+
+    to_sql_checked!();
+}
+*/
 
 impl<'a> FromSql<'a> for OracleYmInterval {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<OracleYmInterval, Box<dyn Error + Sync + Send>> {
@@ -774,14 +1563,92 @@ impl ToSql for Interval {
     to_sql_checked!();
 }
 
+impl<'a> FromSql<'a> for Money {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<Money, Box<dyn Error + Sync + Send>> {
+        Ok(Money::new(decode_i64(raw, "MONEY")?))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::MONEY
+    }
+}
+
+impl ToSql for Money {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        encode_i64(self.scaled_value, out);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::MONEY
+    }
+
+    to_sql_checked!();
+}
+
+impl<'a> FromSql<'a> for TimeTz {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<TimeTz, Box<dyn Error + Sync + Send>> {
+        let raw: [u8; 12] = raw
+            .try_into()
+            .map_err(|_| format!("invalid TIMETZ length: {}", raw.len()))?;
+        let microseconds = i64::from_be_bytes(raw[..8].try_into().unwrap());
+        let seconds_west = i32::from_be_bytes(raw[8..].try_into().unwrap());
+        let utc_offset_seconds = seconds_west
+            .checked_neg()
+            .ok_or("invalid TIMETZ UTC offset")?;
+        TimeTz::new(microseconds, utc_offset_seconds).map_err(Into::into)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::TIMETZ
+    }
+}
+
+impl ToSql for TimeTz {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        out.put_i64(self.microseconds);
+        out.put_i32(-self.utc_offset_seconds);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::TIMETZ
+    }
+
+    to_sql_checked!();
+}
+
+impl<'a> FromSql<'a> for RefCursor {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<RefCursor, Box<dyn Error + Sync + Send>> {
+        Ok(RefCursor::new(std::str::from_utf8(raw)?))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::REFCURSOR
+    }
+}
+
+impl ToSql for RefCursor {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        out.extend_from_slice(self.0.as_bytes());
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::REFCURSOR
+    }
+
+    to_sql_checked!();
+}
+
 impl<'a> FromSql<'a> for SqlServerDateTime2 {
     fn from_sql(
         _: &Type,
         raw: &'a [u8],
     ) -> Result<SqlServerDateTime2, Box<dyn Error + Sync + Send>> {
-        Ok(SqlServerDateTime2::new(decode_sqlserver_i64(
+        Ok(SqlServerDateTime2::new(decode_i64(
             raw,
-            "datetime2",
+            "SQL Server datetime2",
         )?))
     }
 
@@ -792,7 +1659,7 @@ impl<'a> FromSql<'a> for SqlServerDateTime2 {
 
 impl ToSql for SqlServerDateTime2 {
     fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        encode_sqlserver_i64(self.ticks, out);
+        encode_i64(self.ticks, out);
         Ok(IsNull::No)
     }
 
@@ -805,7 +1672,7 @@ impl ToSql for SqlServerDateTime2 {
 
 impl<'a> FromSql<'a> for SqlServerTime {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<SqlServerTime, Box<dyn Error + Sync + Send>> {
-        Ok(SqlServerTime::new(decode_sqlserver_i64(raw, "time")?)?)
+        Ok(SqlServerTime::new(decode_i64(raw, "SQL Server time")?)?)
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -815,7 +1682,7 @@ impl<'a> FromSql<'a> for SqlServerTime {
 
 impl ToSql for SqlServerTime {
     fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        encode_sqlserver_i64(self.ticks, out);
+        encode_i64(self.ticks, out);
         Ok(IsNull::No)
     }
 
@@ -828,7 +1695,7 @@ impl ToSql for SqlServerTime {
 
 impl<'a> FromSql<'a> for SqlServerMoney {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<SqlServerMoney, Box<dyn Error + Sync + Send>> {
-        Ok(SqlServerMoney::new(decode_sqlserver_i64(raw, "money")?))
+        Ok(SqlServerMoney::new(decode_i64(raw, "SQL Server money")?))
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -838,7 +1705,7 @@ impl<'a> FromSql<'a> for SqlServerMoney {
 
 impl ToSql for SqlServerMoney {
     fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        encode_sqlserver_i64(self.scaled_value, out);
+        encode_i64(self.scaled_value, out);
         Ok(IsNull::No)
     }
 
@@ -903,11 +1770,10 @@ impl ToSql for SqlServerVariant {
 
 impl<'a> FromSql<'a> for SqlServerTinyInt {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<SqlServerTinyInt, Box<dyn Error + Sync + Send>> {
-        let value = raw
+        let bytes: [u8; 1] = raw
             .try_into()
-            .map(u8::from_be_bytes)
             .map_err(|_| format!("invalid SQL Server tinyint length: {}", raw.len()))?;
-        Ok(SqlServerTinyInt(value))
+        Ok(SqlServerTinyInt(u8::from_be_bytes(bytes)))
     }
 
     fn accepts(ty: &Type) -> bool {
