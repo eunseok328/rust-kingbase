@@ -5,13 +5,14 @@ use crate::query::RowStream;
 #[cfg(feature = "runtime")]
 use crate::tls::MakeTlsConnect;
 use crate::tls::TlsConnect;
-use crate::types::{BorrowToSql, ToSql, Type};
+use crate::types::{BorrowToSql, ToSql, Type, kingbase::RefCursor};
 use crate::{
     CancelToken, Client, CopyInSink, Error, Portal, Row, SimpleQueryMessage, Statement,
     ToStatement, bind, query, slice_iter,
 };
 use bytes::Buf;
 use futures_util::TryStreamExt;
+use postgres_protocol::escape::escape_identifier;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 /// A representation of a PostgreSQL database transaction.
@@ -259,6 +260,30 @@ impl<'a> Transaction<'a> {
         max_rows: i32,
     ) -> Result<RowStream, Error> {
         query::query_portal(self.client.inner(), portal, max_rows).await
+    }
+
+    /// Fetches rows from a server-side cursor returned as a `REFCURSOR`.
+    ///
+    /// The cursor must belong to this transaction. If `max_rows` is negative
+    /// or 0, all remaining rows will be returned.
+    pub async fn fetch_refcursor(
+        &self,
+        cursor: &RefCursor,
+        max_rows: i32,
+    ) -> Result<Vec<Row>, Error> {
+        let cursor = escape_identifier(cursor.name());
+        let query = if max_rows <= 0 {
+            format!("FETCH FORWARD ALL FROM {cursor}")
+        } else {
+            format!("FETCH FORWARD {max_rows} FROM {cursor}")
+        };
+        self.query(&query, &[]).await
+    }
+
+    /// Closes a server-side cursor returned as a `REFCURSOR`.
+    pub async fn close_refcursor(&self, cursor: &RefCursor) -> Result<(), Error> {
+        let cursor = escape_identifier(cursor.name());
+        self.batch_execute(&format!("CLOSE {cursor}")).await
     }
 
     /// Like `Client::copy_in`.

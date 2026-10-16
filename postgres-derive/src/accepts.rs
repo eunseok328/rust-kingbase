@@ -85,14 +85,12 @@ pub fn composite_body(name: &str, trait_: &str, fields: &[Field]) -> TokenStream
                 }
 
                 fields.iter().all(|f| {
-                    match f.name() {
-                        #(
-                            #field_names => {
-                                <#field_types as ::postgres_types::#traits>::accepts(f.type_())
-                            }
-                        )*
-                        _ => false,
-                    }
+                    #(
+                        if f.matches_name(#field_names) {
+                            return <#field_types as ::postgres_types::#traits>::accepts(f.type_());
+                        }
+                    )*
+                    false
                 })
             }
             _ => false,

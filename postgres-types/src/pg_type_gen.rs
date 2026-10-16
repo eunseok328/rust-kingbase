@@ -2,7 +2,6 @@
 use crate::type_gen::Inner as TypeInner;
 use crate::{Kind, Oid, Type};
 
-
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Inner {
     Bool,
@@ -576,561 +575,191 @@ impl Inner {
 
     pub fn kind(&self) -> &Kind {
         match *self {
-            Inner::Bool => {
-                &Kind::Simple
-            }
-            Inner::Bytea => {
-                &Kind::Simple
-            }
-            Inner::Char => {
-                &Kind::Simple
-            }
-            Inner::Name => {
-                &Kind::Simple
-            }
-            Inner::Int8 => {
-                &Kind::Simple
-            }
-            Inner::Int2 => {
-                &Kind::Simple
-            }
-            Inner::Int2Vector => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int2)))
-            }
-            Inner::Int4 => {
-                &Kind::Simple
-            }
-            Inner::Regproc => {
-                &Kind::Simple
-            }
-            Inner::Text => {
-                &Kind::Simple
-            }
-            Inner::Oid => {
-                &Kind::Simple
-            }
-            Inner::Tid => {
-                &Kind::Simple
-            }
-            Inner::Xid => {
-                &Kind::Simple
-            }
-            Inner::Cid => {
-                &Kind::Simple
-            }
-            Inner::OidVector => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Oid)))
-            }
-            Inner::PgDdlCommand => {
-                &Kind::Pseudo
-            }
-            Inner::Json => {
-                &Kind::Simple
-            }
-            Inner::Xml => {
-                &Kind::Simple
-            }
-            Inner::XmlArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Xml)))
-            }
-            Inner::PgNodeTree => {
-                &Kind::Simple
-            }
-            Inner::JsonArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Json)))
-            }
-            Inner::TableAmHandler => {
-                &Kind::Pseudo
-            }
-            Inner::Xid8Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Xid8)))
-            }
-            Inner::IndexAmHandler => {
-                &Kind::Pseudo
-            }
-            Inner::Point => {
-                &Kind::Simple
-            }
-            Inner::Lseg => {
-                &Kind::Simple
-            }
-            Inner::Path => {
-                &Kind::Simple
-            }
-            Inner::Box => {
-                &Kind::Simple
-            }
-            Inner::Polygon => {
-                &Kind::Simple
-            }
-            Inner::Line => {
-                &Kind::Simple
-            }
-            Inner::LineArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Line)))
-            }
-            Inner::Cidr => {
-                &Kind::Simple
-            }
-            Inner::CidrArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Cidr)))
-            }
-            Inner::Float4 => {
-                &Kind::Simple
-            }
-            Inner::Float8 => {
-                &Kind::Simple
-            }
-            Inner::Unknown => {
-                &Kind::Simple
-            }
-            Inner::Circle => {
-                &Kind::Simple
-            }
-            Inner::CircleArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Circle)))
-            }
-            Inner::Macaddr8 => {
-                &Kind::Simple
-            }
-            Inner::Macaddr8Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Macaddr8)))
-            }
-            Inner::Money => {
-                &Kind::Simple
-            }
-            Inner::MoneyArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Money)))
-            }
-            Inner::Macaddr => {
-                &Kind::Simple
-            }
-            Inner::Inet => {
-                &Kind::Simple
-            }
-            Inner::BoolArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Bool)))
-            }
-            Inner::ByteaArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Bytea)))
-            }
-            Inner::CharArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Char)))
-            }
-            Inner::NameArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Name)))
-            }
-            Inner::Int2Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int2)))
-            }
-            Inner::Int2VectorArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int2Vector)))
-            }
-            Inner::Int4Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int4)))
-            }
-            Inner::RegprocArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regproc)))
-            }
-            Inner::TextArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Text)))
-            }
-            Inner::TidArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Tid)))
-            }
-            Inner::XidArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Xid)))
-            }
-            Inner::CidArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Cid)))
-            }
-            Inner::OidVectorArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::OidVector)))
-            }
-            Inner::BpcharArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Bpchar)))
-            }
-            Inner::VarcharArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Varchar)))
-            }
-            Inner::Int8Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int8)))
-            }
-            Inner::PointArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Point)))
-            }
-            Inner::LsegArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Lseg)))
-            }
-            Inner::PathArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Path)))
-            }
-            Inner::BoxArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Box)))
-            }
-            Inner::Float4Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Float4)))
-            }
-            Inner::Float8Array => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Float8)))
-            }
-            Inner::PolygonArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Polygon)))
-            }
-            Inner::OidArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Oid)))
-            }
-            Inner::Aclitem => {
-                &Kind::Simple
-            }
-            Inner::AclitemArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Aclitem)))
-            }
-            Inner::MacaddrArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Macaddr)))
-            }
-            Inner::InetArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Inet)))
-            }
-            Inner::Bpchar => {
-                &Kind::Simple
-            }
-            Inner::Varchar => {
-                &Kind::Simple
-            }
-            Inner::Date => {
-                &Kind::Simple
-            }
-            Inner::Time => {
-                &Kind::Simple
-            }
-            Inner::Timestamp => {
-                &Kind::Simple
-            }
-            Inner::TimestampArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Timestamp)))
-            }
-            Inner::DateArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Date)))
-            }
-            Inner::TimeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Time)))
-            }
-            Inner::Timestamptz => {
-                &Kind::Simple
-            }
-            Inner::TimestamptzArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Timestamptz)))
-            }
-            Inner::Interval => {
-                &Kind::Simple
-            }
-            Inner::IntervalArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Interval)))
-            }
-            Inner::NumericArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Numeric)))
-            }
-            Inner::CstringArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Cstring)))
-            }
-            Inner::Timetz => {
-                &Kind::Simple
-            }
-            Inner::TimetzArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Timetz)))
-            }
-            Inner::Bit => {
-                &Kind::Simple
-            }
-            Inner::BitArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Bit)))
-            }
-            Inner::Varbit => {
-                &Kind::Simple
-            }
-            Inner::VarbitArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Varbit)))
-            }
-            Inner::Numeric => {
-                &Kind::Simple
-            }
-            Inner::Refcursor => {
-                &Kind::Simple
-            }
-            Inner::RefcursorArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Refcursor)))
-            }
-            Inner::Regprocedure => {
-                &Kind::Simple
-            }
-            Inner::Regoper => {
-                &Kind::Simple
-            }
-            Inner::Regoperator => {
-                &Kind::Simple
-            }
-            Inner::Regclass => {
-                &Kind::Simple
-            }
-            Inner::Regtype => {
-                &Kind::Simple
-            }
-            Inner::RegprocedureArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regprocedure)))
-            }
-            Inner::RegoperArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regoper)))
-            }
-            Inner::RegoperatorArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regoperator)))
-            }
-            Inner::RegclassArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regclass)))
-            }
-            Inner::RegtypeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regtype)))
-            }
-            Inner::Record => {
-                &Kind::Pseudo
-            }
-            Inner::Cstring => {
-                &Kind::Pseudo
-            }
-            Inner::Any => {
-                &Kind::Pseudo
-            }
-            Inner::Anyarray => {
-                &Kind::Pseudo
-            }
-            Inner::Void => {
-                &Kind::Pseudo
-            }
-            Inner::Trigger => {
-                &Kind::Pseudo
-            }
-            Inner::LanguageHandler => {
-                &Kind::Pseudo
-            }
-            Inner::Internal => {
-                &Kind::Pseudo
-            }
-            Inner::Anyelement => {
-                &Kind::Pseudo
-            }
-            Inner::RecordArray => {
-                &Kind::Pseudo
-            }
-            Inner::Anynonarray => {
-                &Kind::Pseudo
-            }
-            Inner::TxidSnapshotArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::TxidSnapshot)))
-            }
-            Inner::Uuid => {
-                &Kind::Simple
-            }
-            Inner::UuidArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Uuid)))
-            }
-            Inner::TxidSnapshot => {
-                &Kind::Simple
-            }
-            Inner::FdwHandler => {
-                &Kind::Pseudo
-            }
-            Inner::PgLsn => {
-                &Kind::Simple
-            }
-            Inner::PgLsnArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::PgLsn)))
-            }
-            Inner::TsmHandler => {
-                &Kind::Pseudo
-            }
-            Inner::PgNdistinct => {
-                &Kind::Simple
-            }
-            Inner::PgDependencies => {
-                &Kind::Simple
-            }
-            Inner::Anyenum => {
-                &Kind::Pseudo
-            }
-            Inner::TsVector => {
-                &Kind::Simple
-            }
-            Inner::Tsquery => {
-                &Kind::Simple
-            }
-            Inner::GtsVector => {
-                &Kind::Simple
-            }
-            Inner::TsVectorArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::TsVector)))
-            }
-            Inner::GtsVectorArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::GtsVector)))
-            }
-            Inner::TsqueryArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Tsquery)))
-            }
-            Inner::Regconfig => {
-                &Kind::Simple
-            }
-            Inner::RegconfigArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regconfig)))
-            }
-            Inner::Regdictionary => {
-                &Kind::Simple
-            }
-            Inner::RegdictionaryArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regdictionary)))
-            }
-            Inner::Jsonb => {
-                &Kind::Simple
-            }
-            Inner::JsonbArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Jsonb)))
-            }
-            Inner::AnyRange => {
-                &Kind::Pseudo
-            }
-            Inner::EventTrigger => {
-                &Kind::Pseudo
-            }
-            Inner::Int4Range => {
-                &Kind::Range(Type(TypeInner::Pg(Inner::Int4)))
-            }
-            Inner::Int4RangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int4Range)))
-            }
-            Inner::NumRange => {
-                &Kind::Range(Type(TypeInner::Pg(Inner::Numeric)))
-            }
-            Inner::NumRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::NumRange)))
-            }
-            Inner::TsRange => {
-                &Kind::Range(Type(TypeInner::Pg(Inner::Timestamp)))
-            }
-            Inner::TsRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::TsRange)))
-            }
-            Inner::TstzRange => {
-                &Kind::Range(Type(TypeInner::Pg(Inner::Timestamptz)))
-            }
-            Inner::TstzRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::TstzRange)))
-            }
-            Inner::DateRange => {
-                &Kind::Range(Type(TypeInner::Pg(Inner::Date)))
-            }
-            Inner::DateRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::DateRange)))
-            }
-            Inner::Int8Range => {
-                &Kind::Range(Type(TypeInner::Pg(Inner::Int8)))
-            }
-            Inner::Int8RangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int8Range)))
-            }
-            Inner::Jsonpath => {
-                &Kind::Simple
-            }
-            Inner::JsonpathArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Jsonpath)))
-            }
-            Inner::Regnamespace => {
-                &Kind::Simple
-            }
-            Inner::RegnamespaceArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regnamespace)))
-            }
-            Inner::Regrole => {
-                &Kind::Simple
-            }
-            Inner::RegroleArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regrole)))
-            }
-            Inner::Regcollation => {
-                &Kind::Simple
-            }
-            Inner::RegcollationArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Regcollation)))
-            }
-            Inner::Int4multiRange => {
-                &Kind::Multirange(Type(TypeInner::Pg(Inner::Int4)))
-            }
-            Inner::NummultiRange => {
-                &Kind::Multirange(Type(TypeInner::Pg(Inner::Numeric)))
-            }
-            Inner::TsmultiRange => {
-                &Kind::Multirange(Type(TypeInner::Pg(Inner::Timestamp)))
-            }
-            Inner::TstzmultiRange => {
-                &Kind::Multirange(Type(TypeInner::Pg(Inner::Timestamptz)))
-            }
-            Inner::DatemultiRange => {
-                &Kind::Multirange(Type(TypeInner::Pg(Inner::Date)))
-            }
-            Inner::Int8multiRange => {
-                &Kind::Multirange(Type(TypeInner::Pg(Inner::Int8)))
-            }
-            Inner::AnymultiRange => {
-                &Kind::Pseudo
-            }
-            Inner::AnycompatiblemultiRange => {
-                &Kind::Pseudo
-            }
-            Inner::PgBrinBloomSummary => {
-                &Kind::Simple
-            }
-            Inner::PgBrinMinmaxMultiSummary => {
-                &Kind::Simple
-            }
-            Inner::PgMcvList => {
-                &Kind::Simple
-            }
-            Inner::PgSnapshot => {
-                &Kind::Simple
-            }
-            Inner::PgSnapshotArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::PgSnapshot)))
-            }
-            Inner::Xid8 => {
-                &Kind::Simple
-            }
-            Inner::Anycompatible => {
-                &Kind::Pseudo
-            }
-            Inner::Anycompatiblearray => {
-                &Kind::Pseudo
-            }
-            Inner::Anycompatiblenonarray => {
-                &Kind::Pseudo
-            }
-            Inner::AnycompatibleRange => {
-                &Kind::Pseudo
-            }
-            Inner::Int4multiRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int4multiRange)))
-            }
-            Inner::NummultiRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::NummultiRange)))
-            }
-            Inner::TsmultiRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::TsmultiRange)))
-            }
-            Inner::TstzmultiRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::TstzmultiRange)))
-            }
-            Inner::DatemultiRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::DatemultiRange)))
-            }
-            Inner::Int8multiRangeArray => {
-                &Kind::Array(Type(TypeInner::Pg(Inner::Int8multiRange)))
-            }
+            Inner::Bool => &Kind::Simple,
+            Inner::Bytea => &Kind::Simple,
+            Inner::Char => &Kind::Simple,
+            Inner::Name => &Kind::Simple,
+            Inner::Int8 => &Kind::Simple,
+            Inner::Int2 => &Kind::Simple,
+            Inner::Int2Vector => &Kind::Array(Type(TypeInner::Pg(Inner::Int2))),
+            Inner::Int4 => &Kind::Simple,
+            Inner::Regproc => &Kind::Simple,
+            Inner::Text => &Kind::Simple,
+            Inner::Oid => &Kind::Simple,
+            Inner::Tid => &Kind::Simple,
+            Inner::Xid => &Kind::Simple,
+            Inner::Cid => &Kind::Simple,
+            Inner::OidVector => &Kind::Array(Type(TypeInner::Pg(Inner::Oid))),
+            Inner::PgDdlCommand => &Kind::Pseudo,
+            Inner::Json => &Kind::Simple,
+            Inner::Xml => &Kind::Simple,
+            Inner::XmlArray => &Kind::Array(Type(TypeInner::Pg(Inner::Xml))),
+            Inner::PgNodeTree => &Kind::Simple,
+            Inner::JsonArray => &Kind::Array(Type(TypeInner::Pg(Inner::Json))),
+            Inner::TableAmHandler => &Kind::Pseudo,
+            Inner::Xid8Array => &Kind::Array(Type(TypeInner::Pg(Inner::Xid8))),
+            Inner::IndexAmHandler => &Kind::Pseudo,
+            Inner::Point => &Kind::Simple,
+            Inner::Lseg => &Kind::Simple,
+            Inner::Path => &Kind::Simple,
+            Inner::Box => &Kind::Simple,
+            Inner::Polygon => &Kind::Simple,
+            Inner::Line => &Kind::Simple,
+            Inner::LineArray => &Kind::Array(Type(TypeInner::Pg(Inner::Line))),
+            Inner::Cidr => &Kind::Simple,
+            Inner::CidrArray => &Kind::Array(Type(TypeInner::Pg(Inner::Cidr))),
+            Inner::Float4 => &Kind::Simple,
+            Inner::Float8 => &Kind::Simple,
+            Inner::Unknown => &Kind::Simple,
+            Inner::Circle => &Kind::Simple,
+            Inner::CircleArray => &Kind::Array(Type(TypeInner::Pg(Inner::Circle))),
+            Inner::Macaddr8 => &Kind::Simple,
+            Inner::Macaddr8Array => &Kind::Array(Type(TypeInner::Pg(Inner::Macaddr8))),
+            Inner::Money => &Kind::Simple,
+            Inner::MoneyArray => &Kind::Array(Type(TypeInner::Pg(Inner::Money))),
+            Inner::Macaddr => &Kind::Simple,
+            Inner::Inet => &Kind::Simple,
+            Inner::BoolArray => &Kind::Array(Type(TypeInner::Pg(Inner::Bool))),
+            Inner::ByteaArray => &Kind::Array(Type(TypeInner::Pg(Inner::Bytea))),
+            Inner::CharArray => &Kind::Array(Type(TypeInner::Pg(Inner::Char))),
+            Inner::NameArray => &Kind::Array(Type(TypeInner::Pg(Inner::Name))),
+            Inner::Int2Array => &Kind::Array(Type(TypeInner::Pg(Inner::Int2))),
+            Inner::Int2VectorArray => &Kind::Array(Type(TypeInner::Pg(Inner::Int2Vector))),
+            Inner::Int4Array => &Kind::Array(Type(TypeInner::Pg(Inner::Int4))),
+            Inner::RegprocArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regproc))),
+            Inner::TextArray => &Kind::Array(Type(TypeInner::Pg(Inner::Text))),
+            Inner::TidArray => &Kind::Array(Type(TypeInner::Pg(Inner::Tid))),
+            Inner::XidArray => &Kind::Array(Type(TypeInner::Pg(Inner::Xid))),
+            Inner::CidArray => &Kind::Array(Type(TypeInner::Pg(Inner::Cid))),
+            Inner::OidVectorArray => &Kind::Array(Type(TypeInner::Pg(Inner::OidVector))),
+            Inner::BpcharArray => &Kind::Array(Type(TypeInner::Pg(Inner::Bpchar))),
+            Inner::VarcharArray => &Kind::Array(Type(TypeInner::Pg(Inner::Varchar))),
+            Inner::Int8Array => &Kind::Array(Type(TypeInner::Pg(Inner::Int8))),
+            Inner::PointArray => &Kind::Array(Type(TypeInner::Pg(Inner::Point))),
+            Inner::LsegArray => &Kind::Array(Type(TypeInner::Pg(Inner::Lseg))),
+            Inner::PathArray => &Kind::Array(Type(TypeInner::Pg(Inner::Path))),
+            Inner::BoxArray => &Kind::Array(Type(TypeInner::Pg(Inner::Box))),
+            Inner::Float4Array => &Kind::Array(Type(TypeInner::Pg(Inner::Float4))),
+            Inner::Float8Array => &Kind::Array(Type(TypeInner::Pg(Inner::Float8))),
+            Inner::PolygonArray => &Kind::Array(Type(TypeInner::Pg(Inner::Polygon))),
+            Inner::OidArray => &Kind::Array(Type(TypeInner::Pg(Inner::Oid))),
+            Inner::Aclitem => &Kind::Simple,
+            Inner::AclitemArray => &Kind::Array(Type(TypeInner::Pg(Inner::Aclitem))),
+            Inner::MacaddrArray => &Kind::Array(Type(TypeInner::Pg(Inner::Macaddr))),
+            Inner::InetArray => &Kind::Array(Type(TypeInner::Pg(Inner::Inet))),
+            Inner::Bpchar => &Kind::Simple,
+            Inner::Varchar => &Kind::Simple,
+            Inner::Date => &Kind::Simple,
+            Inner::Time => &Kind::Simple,
+            Inner::Timestamp => &Kind::Simple,
+            Inner::TimestampArray => &Kind::Array(Type(TypeInner::Pg(Inner::Timestamp))),
+            Inner::DateArray => &Kind::Array(Type(TypeInner::Pg(Inner::Date))),
+            Inner::TimeArray => &Kind::Array(Type(TypeInner::Pg(Inner::Time))),
+            Inner::Timestamptz => &Kind::Simple,
+            Inner::TimestamptzArray => &Kind::Array(Type(TypeInner::Pg(Inner::Timestamptz))),
+            Inner::Interval => &Kind::Simple,
+            Inner::IntervalArray => &Kind::Array(Type(TypeInner::Pg(Inner::Interval))),
+            Inner::NumericArray => &Kind::Array(Type(TypeInner::Pg(Inner::Numeric))),
+            Inner::CstringArray => &Kind::Array(Type(TypeInner::Pg(Inner::Cstring))),
+            Inner::Timetz => &Kind::Simple,
+            Inner::TimetzArray => &Kind::Array(Type(TypeInner::Pg(Inner::Timetz))),
+            Inner::Bit => &Kind::Simple,
+            Inner::BitArray => &Kind::Array(Type(TypeInner::Pg(Inner::Bit))),
+            Inner::Varbit => &Kind::Simple,
+            Inner::VarbitArray => &Kind::Array(Type(TypeInner::Pg(Inner::Varbit))),
+            Inner::Numeric => &Kind::Simple,
+            Inner::Refcursor => &Kind::Simple,
+            Inner::RefcursorArray => &Kind::Array(Type(TypeInner::Pg(Inner::Refcursor))),
+            Inner::Regprocedure => &Kind::Simple,
+            Inner::Regoper => &Kind::Simple,
+            Inner::Regoperator => &Kind::Simple,
+            Inner::Regclass => &Kind::Simple,
+            Inner::Regtype => &Kind::Simple,
+            Inner::RegprocedureArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regprocedure))),
+            Inner::RegoperArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regoper))),
+            Inner::RegoperatorArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regoperator))),
+            Inner::RegclassArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regclass))),
+            Inner::RegtypeArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regtype))),
+            Inner::Record => &Kind::Pseudo,
+            Inner::Cstring => &Kind::Pseudo,
+            Inner::Any => &Kind::Pseudo,
+            Inner::Anyarray => &Kind::Pseudo,
+            Inner::Void => &Kind::Pseudo,
+            Inner::Trigger => &Kind::Pseudo,
+            Inner::LanguageHandler => &Kind::Pseudo,
+            Inner::Internal => &Kind::Pseudo,
+            Inner::Anyelement => &Kind::Pseudo,
+            Inner::RecordArray => &Kind::Pseudo,
+            Inner::Anynonarray => &Kind::Pseudo,
+            Inner::TxidSnapshotArray => &Kind::Array(Type(TypeInner::Pg(Inner::TxidSnapshot))),
+            Inner::Uuid => &Kind::Simple,
+            Inner::UuidArray => &Kind::Array(Type(TypeInner::Pg(Inner::Uuid))),
+            Inner::TxidSnapshot => &Kind::Simple,
+            Inner::FdwHandler => &Kind::Pseudo,
+            Inner::PgLsn => &Kind::Simple,
+            Inner::PgLsnArray => &Kind::Array(Type(TypeInner::Pg(Inner::PgLsn))),
+            Inner::TsmHandler => &Kind::Pseudo,
+            Inner::PgNdistinct => &Kind::Simple,
+            Inner::PgDependencies => &Kind::Simple,
+            Inner::Anyenum => &Kind::Pseudo,
+            Inner::TsVector => &Kind::Simple,
+            Inner::Tsquery => &Kind::Simple,
+            Inner::GtsVector => &Kind::Simple,
+            Inner::TsVectorArray => &Kind::Array(Type(TypeInner::Pg(Inner::TsVector))),
+            Inner::GtsVectorArray => &Kind::Array(Type(TypeInner::Pg(Inner::GtsVector))),
+            Inner::TsqueryArray => &Kind::Array(Type(TypeInner::Pg(Inner::Tsquery))),
+            Inner::Regconfig => &Kind::Simple,
+            Inner::RegconfigArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regconfig))),
+            Inner::Regdictionary => &Kind::Simple,
+            Inner::RegdictionaryArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regdictionary))),
+            Inner::Jsonb => &Kind::Simple,
+            Inner::JsonbArray => &Kind::Array(Type(TypeInner::Pg(Inner::Jsonb))),
+            Inner::AnyRange => &Kind::Pseudo,
+            Inner::EventTrigger => &Kind::Pseudo,
+            Inner::Int4Range => &Kind::Range(Type(TypeInner::Pg(Inner::Int4))),
+            Inner::Int4RangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::Int4Range))),
+            Inner::NumRange => &Kind::Range(Type(TypeInner::Pg(Inner::Numeric))),
+            Inner::NumRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::NumRange))),
+            Inner::TsRange => &Kind::Range(Type(TypeInner::Pg(Inner::Timestamp))),
+            Inner::TsRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::TsRange))),
+            Inner::TstzRange => &Kind::Range(Type(TypeInner::Pg(Inner::Timestamptz))),
+            Inner::TstzRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::TstzRange))),
+            Inner::DateRange => &Kind::Range(Type(TypeInner::Pg(Inner::Date))),
+            Inner::DateRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::DateRange))),
+            Inner::Int8Range => &Kind::Range(Type(TypeInner::Pg(Inner::Int8))),
+            Inner::Int8RangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::Int8Range))),
+            Inner::Jsonpath => &Kind::Simple,
+            Inner::JsonpathArray => &Kind::Array(Type(TypeInner::Pg(Inner::Jsonpath))),
+            Inner::Regnamespace => &Kind::Simple,
+            Inner::RegnamespaceArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regnamespace))),
+            Inner::Regrole => &Kind::Simple,
+            Inner::RegroleArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regrole))),
+            Inner::Regcollation => &Kind::Simple,
+            Inner::RegcollationArray => &Kind::Array(Type(TypeInner::Pg(Inner::Regcollation))),
+            Inner::Int4multiRange => &Kind::Multirange(Type(TypeInner::Pg(Inner::Int4))),
+            Inner::NummultiRange => &Kind::Multirange(Type(TypeInner::Pg(Inner::Numeric))),
+            Inner::TsmultiRange => &Kind::Multirange(Type(TypeInner::Pg(Inner::Timestamp))),
+            Inner::TstzmultiRange => &Kind::Multirange(Type(TypeInner::Pg(Inner::Timestamptz))),
+            Inner::DatemultiRange => &Kind::Multirange(Type(TypeInner::Pg(Inner::Date))),
+            Inner::Int8multiRange => &Kind::Multirange(Type(TypeInner::Pg(Inner::Int8))),
+            Inner::AnymultiRange => &Kind::Pseudo,
+            Inner::AnycompatiblemultiRange => &Kind::Pseudo,
+            Inner::PgBrinBloomSummary => &Kind::Simple,
+            Inner::PgBrinMinmaxMultiSummary => &Kind::Simple,
+            Inner::PgMcvList => &Kind::Simple,
+            Inner::PgSnapshot => &Kind::Simple,
+            Inner::PgSnapshotArray => &Kind::Array(Type(TypeInner::Pg(Inner::PgSnapshot))),
+            Inner::Xid8 => &Kind::Simple,
+            Inner::Anycompatible => &Kind::Pseudo,
+            Inner::Anycompatiblearray => &Kind::Pseudo,
+            Inner::Anycompatiblenonarray => &Kind::Pseudo,
+            Inner::AnycompatibleRange => &Kind::Pseudo,
+            Inner::Int4multiRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::Int4multiRange))),
+            Inner::NummultiRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::NummultiRange))),
+            Inner::TsmultiRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::TsmultiRange))),
+            Inner::TstzmultiRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::TstzmultiRange))),
+            Inner::DatemultiRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::DatemultiRange))),
+            Inner::Int8multiRangeArray => &Kind::Array(Type(TypeInner::Pg(Inner::Int8multiRange))),
         }
     }
 

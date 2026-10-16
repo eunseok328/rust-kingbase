@@ -17,7 +17,7 @@
   typname => '_rowid', variant => 'RowidArray', ident => 'ROWID_ARRAY',
   typcategory => 'A', typbasetype => '6123', schema => 'pg_catalog' },
 { oid => '6125', descr => 'KingbaseES Oracle-compatible UROWID domain',
-  typname => 'urowid', variant => 'Urowid', typcategory => 'M',
+  typname => 'urowid', variant => 'Urowid', typcategory => 'S',
   typbasetype => '1043', schema => 'pg_catalog' },
 { oid => '6126', descr => 'KingbaseES Oracle-compatible UROWID array type',
   typname => '_urowid', variant => 'UrowidArray', ident => 'UROWID_ARRAY',
@@ -73,5 +73,12 @@
 { oid => '8101', descr => 'KingbaseES Oracle-compatible TINYINT array type',
   typname => '_tinyint', variant => 'TinyintArray', ident => 'TINYINT_ARRAY',
   typcategory => 'A', typbasetype => '8100', schema => 'pg_catalog' },
+
+{ oid => '49641', descr => 'KingbaseES Oracle-compatible RAW type',
+  typname => 'raw', variant => 'Raw', typcategory => 'S',
+  schema => 'sys' },
+{ oid => '49669', descr => 'KingbaseES Oracle-compatible RAW array type',
+  typname => '_raw', variant => 'RawArray', ident => 'RAW_ARRAY',
+  typcategory => 'A', typbasetype => '49641', schema => 'sys' },
 
 ]

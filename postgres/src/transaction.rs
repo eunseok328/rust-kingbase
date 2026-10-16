@@ -1,6 +1,6 @@
 use crate::connection::ConnectionRef;
 use crate::{CancelToken, CopyInWriter, CopyOutReader, Portal, RowIter, Statement, ToStatement};
-use tokio_postgres::types::{BorrowToSql, ToSql, Type};
+use tokio_postgres::types::{BorrowToSql, ToSql, Type, kingbase::RefCursor};
 use tokio_postgres::{Error, Row, SimpleQueryMessage};
 
 /// A representation of a PostgreSQL database transaction.
@@ -230,6 +230,29 @@ impl<'a> Transaction<'a> {
                 .query_portal_raw(portal, max_rows),
         )?;
         Ok(RowIter::new(self.connection.as_ref(), stream))
+    }
+
+    /// Fetches rows from a server-side cursor returned as a `REFCURSOR`.
+    ///
+    /// The cursor must belong to this transaction. If `max_rows` is negative
+    /// or 0, all remaining rows will be returned.
+    pub fn fetch_refcursor(
+        &mut self,
+        cursor: &RefCursor,
+        max_rows: i32,
+    ) -> Result<Vec<Row>, Error> {
+        self.connection.block_on(
+            self.transaction
+                .as_ref()
+                .unwrap()
+                .fetch_refcursor(cursor, max_rows),
+        )
+    }
+
+    /// Closes a server-side cursor returned as a `REFCURSOR`.
+    pub fn close_refcursor(&mut self, cursor: &RefCursor) -> Result<(), Error> {
+        self.connection
+            .block_on(self.transaction.as_ref().unwrap().close_refcursor(cursor))
     }
 
     /// Like `Client::copy_in`.

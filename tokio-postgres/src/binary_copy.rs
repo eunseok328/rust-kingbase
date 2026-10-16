@@ -14,8 +14,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, ready};
 
-const MAGIC: &[u8] = b"PGCOPY\n\xff\r\n\0";
-const HEADER_LEN: usize = MAGIC.len() + 4 + 4;
+const POSTGRES_MAGIC: &[u8] = b"PGCOPY\n\xff\r\n\0";
+const KINGBASE_MAGIC: &[u8] = b"KBCOPY\n\xff\r\n\0";
+const HEADER_LEN: usize = POSTGRES_MAGIC.len() + 4 + 4;
 
 pin_project! {
     /// A type which serializes rows into the PostgreSQL binary copy format.
@@ -33,7 +34,7 @@ impl BinaryCopyInWriter {
     /// Creates a new writer which will write rows of the provided types to the provided sink.
     pub fn new(sink: CopyInSink<Bytes>, types: &[Type]) -> BinaryCopyInWriter {
         let mut buf = BytesMut::new();
-        buf.put_slice(MAGIC);
+        buf.put_slice(POSTGRES_MAGIC);
         buf.put_i32(0); // flags
         buf.put_i32(0); // header extension
 
@@ -152,13 +153,15 @@ impl Stream for BinaryCopyOutStream {
             Some(header) => header.has_oids,
             None => {
                 check_remaining(&chunk, HEADER_LEN)?;
-                if !chunk.chunk().starts_with(MAGIC) {
+                if !chunk.chunk().starts_with(POSTGRES_MAGIC)
+                    && !chunk.chunk().starts_with(KINGBASE_MAGIC)
+                {
                     return Poll::Ready(Some(Err(Error::parse(io::Error::new(
                         io::ErrorKind::InvalidData,
                         "invalid magic value",
                     )))));
                 }
-                chunk.advance(MAGIC.len());
+                chunk.advance(POSTGRES_MAGIC.len());
 
                 let flags = chunk.get_i32();
                 let has_oids = (flags & (1 << 16)) != 0;

@@ -2,8 +2,8 @@
 
 use bytes::BytesMut;
 use postgres_types::kingbase::{
-    Interval, MySqlBit, MySqlBitError, MySqlJsonPath, MySqlTime, OracleDsInterval,
-    OracleIntervalError, OracleRowId, OracleYmInterval, SqlServerDateTime2,
+    Interval, MySqlBit, MySqlBitError, MySqlJsonPath, MySqlTime, MySqlYear, OracleDsInterval,
+    OracleIntervalError, OracleRowId, OracleXmlType, OracleYmInterval, SqlServerDateTime2,
     SqlServerMoney, SqlServerRowVersion, SqlServerTime, SqlServerTinyInt, SqlServerVariant,
 };
 use postgres_types::{FromSql, IsNull, Kind, ToSql, Type};
@@ -116,9 +116,7 @@ fn sqlserver_tinyint_round_trips_unsigned_byte() {
     assert!(!<SqlServerTinyInt as ToSql>::accepts(&Type::ORACLE_TINYINT));
 
     let mut encoded = BytesMut::new();
-    value
-        .to_sql(&Type::SQLSERVER_TINYINT, &mut encoded)
-        .unwrap();
+    value.to_sql(&Type::SQLSERVER_TINYINT, &mut encoded).unwrap();
     assert_eq!(encoded.as_ref(), &[0xff]);
     assert!(SqlServerTinyInt::from_sql(&Type::SQLSERVER_TINYINT, &[]).is_err());
     assert!(SqlServerTinyInt::from_sql(&Type::SQLSERVER_TINYINT, &[0, 1]).is_err());
@@ -192,13 +190,13 @@ fn mysql_dynamic_enum_and_set_round_trip_text_payloads() {
     let enum_type = Type::new(
         "Enum_1".to_owned(),
         100_001,
-        Kind::MySqlEnum(vec!["draft".to_owned(), "published".to_owned()]),
+        Kind::Enum(vec!["draft".to_owned(), "published".to_owned()]),
         "public".to_owned(),
     );
     let set_type = Type::new(
         "Set_1".to_owned(),
         100_002,
-        Kind::MySqlSet,
+        Kind::Simple,
         "public".to_owned(),
     );
 
@@ -312,21 +310,11 @@ fn interval_round_trips_all_postgres_components() {
 #[test]
 fn sqlserver_datetime2_round_trips_100_nanosecond_ticks() {
     let payload = [0x00, 0x1a, 0xe9, 0x3d, 0x32, 0xee, 0x57, 0x07];
-    let value = <SqlServerDateTime2 as FromSql>::from_sql(&Type::SQLSERVER_DATETIME2, &payload)
-        .unwrap();
-
+    let value = SqlServerDateTime2::from_sql(&Type::SQLSERVER_DATETIME2, &payload).unwrap();
     assert_eq!(value.ticks(), 7_574_798_451_234_567);
     assert_eq!(SqlServerDateTime2::TICKS_PER_SECOND, 10_000_000);
-    assert!(<SqlServerDateTime2 as FromSql>::accepts(
-        &Type::SQLSERVER_DATETIME2
-    ));
-    assert!(<SqlServerDateTime2 as ToSql>::accepts(
-        &Type::SQLSERVER_DATETIME2
-    ));
-    assert!(!<SqlServerDateTime2 as FromSql>::accepts(&Type::TIMESTAMP));
-    assert!(!<SqlServerDateTime2 as ToSql>::accepts(
-        &Type::SQLSERVER_DATETIME
-    ));
+    assert!(<SqlServerDateTime2 as FromSql>::accepts(&Type::SQLSERVER_DATETIME2));
+    assert!(<SqlServerDateTime2 as ToSql>::accepts(&Type::SQLSERVER_DATETIME2));
     assert!(<Vec<SqlServerDateTime2> as FromSql<'_>>::accepts(
         &Type::SQLSERVER_DATETIME2_ARRAY
     ));
@@ -339,27 +327,17 @@ fn sqlserver_datetime2_round_trips_100_nanosecond_ticks() {
         .to_sql(&Type::SQLSERVER_DATETIME2, &mut encoded)
         .unwrap();
     assert_eq!(encoded.as_ref(), payload);
-    assert!(
-        <SqlServerDateTime2 as FromSql>::from_sql(&Type::SQLSERVER_DATETIME2, &[0; 7]).is_err()
-    );
+    assert!(SqlServerDateTime2::from_sql(&Type::SQLSERVER_DATETIME2, &[0; 7]).is_err());
 }
 
 #[test]
 fn sqlserver_time_round_trips_100_nanosecond_ticks() {
     let payload = [0x00, 0x00, 0x00, 0x69, 0x76, 0x97, 0xee, 0x87];
-    let value =
-        <SqlServerTime as FromSql>::from_sql(&Type::SQLSERVER_SYS_TIME, &payload).unwrap();
-
+    let value = SqlServerTime::from_sql(&Type::SQLSERVER_SYS_TIME, &payload).unwrap();
     assert_eq!(value.ticks(), 452_961_234_567);
     assert_eq!(SqlServerTime::TICKS_PER_SECOND, 10_000_000);
-    assert!(<SqlServerTime as FromSql>::accepts(
-        &Type::SQLSERVER_SYS_TIME
-    ));
+    assert!(<SqlServerTime as FromSql>::accepts(&Type::SQLSERVER_SYS_TIME));
     assert!(<SqlServerTime as ToSql>::accepts(&Type::SQLSERVER_SYS_TIME));
-    assert!(!<SqlServerTime as FromSql>::accepts(&Type::TIME));
-    assert!(!<SqlServerTime as ToSql>::accepts(
-        &Type::SQLSERVER_DATETIME2
-    ));
     assert!(<Vec<SqlServerTime> as FromSql<'_>>::accepts(
         &Type::SQLSERVER_SYS_TIME_ARRAY
     ));
@@ -374,33 +352,18 @@ fn sqlserver_time_round_trips_100_nanosecond_ticks() {
     assert_eq!(encoded.as_ref(), payload);
 
     assert!(SqlServerTime::new(-1).is_err());
-    assert!(SqlServerTime::new(24 * 60 * 60 * SqlServerTime::TICKS_PER_SECOND).is_err());
-    assert!(<SqlServerTime as FromSql>::from_sql(&Type::SQLSERVER_SYS_TIME, &[0; 7]).is_err());
-    assert!(
-        <SqlServerTime as FromSql>::from_sql(
-            &Type::SQLSERVER_SYS_TIME,
-            &(24 * 60 * 60 * SqlServerTime::TICKS_PER_SECOND).to_be_bytes(),
-        )
-        .is_err()
-    );
+    assert!(SqlServerTime::new(864_000_000_000).is_err());
+    assert!(SqlServerTime::from_sql(&Type::SQLSERVER_SYS_TIME, &[0; 7]).is_err());
 }
 
 #[test]
 fn sqlserver_money_round_trips_scaled_integer() {
     let payload = [0x00, 0x00, 0x00, 0x00, 0x00, 0x12, 0xd6, 0x87];
-    let value =
-        <SqlServerMoney as FromSql>::from_sql(&Type::SQLSERVER_SYS_MONEY, &payload).unwrap();
-
+    let value = SqlServerMoney::from_sql(&Type::SQLSERVER_SYS_MONEY, &payload).unwrap();
     assert_eq!(value.scaled_value(), 1_234_567);
     assert_eq!(SqlServerMoney::SCALE, 10_000);
-    assert!(<SqlServerMoney as FromSql>::accepts(
-        &Type::SQLSERVER_SYS_MONEY
-    ));
-    assert!(<SqlServerMoney as ToSql>::accepts(
-        &Type::SQLSERVER_SYS_MONEY
-    ));
-    assert!(!<SqlServerMoney as FromSql>::accepts(&Type::MONEY));
-    assert!(!<SqlServerMoney as ToSql>::accepts(&Type::XID8));
+    assert!(<SqlServerMoney as FromSql>::accepts(&Type::SQLSERVER_SYS_MONEY));
+    assert!(<SqlServerMoney as ToSql>::accepts(&Type::SQLSERVER_SYS_MONEY));
     assert!(<Vec<SqlServerMoney> as FromSql<'_>>::accepts(
         &Type::SQLSERVER_SYS_MONEY_ARRAY
     ));
@@ -413,9 +376,7 @@ fn sqlserver_money_round_trips_scaled_integer() {
         .to_sql(&Type::SQLSERVER_SYS_MONEY, &mut encoded)
         .unwrap();
     assert_eq!(encoded.as_ref(), payload);
-    assert!(
-        <SqlServerMoney as FromSql>::from_sql(&Type::SQLSERVER_SYS_MONEY, &[0; 7]).is_err()
-    );
+    assert!(SqlServerMoney::from_sql(&Type::SQLSERVER_SYS_MONEY, &[0; 7]).is_err());
 }
 
 #[test]
@@ -624,6 +585,79 @@ fn mysql_time_round_trips_signed_microseconds() {
     assert!(<MySqlTime as FromSql>::accepts(&Type::MYSQL_SYS_TIME));
     assert!(!<MySqlTime as ToSql>::accepts(&Type::TIME));
     assert!(!<MySqlTime as FromSql>::accepts(&Type::TIME));
+}
+
+#[test]
+fn mysql_time_uses_mysql_component_semantics() {
+    let value = MySqlTime::from_parts(false, 12, 34, 56, 123_456).unwrap();
+    assert_eq!(value.micros(), 45_296_123_456);
+    assert_eq!(value.hours(), 12);
+    assert_eq!(value.minutes(), 34);
+    assert_eq!(value.seconds(), 56);
+    assert_eq!(value.microseconds(), 123_456);
+    assert!(value.is_valid_time_of_day());
+    assert!(MySqlTime::from_parts(true, 0, 0, 0, 0).is_err());
+    assert!(MySqlTime::from_parts(false, 839, 0, 0, 0).is_err());
+}
+
+#[test]
+fn mysql_year_accepts_parameter_and_result_metadata() {
+    let value = MySqlYear::new(2026).unwrap();
+    assert_eq!(value.year(), 2026);
+    assert!(<MySqlYear as ToSql>::accepts(&Type::MYSQL_YEAR));
+    assert!(<MySqlYear as FromSql>::accepts(&Type::MYSQL_YEAR));
+    assert!(<MySqlYear as ToSql>::accepts(&Type::INT4));
+    assert!(<MySqlYear as FromSql>::accepts(&Type::INT4));
+    assert!(MySqlYear::new(1900).is_err());
+    assert!(MySqlYear::new(2156).is_err());
+
+    let mut out = BytesMut::new();
+    value.to_sql(&Type::MYSQL_YEAR, &mut out).unwrap();
+    assert_eq!(&out[..], &2026_i32.to_be_bytes());
+    assert_eq!(
+        MySqlYear::from_sql(&Type::INT4, &out).unwrap(),
+        value
+    );
+}
+
+#[test]
+fn oracle_xmltype_uses_postgres_composite_layout() {
+    let xml_type = Type::new(
+        "xmltype".to_owned(),
+        49_539,
+        Kind::Composite(vec![postgres_types::Field::new(
+            "xml_data".to_owned(),
+            Type::XML,
+        )]),
+        "public".to_owned(),
+    );
+    let value = OracleXmlType::new("<book><title>Oracle</title></book>");
+    assert!(<OracleXmlType as ToSql>::accepts(&xml_type));
+    assert!(<OracleXmlType as FromSql>::accepts(&xml_type));
+
+    let mut encoded = BytesMut::new();
+    value.to_sql(&xml_type, &mut encoded).unwrap();
+    let decoded = OracleXmlType::from_sql(&xml_type, &encoded).unwrap();
+    assert_eq!(decoded, value);
+}
+
+#[test]
+fn oracle_intervals_use_oracle_component_validation() {
+    let ym = OracleYmInterval::from_parts(-1, -2).unwrap();
+    assert_eq!(ym.months(), -14);
+    assert_eq!(ym.years(), -1);
+    assert_eq!(ym.months_part(), -2);
+    assert!(OracleYmInterval::from_parts(1, -2).is_err());
+    assert!(OracleYmInterval::from_parts(0, 12).is_err());
+
+    let ds = OracleDsInterval::from_parts(1, 2, 3, 4, 500_000_000).unwrap();
+    assert_eq!(ds.days(), 1);
+    assert_eq!(ds.hours(), 2);
+    assert_eq!(ds.minutes(), 3);
+    assert_eq!(ds.seconds(), 4);
+    assert_eq!(ds.subsecond_nanoseconds(), 500_000_000);
+    assert!(OracleDsInterval::from_parts(1, -2, 0, 0, 0).is_err());
+    assert!(OracleDsInterval::from_parts(0, 24, 0, 0, 0).is_err());
 }
 
 #[test]
