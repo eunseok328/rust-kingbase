@@ -70,9 +70,9 @@ impl RowIndex for str {
             return Some(idx);
         };
 
-        // FIXME ASCII-only case insensitivity isn't really the right thing to
-        // do. Postgres itself uses a dubious wrapper around tolower and JDBC
-        // uses the US locale.
+        // FIXME ASCII-only case insensitivity does not cover all database
+        // identifier case-folding rules. Non-ASCII characters are compared
+        // without case folding.
         columns
             .iter()
             .position(|d| d.as_name().eq_ignore_ascii_case(self))

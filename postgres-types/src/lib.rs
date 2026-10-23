@@ -635,6 +635,8 @@ impl WrongType {
 ///
 /// | Rust type                       | Postgres type(s)                    |
 /// |---------------------------------|-------------------------------------|
+/// | `bigdecimal::BigDecimal`        | NUMERIC                             |
+/// | `rust_decimal::Decimal`        | NUMERIC                             |
 /// | `chrono::NaiveDateTime`         | TIMESTAMP                           |
 /// | `chrono::DateTime<Utc>`         | TIMESTAMP WITH TIME ZONE            |
 /// | `chrono::DateTime<Local>`       | TIMESTAMP WITH TIME ZONE            |
@@ -664,6 +666,12 @@ impl WrongType {
 /// | `smol_str::SmolStr`             | VARCHAR, CHAR(n), TEXT, CITEXT,     |
 /// |                                 | NAME, UNKNOWN, LTREE, LQUERY,       |
 /// |                                 | LTXTQUERY                           |
+///
+/// With `with-rust_decimal-1`, `NUMERIC` values must be exactly representable as
+/// `rust_decimal::Decimal`. Values requiring rounding or exceeding its range
+/// return an error. Fractional trailing zeros may be removed to fit the scale
+/// without changing the value. For higher precision, use `bigdecimal::BigDecimal`
+/// with `with-bigdecimal-0_4`.
 ///
 /// # Nullability
 ///

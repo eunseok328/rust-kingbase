@@ -4,8 +4,8 @@
 #    KingbaseES Oracle-compatible type metadata overlay.
 #
 # Shared PostgreSQL wire types are selected in type_gen.rs. This file records
-# the fixed registrations added by KbConnection for Oracle mode. ORACLE_RAW is
-# intentionally absent: JDBC resolves its OID from pg_type at connection time.
+# the fixed KingbaseES Oracle-compatible type registrations. RAW is resolved
+# dynamically from pg_type because its OID depends on the installed extension.
 #----------------------------------------------------------------------
 
 [
