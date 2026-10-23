@@ -1,7 +1,6 @@
 use bytes::{Buf, BufMut, BytesMut};
 use rust_decimal_1::Decimal;
 use std::error::Error;
-use std::str::FromStr;
 
 use crate::{FromSql, IsNull, ToSql, Type};
 
@@ -12,7 +11,19 @@ const SIGN_NAN: u16 = 0xC000;
 impl<'a> FromSql<'a> for Decimal {
     fn from_sql(_: &Type, raw: &[u8]) -> Result<Decimal, Box<dyn Error + Sync + Send>> {
         let text = numeric_to_string(raw)?;
-        Decimal::from_str(&text).map_err(|_| "invalid NUMERIC value".into())
+        Decimal::from_str_exact(&text)
+            .or_else(|error| {
+                // NUMERIC can have a larger display scale than Decimal even when
+                // its value fits exactly. Only discard fractional trailing zeros.
+                if text.contains('.') {
+                    Decimal::from_str_exact(text.trim_end_matches('0').trim_end_matches('.'))
+                } else {
+                    Err(error)
+                }
+            })
+            .map_err(|error| {
+                format!("NUMERIC value cannot be represented exactly as Decimal: {error}").into()
+            })
     }
 
     accepts!(NUMERIC);
@@ -217,8 +228,21 @@ fn parse_group(group: &str) -> Result<i16, Box<dyn Error + Sync + Send>> {
 mod tests {
     use super::*;
 
+    // Independent NUMERIC wire fixtures, rather than values produced by Decimal's encoder.
+    fn numeric(weight: i16, sign: u16, scale: i16, digits: &[i16]) -> BytesMut {
+        let mut out = BytesMut::new();
+        out.put_i16(digits.len() as i16);
+        out.put_i16(weight);
+        out.put_u16(sign);
+        out.put_i16(scale);
+        for digit in digits {
+            out.put_i16(*digit);
+        }
+        out
+    }
+
     fn decimal(value: &str) -> Decimal {
-        Decimal::from_str(value).unwrap()
+        Decimal::from_str_exact(value).unwrap()
     }
 
     #[test]
@@ -246,5 +270,87 @@ mod tests {
             let decoded = Decimal::from_sql(&Type::NUMERIC, &out).unwrap();
             assert_eq!(decoded, value);
         }
+    }
+
+    #[test]
+    fn decodes_exact_precision_boundaries() {
+        let maximum = [7, 9228, 1625, 1426, 4337, 5935, 4395, 335];
+        for (sign, expected) in [(SIGN_POS, Decimal::MAX), (SIGN_NEG, Decimal::MIN)] {
+            let raw = numeric(7, sign, 0, &maximum);
+            assert_eq!(Decimal::from_sql(&Type::NUMERIC, &raw).unwrap(), expected);
+        }
+
+        let raw = numeric(-7, SIGN_POS, 28, &[1]);
+        assert_eq!(
+            Decimal::from_sql(&Type::NUMERIC, &raw).unwrap(),
+            decimal("0.0000000000000000000000000001")
+        );
+        let raw = numeric(
+            -1,
+            SIGN_POS,
+            28,
+            &[1234, 5678, 9012, 3456, 7890, 1234, 5678],
+        );
+        assert_eq!(
+            Decimal::from_sql(&Type::NUMERIC, &raw).unwrap(),
+            decimal("0.1234567890123456789012345678")
+        );
+    }
+
+    #[test]
+    fn rejects_values_that_would_round_or_underflow() {
+        let cases: &[(i16, i16, &[i16])] = &[
+            (-1, 29, &[1234, 5678, 9012, 3456, 7890, 1234, 5678, 9000]),
+            (-8, 29, &[1000]),                                           // 1e-29
+            (-33, 130, &[100]),                                          // 1e-130
+            (-250, 1000, &[1]),                                          // 1e-1000
+            (7, 0, &[7, 9228, 1625, 1426, 4337, 5935, 4395, 336]),       // MAX + 1
+            (7, 1, &[7, 9228, 1625, 1426, 4337, 5935, 4395, 335, 1000]), // MAX + 0.1
+        ];
+        for &(weight, scale, digits) in cases {
+            for sign in [SIGN_POS, SIGN_NEG] {
+                let raw = numeric(weight, sign, scale, digits);
+                let error = Decimal::from_sql(&Type::NUMERIC, &raw).unwrap_err();
+                assert!(error.to_string().contains("represented exactly"), "{error}");
+            }
+        }
+    }
+
+    #[test]
+    fn accepts_exact_values_with_excess_fractional_zeros() {
+        let cases: &[(i16, &[i16], Decimal)] = &[
+            (0, &[], Decimal::ZERO),
+            (0, &[1, 2300], decimal("1.23")),
+            (-7, &[1], decimal("0.0000000000000000000000000001")),
+            (
+                7,
+                &[7, 9228, 1625, 1426, 4337, 5935, 4395, 335],
+                Decimal::MAX,
+            ),
+        ];
+        for &(weight, digits, expected) in cases {
+            for scale in [29, 130, 1000] {
+                for sign in [SIGN_POS, SIGN_NEG] {
+                    let raw = numeric(weight, sign, scale, digits);
+                    let value = Decimal::from_sql(&Type::NUMERIC, &raw).unwrap();
+                    assert_eq!(
+                        value,
+                        if sign == SIGN_NEG {
+                            -expected
+                        } else {
+                            expected
+                        }
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn preserves_representable_scale() {
+        let raw = numeric(0, SIGN_POS, 4, &[123, 4500]);
+        let value = Decimal::from_sql(&Type::NUMERIC, &raw).unwrap();
+        assert_eq!(value.to_string(), "123.4500");
+        assert_eq!(value.scale(), 4);
     }
 }

@@ -112,10 +112,10 @@
   typname => 'longblob', variant => 'Longblob', typcategory => 'M',
   typbasetype => '8013', schema => 'sys' },
 
-# TODO(KingbaseES): JDBC's Oid.java reports MYSQL_YEAR = 7024, while
-# tokio-postgres/src/kingbase/registry.rs currently reserves 7024 for json and
-# 7025 for year. Keep the Rust registry values for now and confirm both OIDs
-# with a live KingbaseES MySQL-compatible catalog.
+# The MySQL-compatible type table assigns OID 7024 to sys.json and OID
+# 7025 to sys.year. These mode-specific identities are kept separate from
+# shared PostgreSQL types. Runtime lookup checks extension registrations
+# against the connected server's type catalog.
 { oid => '7024', descr => 'KingbaseES MySQL-compatible domain',
   typname => 'json', variant => 'MysqlJson', typcategory => 'M',
   typbasetype => '3802', schema => 'sys' },

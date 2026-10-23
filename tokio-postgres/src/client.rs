@@ -86,15 +86,15 @@ struct CachedTypeInfo {
 
 /// KingbaseES database compatibility mode detected for a live connection.
 ///
-/// Java's KingbaseES JDBC driver reads `pg_settings.database_mode` after
-/// connection startup and then lets type metadata, SQL escaping and other
-/// behavior branch on that connection-level mode. Rust-KingbaseES keeps the same
-/// idea here: make the current mode a first-class piece of client state before
-/// adding mode-specific type mappers.
+/// Connection startup reads `pg_settings.database_mode` and stores the detected
+/// mode on the client. Type metadata and SQL parameter handling use this
+/// connection-level state to select the appropriate compatibility behavior.
+/// Keeping the mode with the client makes it available to request processing
+/// and type lookup throughout the connection's lifetime.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CompatibleMode {
     /// KingbaseES/PostgreSQL native behavior. Empty or missing `database_mode`
-    /// is treated as this mode, matching the Java driver's `pg` branch.
+    /// is treated as this mode.
     Pg,
     /// Oracle compatibility mode.
     Oracle,
@@ -308,8 +308,8 @@ impl Client {
     /// Returns a KingbaseES server setting captured during compatibility probing.
     ///
     /// The first probe stores values such as `database_mode`, `sql_mode`, and
-    /// `ora_input_emptystr_isnull`. Later mode-specific layers can use this to
-    /// match Java JDBC behavior without re-querying the server.
+    /// `ora_input_emptystr_isnull`. Mode-specific handling can read these
+    /// settings without querying the server again.
     pub fn kingbase_server_setting(&self, name: &str) -> Option<String> {
         self.inner.kingbase_server_setting(name)
     }
