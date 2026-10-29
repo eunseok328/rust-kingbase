@@ -85,6 +85,8 @@ pub enum Message {
     AuthenticationSasl(AuthenticationSaslBody),
     AuthenticationSaslContinue(AuthenticationSaslContinueBody),
     AuthenticationSaslFinal(AuthenticationSaslFinalBody),
+    /// A KingbaseES request for the client's network interface MAC addresses (type 19).
+    AuthenticationMac,
     BackendKeyData(BackendKeyDataBody),
     BindComplete,
     CloseComplete,
@@ -232,6 +234,7 @@ impl Message {
                     let storage = buf.read_all();
                     Message::AuthenticationSaslFinal(AuthenticationSaslFinalBody(storage))
                 }
+                19 => Message::AuthenticationMac,
                 tag => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
