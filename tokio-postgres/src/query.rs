@@ -75,8 +75,12 @@ where
             .map(|(_, type_)| type_.oid())
             .collect::<Vec<_>>();
 
-        let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query)
-            .map_err(Error::encode)?;
+        let query = crate::sql_compat::rewrite_query(
+            client.compatible_mode(),
+            client.sql_parse_settings(),
+            query,
+        )
+        .map_err(Error::encode)?;
         client.with_buf(|buf| {
             frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
             encode_bind_raw("", params, "", buf)?;
@@ -141,8 +145,12 @@ where
             .map(|(_, type_)| type_.oid())
             .collect::<Vec<_>>();
 
-        let query = crate::sql_compat::rewrite_query(client.compatible_mode(), query)
-            .map_err(Error::encode)?;
+        let query = crate::sql_compat::rewrite_query(
+            client.compatible_mode(),
+            client.sql_parse_settings(),
+            query,
+        )
+        .map_err(Error::encode)?;
         client.with_buf(|buf| {
             frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
             encode_bind_raw("", params, "", buf)?;

@@ -10,27 +10,26 @@ fn generated_type_modes_dispatch_by_schema() {
     assert_eq!(int4.name(), "int4");
     assert_eq!(int4.schema(), "pg_catalog");
 
-    let mysql_binary = Type::from_kingbase_mysql_oid(3383).unwrap();
+    let mysql_binary = Type::from_oid_in(TypeSystem::Mysql, 3383).unwrap();
     assert_eq!(mysql_binary.name(), "binary");
     assert_eq!(mysql_binary.schema(), "sys");
 
-    assert!(Type::from_kingbase_mysql_oid(23).is_none());
-    assert_eq!(Type::from_oid_in(TypeSystem::Mysql, 23), Some(Type::INT4));
+    let mysql_int4 = Type::from_oid_in(TypeSystem::Mysql, 23).unwrap();
+    assert_eq!(mysql_int4, Type::INT4);
+    assert_eq!(mysql_int4.type_system(), Some(TypeSystem::Pg));
     assert_eq!(Type::from_oid_in(TypeSystem::Mysql, 1082), Some(Type::DATE));
 
-    let mysql_sys_date = Type::from_kingbase_mysql_oid(7944).unwrap();
+    let mysql_sys_date = Type::from_oid_in(TypeSystem::Mysql, 7944).unwrap();
     assert_eq!(mysql_sys_date.name(), "date");
     assert_eq!(mysql_sys_date.schema(), "sys");
 
-    let sqlserver_nvarchar = Type::from_kingbase_sqlserver_oid(5041).unwrap();
+    let sqlserver_nvarchar = Type::from_oid_in(TypeSystem::SqlServer, 5041).unwrap();
     assert_eq!(sqlserver_nvarchar.name(), "nvarchar");
     assert_eq!(sqlserver_nvarchar.schema(), "sys");
 
-    assert!(Type::from_kingbase_sqlserver_oid(23).is_none());
-    assert_eq!(
-        Type::from_oid_in(TypeSystem::SqlServer, 23),
-        Some(Type::INT4)
-    );
+    let sqlserver_int4 = Type::from_oid_in(TypeSystem::SqlServer, 23).unwrap();
+    assert_eq!(sqlserver_int4, Type::INT4);
+    assert_eq!(sqlserver_int4.type_system(), Some(TypeSystem::Pg));
 }
 
 #[test]
@@ -263,10 +262,9 @@ fn oracle_mode_includes_jdbc_fixed_type_registrations() {
     ] {
         let type_ = Type::from_oid_in(TypeSystem::Oracle, oid)
             .unwrap_or_else(|| panic!("missing Oracle type OID {oid}"));
-        let expected_system = if Type::from_kingbase_oracle_oid(oid).is_some() {
-            Some(TypeSystem::Oracle)
-        } else {
-            Some(TypeSystem::Pg)
+        let expected_system = match oid {
+            6123 | 6124 | 7000..=7003 | 8013..=8021 | 8100 | 8101 => Some(TypeSystem::Oracle),
+            _ => Some(TypeSystem::Pg),
         };
         assert_eq!(type_.type_system(), expected_system);
     }
@@ -276,20 +274,32 @@ fn oracle_mode_includes_jdbc_fixed_type_registrations() {
 
 #[test]
 fn basic_rust_types_accept_mysql_mode_builtins() {
-    assert!(<bool as ToSql>::accepts(&Type::from_mysql_oid(16).unwrap()));
+    assert!(<bool as ToSql>::accepts(
+        &Type::from_oid_in(TypeSystem::Mysql, 16).unwrap()
+    ));
     assert!(<i8 as ToSql>::accepts(&Type::MYSQL_TINYINT));
     assert!(<i8 as FromSql<'_>>::accepts(&Type::MYSQL_TINYINT));
-    assert!(<i16 as ToSql>::accepts(&Type::from_mysql_oid(21).unwrap()));
-    assert!(<i32 as ToSql>::accepts(&Type::from_mysql_oid(23).unwrap()));
+    assert!(<i16 as ToSql>::accepts(
+        &Type::from_oid_in(TypeSystem::Mysql, 21).unwrap()
+    ));
+    assert!(<i32 as ToSql>::accepts(
+        &Type::from_oid_in(TypeSystem::Mysql, 23).unwrap()
+    ));
     assert!(<i32 as ToSql>::accepts(&Type::MYSQL_INT3));
     assert!(<i32 as ToSql>::accepts(&Type::MYSQL_MIDDLEINT));
     assert!(<u32 as ToSql>::accepts(&Type::MYSQL_UINT4));
     assert!(<u32 as FromSql<'_>>::accepts(&Type::MYSQL_UINT4));
     assert!(<u64 as ToSql>::accepts(&Type::MYSQL_UINT8));
     assert!(<u64 as FromSql<'_>>::accepts(&Type::MYSQL_UINT8));
-    assert!(<i64 as ToSql>::accepts(&Type::from_mysql_oid(20).unwrap()));
-    assert!(<f32 as ToSql>::accepts(&Type::from_mysql_oid(700).unwrap()));
-    assert!(<f64 as ToSql>::accepts(&Type::from_mysql_oid(701).unwrap()));
+    assert!(<i64 as ToSql>::accepts(
+        &Type::from_oid_in(TypeSystem::Mysql, 20).unwrap()
+    ));
+    assert!(<f32 as ToSql>::accepts(
+        &Type::from_oid_in(TypeSystem::Mysql, 700).unwrap()
+    ));
+    assert!(<f64 as ToSql>::accepts(
+        &Type::from_oid_in(TypeSystem::Mysql, 701).unwrap()
+    ));
 
     assert!(<String as FromSql<'_>>::accepts(
         &Type::from_oid_in(TypeSystem::Mysql, 25).unwrap()
@@ -337,7 +347,7 @@ fn mysql_mode_arrays_use_mysql_member_types() {
     assert!(<Vec<i32> as FromSql<'_>>::accepts(&mysql_int4_array));
     assert!(<Vec<i32> as ToSql>::accepts(&mysql_int4_array));
 
-    let mysql_binary_array = Type::from_mysql_oid(3385).unwrap();
+    let mysql_binary_array = Type::from_oid_in(TypeSystem::Mysql, 3385).unwrap();
     assert_eq!(mysql_binary_array, Type::MYSQL_BINARY_ARRAY);
     match mysql_binary_array.kind() {
         Kind::Array(member) => assert_eq!(member, &Type::MYSQL_BINARY),
@@ -346,7 +356,7 @@ fn mysql_mode_arrays_use_mysql_member_types() {
     assert!(<Vec<Vec<u8>> as FromSql<'_>>::accepts(&mysql_binary_array));
     assert!(<Vec<Vec<u8>> as ToSql>::accepts(&mysql_binary_array));
 
-    let mysql_bit_array = Type::from_mysql_oid(4656).unwrap();
+    let mysql_bit_array = Type::from_oid_in(TypeSystem::Mysql, 4656).unwrap();
     assert_eq!(mysql_bit_array, Type::MYSQL_SYS_BIT_ARRAY);
     match mysql_bit_array.kind() {
         Kind::Array(member) => assert_eq!(member, &Type::MYSQL_SYS_BIT),
@@ -355,17 +365,17 @@ fn mysql_mode_arrays_use_mysql_member_types() {
     assert!(<Vec<MySqlBit> as FromSql<'_>>::accepts(&mysql_bit_array));
     assert!(<Vec<MySqlBit> as ToSql>::accepts(&mysql_bit_array));
 
-    let mysql_tinyint_array = Type::from_mysql_oid(8101).unwrap();
+    let mysql_tinyint_array = Type::from_oid_in(TypeSystem::Mysql, 8101).unwrap();
     assert_eq!(mysql_tinyint_array, Type::MYSQL_TINYINT_ARRAY);
     assert!(<Vec<i8> as FromSql<'_>>::accepts(&mysql_tinyint_array));
     assert!(<Vec<i8> as ToSql>::accepts(&mysql_tinyint_array));
 
-    let mysql_uint4_array = Type::from_mysql_oid(7083).unwrap();
+    let mysql_uint4_array = Type::from_oid_in(TypeSystem::Mysql, 7083).unwrap();
     assert_eq!(mysql_uint4_array, Type::MYSQL_UINT4_ARRAY);
     assert!(<Vec<u32> as FromSql<'_>>::accepts(&mysql_uint4_array));
     assert!(<Vec<u32> as ToSql>::accepts(&mysql_uint4_array));
 
-    let mysql_uint8_array = Type::from_mysql_oid(7085).unwrap();
+    let mysql_uint8_array = Type::from_oid_in(TypeSystem::Mysql, 7085).unwrap();
     assert_eq!(mysql_uint8_array, Type::MYSQL_UINT8_ARRAY);
     assert!(<Vec<u64> as FromSql<'_>>::accepts(&mysql_uint8_array));
     assert!(<Vec<u64> as ToSql>::accepts(&mysql_uint8_array));
