@@ -2,17 +2,20 @@ use crate::codec::{BackendMessage, BackendMessages, FrontendMessage, PostgresCod
 use crate::copy_in::CopyInReceiver;
 use crate::error::DbError;
 use crate::maybe_tls_stream::MaybeTlsStream;
+use crate::sql_compat::SqlParseSettings;
 use crate::{AsyncMessage, Error, Notification};
 use bytes::BytesMut;
 use fallible_iterator::FallibleIterator;
 use futures_channel::mpsc;
 use futures_util::{Sink, Stream, StreamExt, stream::FusedStream};
 use log::{info, trace};
+use parking_lot::Mutex;
 use postgres_protocol::message::backend::Message;
 use postgres_protocol::message::frontend;
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
@@ -49,6 +52,7 @@ enum State {
 pub struct Connection<S, T> {
     stream: Framed<MaybeTlsStream<S, T>, PostgresCodec>,
     parameters: HashMap<String, String>,
+    sql_parse_settings: Arc<Mutex<SqlParseSettings>>,
     receiver: mpsc::UnboundedReceiver<Request>,
     pending_request: Option<RequestMessages>,
     pending_responses: VecDeque<BackendMessage>,
@@ -66,10 +70,12 @@ where
         pending_responses: VecDeque<BackendMessage>,
         parameters: HashMap<String, String>,
         receiver: mpsc::UnboundedReceiver<Request>,
+        sql_parse_settings: Arc<Mutex<SqlParseSettings>>,
     ) -> Connection<S, T> {
         Connection {
             stream,
             parameters,
+            sql_parse_settings,
             receiver,
             pending_request: None,
             pending_responses,
@@ -122,10 +128,10 @@ where
                     return Ok(Some(AsyncMessage::Notification(notification)));
                 }
                 BackendMessage::Async(Message::ParameterStatus(body)) => {
-                    self.parameters.insert(
-                        body.name().map_err(Error::parse)?.to_string(),
-                        body.value().map_err(Error::parse)?.to_string(),
-                    );
+                    let name = body.name().map_err(Error::parse)?;
+                    let value = body.value().map_err(Error::parse)?;
+                    self.sql_parse_settings.lock().update(name, value);
+                    self.parameters.insert(name.to_string(), value.to_string());
                     continue;
                 }
                 BackendMessage::Async(_) => unreachable!(),

@@ -395,48 +395,6 @@ impl Type {
         }
     }
 
-    /// Returns the KingbaseES MySQL-compatible built-in type for an OID.
-    pub fn from_mysql_oid(oid: Oid) -> Option<Type> {
-        mysql_type_gen::Inner::from_oid(oid)
-            .map(|inner| Type(Inner::Mysql(inner)))
-            .or_else(|| Self::from_pg_oid(oid))
-    }
-
-    /// Returns the KingbaseES Oracle-compatible built-in type for an OID.
-    pub fn from_oracle_oid(oid: Oid) -> Option<Type> {
-        oracle_type_gen::Inner::from_oid(oid)
-            .map(|inner| Type(Inner::Oracle(inner)))
-            .or_else(|| Self::from_pg_oid(oid))
-    }
-
-    /// Returns the KingbaseES SQL Server-compatible built-in type for an OID.
-    pub fn from_sqlserver_oid(oid: Oid) -> Option<Type> {
-        sqlserver_type_gen::Inner::from_oid(oid)
-            .map(|inner| Type(Inner::SqlServer(inner)))
-            .or_else(|| Self::from_pg_oid(oid))
-    }
-
-    /// Returns the `Type` corresponding to the provided KingbaseES MySQL-compatible
-    /// `Oid` if it corresponds to a built-in type in that compatibility mode.
-    ///
-    /// This intentionally does not affect [`Type::from_oid`], which remains scoped
-    /// to PostgreSQL built-in types. PostgreSQL built-ins are shared by every
-    /// compatibility mode and are therefore not duplicated in this extension table.
-    pub fn from_kingbase_mysql_oid(oid: Oid) -> Option<Type> {
-        mysql_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Mysql(inner)))
-    }
-
-    /// Returns only a KingbaseES Oracle-compatible extension type for an OID.
-    pub fn from_kingbase_oracle_oid(oid: Oid) -> Option<Type> {
-        oracle_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::Oracle(inner)))
-    }
-
-    /// Returns the `Type` corresponding to the provided KingbaseES SQL Server-compatible
-    /// `Oid` if it corresponds to a built-in type in that compatibility mode.
-    pub fn from_kingbase_sqlserver_oid(oid: Oid) -> Option<Type> {
-        sqlserver_type_gen::Inner::from_oid(oid).map(|inner| Type(Inner::SqlServer(inner)))
-    }
-
     /// Returns the built-in type system this type belongs to, if known.
     pub fn type_system(&self) -> Option<TypeSystem> {
         match self.0 {

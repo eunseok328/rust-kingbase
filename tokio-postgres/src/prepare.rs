@@ -148,8 +148,12 @@ fn encode(
         debug!("preparing query {name} with type OIDs {param_oids:?}: {query}");
     }
 
-    let query =
-        crate::sql_compat::rewrite_query(client.compatible_mode(), query).map_err(Error::encode)?;
+    let query = crate::sql_compat::rewrite_query(
+        client.compatible_mode(),
+        client.sql_parse_settings(),
+        query,
+    )
+    .map_err(Error::encode)?;
     client.with_buf(|buf| {
         frontend::parse(name, &query, param_oids.iter().copied(), buf).map_err(Error::encode)?;
         frontend::describe(b'S', name, buf).map_err(Error::encode)?;

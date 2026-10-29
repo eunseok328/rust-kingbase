@@ -8,6 +8,7 @@ use crate::copy_out::CopyOutStream;
 use crate::keepalive::KeepaliveConfig;
 use crate::query::RowStream;
 use crate::simple_query::SimpleQueryStream;
+use crate::sql_compat::SqlParseSettings;
 #[cfg(feature = "runtime")]
 use crate::tls::MakeTlsConnect;
 use crate::tls::TlsConnect;
@@ -139,6 +140,7 @@ pub struct InnerClient {
     /// lookup code cannot conveniently access.
     compatible_mode: Mutex<CompatibleMode>,
     kingbase_server_settings: Mutex<HashMap<String, String>>,
+    sql_parse_settings: Arc<Mutex<SqlParseSettings>>,
 }
 
 impl InnerClient {
@@ -210,6 +212,10 @@ impl InnerClient {
         self.kingbase_server_settings.lock().get(name).cloned()
     }
 
+    pub(crate) fn sql_parse_settings(&self) -> SqlParseSettings {
+        *self.sql_parse_settings.lock()
+    }
+
     pub(crate) fn set_kingbase_server_settings(&self, settings: HashMap<String, String>) {
         let mode = CompatibleMode::from_database_mode(
             settings
@@ -217,6 +223,12 @@ impl InnerClient {
                 .map(std::string::String::as_str),
         );
         *self.compatible_mode.lock() = mode;
+        {
+            let mut parse_settings = self.sql_parse_settings.lock();
+            for (name, value) in &settings {
+                parse_settings.update(name, value);
+            }
+        }
         *self.kingbase_server_settings.lock() = settings;
     }
 
@@ -273,6 +285,7 @@ impl Client {
         ssl_negotiation: SslNegotiation,
         process_id: i32,
         secret_key: i32,
+        sql_parse_settings: Arc<Mutex<SqlParseSettings>>,
     ) -> Client {
         Client {
             inner: Arc::new(InnerClient {
@@ -281,6 +294,7 @@ impl Client {
                 buffer: Default::default(),
                 compatible_mode: Mutex::new(CompatibleMode::Pg),
                 kingbase_server_settings: Default::default(),
+                sql_parse_settings,
             }),
             #[cfg(feature = "runtime")]
             socket_config: None,
@@ -323,6 +337,33 @@ impl Client {
     ///
     /// Prepared statements can be executed repeatedly, and may contain query parameters (indicated by `$1`, `$2`, etc),
     /// which are set when executed. Prepared statements can only be used with the connection that created them.
+    ///
+    /// # KingbaseES parameter syntax
+    ///
+    /// MySQL mode also accepts question-mark parameters, bound in occurrence order.
+    /// Oracle mode accepts colon-prefixed names and numeric labels. Ordinary SQL
+    /// binds every occurrence separately: both `:id, :id` and `:2, :1` consume two
+    /// input parameters in their textual order. Anonymous PL/SQL blocks and CALL
+    /// statements instead reuse a slot for repeated names, assigning slots in
+    /// first-occurrence order. Names fold ASCII case; numeric labels do not index
+    /// the input slice. SQL strings inside a block are left for the server to
+    /// interpret. Use `prepare_typed`, `query_typed`, or `execute_typed` when the
+    /// server requires explicit bind types for a block or CALL statement.
+    ///
+    /// SQL Server mode accepts named `@name` parameters. Names differing only
+    /// in case reuse a slot; values follow the first occurrence of each distinct
+    /// name. Declared local variables, system variables, and procedure argument
+    /// labels are preserved.
+    ///
+    /// Oracle and SQL Server modes leave question marks unchanged; they do not
+    /// accept them as an additional driver parameter syntax. MySQL mode alone
+    /// supports `??` to emit a literal question-mark operator.
+    ///
+    /// Existing `$n` slots are preserved in every mode. When mixed with mode
+    /// parameters, the latter take the first available slots without collisions.
+    /// Strings, quoted identifiers, and comments are not parameterized.
+    /// After changing string settings, await completion of that command before
+    /// issuing SQL that relies on the new settings.
     pub async fn prepare(&self, query: &str) -> Result<Statement, Error> {
         self.prepare_typed(query, &[]).await
     }

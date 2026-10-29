@@ -3,12 +3,14 @@ use crate::config::{self, Config};
 use crate::connect_tls::connect_tls;
 use crate::error::SqlState;
 use crate::maybe_tls_stream::MaybeTlsStream;
+use crate::sql_compat::SqlParseSettings;
 use crate::tls::{TlsConnect, TlsStream};
 use crate::{Client, Connection, Error, SimpleQueryMessage};
 use bytes::BytesMut;
 use fallible_iterator::FallibleIterator;
 use futures_channel::mpsc;
 use futures_util::{FutureExt, Sink, SinkExt, Stream, TryStreamExt};
+use parking_lot::Mutex;
 use postgres_protocol::authentication;
 use postgres_protocol::authentication::sasl;
 use postgres_protocol::authentication::sasl::ScramSha256;
@@ -19,6 +21,7 @@ use std::collections::{HashMap, VecDeque};
 use std::future;
 use std::io;
 use std::pin::{Pin, pin};
+use std::sync::Arc;
 use std::task::{Context, Poll, ready};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
@@ -116,14 +119,22 @@ where
     let (process_id, secret_key, parameters) = read_info(&mut stream).await?;
 
     let (sender, receiver) = mpsc::unbounded();
+    let sql_parse_settings = Arc::new(Mutex::new(SqlParseSettings::from_parameters(&parameters)));
     let client = Client::new(
         sender,
         config.ssl_mode,
         config.ssl_negotiation,
         process_id,
         secret_key,
+        sql_parse_settings.clone(),
     );
-    let mut connection = Connection::new(stream.inner, stream.delayed, parameters, receiver);
+    let mut connection = Connection::new(
+        stream.inner,
+        stream.delayed,
+        parameters,
+        receiver,
+        sql_parse_settings,
+    );
     probe_kingbase_compatibility(&client, &mut connection).await?;
 
     Ok((client, connection))
@@ -155,6 +166,7 @@ WHERE name = 'database_mode'
    OR name = 'ora_input_emptystr_isnull'
    OR name = 'enable_unpaired_comment'
    OR name = 'sql_mode'
+   OR name = 'standard_conforming_strings'
    OR name = 'kdb_flashback.db_recyclebin'";
 
     let mut settings = HashMap::new();
