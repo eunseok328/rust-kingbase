@@ -254,7 +254,8 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
     T: TlsStream + Unpin,
 {
-    match stream.try_next().await.map_err(Error::io)? {
+    let mut mac_addresses = None;
+    match read_authentication_message(stream, &mut mac_addresses).await? {
         Some(Message::AuthenticationOk) => {
             can_skip_channel_binding(config)?;
             return Ok(());
@@ -296,11 +297,39 @@ where
         None => return Err(Error::closed()),
     }
 
-    match stream.try_next().await.map_err(Error::io)? {
+    match read_authentication_message(stream, &mut mac_addresses).await? {
         Some(Message::AuthenticationOk) => Ok(()),
         Some(Message::ErrorResponse(body)) => Err(Error::db(body)),
         Some(_) => Err(Error::unexpected_message()),
         None => Err(Error::closed()),
+    }
+}
+
+async fn read_authentication_message<S, T>(
+    stream: &mut StartupStream<S, T>,
+    mac_addresses: &mut Option<String>,
+) -> Result<Option<Message>, Error>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    loop {
+        match stream.try_next().await.map_err(Error::io)? {
+            Some(Message::AuthenticationMac) => {
+                let addresses = match mac_addresses {
+                    Some(addresses) => addresses,
+                    None => mac_addresses.insert(
+                        crate::mac_address::mac_addresses()
+                            .map_err(|error| Error::authentication(error.into()))?,
+                    ),
+                };
+                // JDBC responds to type 19 with a NUL-terminated 'p' message.
+                // This is an extra login check, so continue waiting for the
+                // actual authentication request or AuthenticationOk.
+                authenticate_password(stream, addresses.as_bytes()).await?;
+            }
+            message => return Ok(message),
+        }
     }
 }
 

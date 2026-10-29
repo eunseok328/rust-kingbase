@@ -73,6 +73,9 @@ whoami = "2.0.1"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 socket2 = { version = "0.6", features = ["all"] }
 
+[target.'cfg(any(target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "illumos", target_os = "windows"))'.dependencies]
+network-interface = "2.0.5"
+
 [dev-dependencies]
 futures-util = { version = "0.3", default-features = false, features = [
   "async-await-macro",
