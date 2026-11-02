@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 
 use crate::client::CompatibleMode;
+use postgres_types::{Kind, Type};
 
 /// SQL lexical settings, shared with the connection's ParameterStatus handler.
 #[derive(Clone, Copy, Debug)]
@@ -42,11 +43,13 @@ impl SqlParseSettings {
     }
 }
 
-pub(crate) fn rewrite_query(
+/// Rewrite mode-specific placeholders and adapt typed SQL Server EXEC inputs.
+pub(crate) fn rewrite_query<'a>(
     mode: CompatibleMode,
     settings: SqlParseSettings,
-    query: &str,
-) -> io::Result<Cow<'_, str>> {
+    query: &'a str,
+    types: &[Type],
+) -> io::Result<Cow<'a, str>> {
     if mode == CompatibleMode::Pg {
         return Ok(Cow::Borrowed(query));
     }
@@ -163,13 +166,184 @@ pub(crate) fn rewrite_query(
         last = token.end;
     }
 
-    match output {
+    let rewritten = match output {
         Some(mut output) => {
             output.push_str(&query[last..]);
-            Ok(Cow::Owned(output))
+            Cow::Owned(output)
         }
-        None => Ok(Cow::Borrowed(query)),
+        None => Cow::Borrowed(query),
+    };
+
+    if mode != CompatibleMode::SqlServer {
+        return Ok(rewritten);
     }
+
+    let tokens = self::tokens(mode, settings, &rewritten);
+    let mut names = tokens
+        .iter()
+        .filter_map(|token| match token.kind {
+            TokenKind::Named(name) => Some(name.to_lowercase()),
+            _ => None,
+        })
+        .collect::<HashSet<_>>();
+    let mut variable_id = 0_u32;
+    let mut output = String::new();
+    let mut last = 0;
+    let mut index = 0;
+
+    while index < tokens.len() {
+        let token = &tokens[index];
+        let is_exec = matches!(token.kind, TokenKind::Word(word)
+            if word.eq_ignore_ascii_case("EXEC") || word.eq_ignore_ascii_case("EXECUTE"));
+        // A qualified identifier can itself contain an EXEC keyword.
+        if !is_exec || rewritten[..token.start].trim_end().ends_with('.') {
+            index += 1;
+            continue;
+        }
+
+        let mut end = index + 1;
+        let mut depth = 0_usize;
+        while end < tokens.len() {
+            match tokens[end].kind {
+                TokenKind::Semicolon if depth == 0 => break,
+                TokenKind::Word(word)
+                    if depth == 0
+                        && !rewritten[..tokens[end].start].trim_end().ends_with('.')
+                        && is_sqlserver_exec_boundary(word) =>
+                {
+                    break;
+                }
+                TokenKind::LeftParen => depth += 1,
+                TokenKind::RightParen => depth = depth.saturating_sub(1),
+                _ => {}
+            }
+            end += 1;
+        }
+
+        let mut arguments = Vec::new();
+        for position in index + 1..end.saturating_sub(2) {
+            if let (TokenKind::Named(_), TokenKind::Equals, TokenKind::Explicit(slot)) = (
+                &tokens[position].kind,
+                &tokens[position + 1].kind,
+                &tokens[position + 2].kind,
+            ) {
+                // OUTPUT arguments must remain declared server-side variables.
+                if tokens.get(position + 3).is_some_and(|next| {
+                    matches!(next.kind, TokenKind::Word(word)
+                        if word.eq_ignore_ascii_case("OUTPUT") || word.eq_ignore_ascii_case("OUT"))
+                }) {
+                    continue;
+                }
+                arguments.push((position + 2, *slot));
+            }
+        }
+        if arguments.is_empty() {
+            index = end;
+            continue;
+        }
+
+        let statement_end = tokens.get(end).map_or(rewritten.len(), |token| token.start);
+        output.push_str(&rewritten[last..token.start]);
+        output.push_str("BEGIN\n");
+        let mut variables = HashMap::new();
+        for &(_, slot) in &arguments {
+            if variables.contains_key(&slot) {
+                continue;
+            }
+            let type_ = types.get(slot as usize - 1).filter(|type_| {
+                **type_ != Type::UNKNOWN && !matches!(type_.kind(), Kind::Pseudo)
+            }).ok_or_else(|| io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("SQL Server named EXEC argument ${slot} requires an explicit input type; use prepare_typed, query_typed, or execute_typed"),
+            ))?;
+            let variable = loop {
+                variable_id = variable_id.checked_add(1).ok_or_else(parameter_overflow)?;
+                let name = format!("__rust_kingbase_exec_{variable_id}");
+                if names.insert(name.clone()) {
+                    break format!("@{name}");
+                }
+            };
+            output.push_str(&format!(
+                "DECLARE {variable} {} = ${slot};\n",
+                sqlserver_exec_variable_type(type_)?,
+            ));
+            variables.insert(slot, variable);
+        }
+        let mut previous = token.start;
+        for (position, slot) in arguments {
+            let argument = &tokens[position];
+            output.push_str(&rewritten[previous..argument.start]);
+            output.push_str(&variables[&slot]);
+            previous = argument.end;
+        }
+        output.push_str(&rewritten[previous..statement_end]);
+        // Terminate any trailing line comment before closing the generated block.
+        output.push_str("\n; END\n");
+        last = statement_end;
+        index = end;
+    }
+    if last == 0 {
+        Ok(rewritten)
+    } else {
+        output.push_str(&rewritten[last..]);
+        Ok(Cow::Owned(output))
+    }
+}
+
+#[cfg_attr(test, allow(dead_code))]
+fn sqlserver_exec_variable_type(type_: &Type) -> io::Result<String> {
+    // ParameterDescription does not carry a fixed-length type's modifier.
+    // Guessing it here can truncate/pad values or change overload selection.
+    if type_.schema() == "sys"
+        && matches!(
+            type_.name(),
+            "nchar" | "binary" | "bpcharbyte" | "varcharbyte"
+        )
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "SQL Server named EXEC input type {}.{} requires an explicit length; bind through a declared local variable",
+                type_.schema(),
+                type_.name(),
+            ),
+        ));
+    }
+    let name = format!(
+        "\"{}\".\"{}\"",
+        type_.schema().replace('"', "\"\""),
+        type_.name().replace('"', "\"\""),
+    );
+    if type_.schema() == "sys" && matches!(type_.name(), "nvarchar" | "varbinary") {
+        // Preserve the original type/OID without T-SQL's default length of 1.
+        Ok(format!("{name}(MAX)"))
+    } else if type_.schema() == "sys" && matches!(type_.name(), "datetime2" | "time") {
+        Ok(format!("{name}(7)"))
+    } else {
+        Ok(name)
+    }
+}
+
+#[cfg_attr(test, allow(dead_code))]
+fn is_sqlserver_exec_boundary(word: &str) -> bool {
+    is_sqlserver_statement_start(word)
+        || [
+            "END",
+            "ELSE",
+            "DECLARE",
+            "IF",
+            "WHILE",
+            "RETURN",
+            "PRINT",
+            "THROW",
+            "RAISERROR",
+            "BREAK",
+            "CONTINUE",
+            "GOTO",
+            "WAITFOR",
+        ]
+        .iter()
+        .any(|keyword| word.eq_ignore_ascii_case(keyword))
 }
 
 #[derive(Clone, Copy)]
@@ -244,7 +418,11 @@ fn tokens(mode: CompatibleMode, settings: SqlParseSettings, query: &str) -> Vec<
                 continue;
             }
             b'#' if mode == CompatibleMode::Mysql => {
-                i = skip_line_comment(bytes, i);
+                // KES gives multi-character operators such as #>, #>> and #-
+                // priority over hash comments. Keep their contents intact and
+                // continue scanning for parameters after the operator.
+                i = mysql_hash_operator_end(bytes, i)
+                    .unwrap_or_else(|| skip_line_comment(bytes, i));
                 continue;
             }
             b'/' if bytes.get(i + 1) == Some(&b'*') => {
@@ -534,6 +712,36 @@ fn skip_sqlserver_bracket(bytes: &[u8], start: usize) -> usize {
         }
     }
     bytes.len()
+}
+
+fn mysql_hash_operator_end(bytes: &[u8], start: usize) -> Option<usize> {
+    let mut end = start + 1;
+    while let Some(byte) = bytes.get(end) {
+        if !matches!(
+            byte,
+            b'+' | b'-'
+                | b'*'
+                | b'/'
+                | b'<'
+                | b'>'
+                | b'='
+                | b'~'
+                | b'!'
+                | b'@'
+                | b'#'
+                | b'%'
+                | b'^'
+                | b'&'
+                | b'|'
+                | b'?'
+        ) || bytes[end..].starts_with(b"--")
+            || bytes[end..].starts_with(b"/*")
+        {
+            break;
+        }
+        end += 1;
+    }
+    (end > start + 1).then_some(end)
 }
 
 fn skip_line_comment(bytes: &[u8], start: usize) -> usize {

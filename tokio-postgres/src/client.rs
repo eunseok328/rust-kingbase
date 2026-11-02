@@ -354,6 +354,10 @@ impl Client {
     /// in case reuse a slot; values follow the first occurrence of each distinct
     /// name. Declared local variables, system variables, and procedure argument
     /// labels are preserved.
+    /// Named EXEC input arguments use generated local variables because KES
+    /// does not accept protocol slots directly after an argument label. Supply
+    /// their types with `prepare_typed`, `query_typed`, or `execute_typed`.
+    /// OUTPUT arguments must use declared server-side variables.
     ///
     /// Oracle and SQL Server modes leave question marks unchanged; they do not
     /// accept them as an additional driver parameter syntax. MySQL mode alone
