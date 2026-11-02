@@ -585,6 +585,9 @@ impl WrongType {
 /// | `SystemTime`                      | TIMESTAMP, TIMESTAMP WITH TIME ZONE           |
 /// | `IpAddr`                          | INET                                          |
 ///
+/// KingbaseES MySQL `sys.date` uses [`kingbase::MySqlDate`] for its full finite
+/// range. Third-party date types do not accept that KingbaseES type.
+///
 /// In addition, some implementations are provided for types in third party
 /// crates. These are disabled by default; to opt into one of these
 /// implementations, activate the Cargo feature corresponding to the crate's
@@ -1122,6 +1125,9 @@ pub enum IsNull {
 /// | `SystemTime`                      | TIMESTAMP, TIMESTAMP WITH TIME ZONE  |
 /// | `IpAddr`                          | INET                                 |
 ///
+/// KingbaseES MySQL `sys.date` uses [`kingbase::MySqlDate`] for its full finite
+/// range. Third-party date types do not accept that KingbaseES type.
+///
 /// In addition, some implementations are provided for types in third party
 /// crates. These are disabled by default; to opt into one of these
 /// implementations, activate the Cargo feature corresponding to the crate's
@@ -1585,13 +1591,17 @@ impl ToSql for SystemTime {
     fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         let epoch = UNIX_EPOCH + Duration::from_secs(TIME_SEC_CONVERSION);
 
-        let to_usec =
-            |d: Duration| d.as_secs() * USEC_PER_SEC + u64::from(d.subsec_nanos()) / NSEC_PER_USEC;
+        let to_usec = |d: Duration| {
+            i128::from(d.as_secs()) * i128::from(USEC_PER_SEC)
+                + i128::from(d.subsec_nanos()) / i128::from(NSEC_PER_USEC)
+        };
 
         let time = match self.duration_since(epoch) {
-            Ok(duration) => to_usec(duration) as i64,
-            Err(e) => -(to_usec(e.duration()) as i64),
+            Ok(duration) => to_usec(duration),
+            Err(e) => -to_usec(e.duration()),
         };
+        let time = i64::try_from(time)
+            .map_err(|_| "SystemTime value out of range for timestamp encoding")?;
 
         types::timestamp_to_sql(time, w);
         Ok(IsNull::No)

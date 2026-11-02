@@ -79,7 +79,7 @@ impl<'a> FromSql<'a> for Date {
         Ok(base().date() + Duration::days(i64::from(jd)))
     }
 
-    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
+    accepts!(DATE, SQLSERVER_SYS_DATE);
 }
 
 impl ToSql for Date {
@@ -91,7 +91,7 @@ impl ToSql for Date {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
+    accepts!(DATE, SQLSERVER_SYS_DATE);
     to_sql_checked!();
 }
 

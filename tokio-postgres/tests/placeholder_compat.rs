@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use tokio_postgres::types::Type;
 use tokio_postgres::{Client, CompatibleMode, NoTls};
 
-// Exercise the private lexer without exposing a new public driver API.
+// Exercise SQL adaptation without exposing a new public driver API.
 mod client {
     pub use tokio_postgres::CompatibleMode;
 }
@@ -14,7 +14,7 @@ mod sql_compat;
 use sql_compat::{SqlParseSettings, rewrite_query};
 
 fn rewrite(mode: CompatibleMode, sql: &str) -> String {
-    rewrite_query(mode, SqlParseSettings::default(), sql)
+    rewrite_query(mode, SqlParseSettings::default(), sql, &[])
         .unwrap()
         .into_owned()
 }
@@ -39,7 +39,7 @@ fn strings_follow_startup_settings_and_explicit_escape_prefixes() {
         "off".to_string(),
     )]));
     assert_eq!(
-        rewrite_query(CompatibleMode::Mysql, settings, r"SELECT 'a\'?b', ?").unwrap(),
+        rewrite_query(CompatibleMode::Mysql, settings, r"SELECT 'a\'?b', ?", &[]).unwrap(),
         r"SELECT 'a\'?b', $1"
     );
     for (mode, parameter) in [
@@ -134,7 +134,7 @@ fn block_comments_follow_initial_setting() {
     ] {
         let sql = format!("SELECT {first}, /* outer /* hidden */ {second}");
         assert_eq!(
-            rewrite_query(mode, settings, &sql).unwrap(),
+            rewrite_query(mode, settings, &sql, &[]).unwrap(),
             "SELECT $1, /* outer /* hidden */ $2"
         );
     }
@@ -145,17 +145,17 @@ fn block_comments_follow_setting_updates() {
     let mut settings = SqlParseSettings::default();
     let sql = "SELECT /* outer /* hidden */ $1, ?";
     assert_eq!(
-        rewrite_query(CompatibleMode::Mysql, settings, sql).unwrap(),
+        rewrite_query(CompatibleMode::Mysql, settings, sql, &[]).unwrap(),
         sql
     );
     settings.update("enable_unpaired_comment", "ON");
     assert_eq!(
-        rewrite_query(CompatibleMode::Mysql, settings, sql).unwrap(),
+        rewrite_query(CompatibleMode::Mysql, settings, sql, &[]).unwrap(),
         "SELECT /* outer /* hidden */ $1, $2"
     );
     settings.update("enable_unpaired_comment", "off");
     assert_eq!(
-        rewrite_query(CompatibleMode::Mysql, settings, sql).unwrap(),
+        rewrite_query(CompatibleMode::Mysql, settings, sql, &[]).unwrap(),
         sql
     );
 }
@@ -165,7 +165,7 @@ fn block_comments_missing_setting_keep_nesting() {
     let settings = SqlParseSettings::from_parameters(&HashMap::new());
     let sql = "SELECT /* outer /* @hidden */ @hidden */ @value";
     assert_eq!(
-        rewrite_query(CompatibleMode::SqlServer, settings, sql).unwrap(),
+        rewrite_query(CompatibleMode::SqlServer, settings, sql, &[]).unwrap(),
         "SELECT /* outer /* @hidden */ @hidden */ $1"
     );
 }
@@ -182,7 +182,7 @@ fn block_comments_non_nested_openers_match_kes_lexer() {
     ] {
         let sql = format!("SELECT /*/*/ {parameter} */ {parameter}");
         assert_eq!(
-            rewrite_query(mode, settings, &sql).unwrap(),
+            rewrite_query(mode, settings, &sql, &[]).unwrap(),
             format!("SELECT /*/*/ {parameter} */ $1")
         );
     }
@@ -236,12 +236,28 @@ fn sqlserver_preserves_local_variables_procedure_labels_and_system_variables() {
         ),
         "DECLARE @Local INT = $1, @other DECIMAL(10,2) = $1; SELECT @local, @OTHER, $2"
     );
+    let exec = "EXEC dbo.proc @arg = @value, @other = @VALUE";
     assert_eq!(
-        rewrite(
+        rewrite_query(
             CompatibleMode::SqlServer,
-            "EXEC dbo.proc @arg = @value, @other = @VALUE"
-        ),
-        "EXEC dbo.proc @arg = $1, @other = $1"
+            SqlParseSettings::default(),
+            exec,
+            &[Type::INT4],
+        )
+        .unwrap(),
+        "BEGIN\nDECLARE @__rust_kingbase_exec_1 \"pg_catalog\".\"int4\" = $1;\n\
+         EXEC dbo.proc @arg = @__rust_kingbase_exec_1, @other = @__rust_kingbase_exec_1\n; END\n"
+    );
+    assert_eq!(
+        rewrite_query(
+            CompatibleMode::SqlServer,
+            SqlParseSettings::default(),
+            exec,
+            &[],
+        )
+        .unwrap_err()
+        .kind(),
+        std::io::ErrorKind::InvalidInput,
     );
     let sql = "SELECT '@id', [@id], [a]]@id], \"@id\", @@ROWCOUNT, @id /* @fake /* @fake */ @fake */ FROM #tmp";
     assert_eq!(
@@ -259,7 +275,13 @@ fn sqlserver_rejects_ambiguous_assignments_and_module_definitions() {
         "CREATE OR ALTER FUNCTION f(@arg INT) RETURNS INT AS SELECT @arg",
     ] {
         assert!(
-            rewrite_query(CompatibleMode::SqlServer, SqlParseSettings::default(), sql).is_err()
+            rewrite_query(
+                CompatibleMode::SqlServer,
+                SqlParseSettings::default(),
+                sql,
+                &[]
+            )
+            .is_err()
         );
     }
 }
@@ -268,7 +290,7 @@ fn sqlserver_rejects_ambiguous_assignments_and_module_definitions() {
 fn pg_queries_are_borrowed_without_changes() {
     let sql = "SELECT $2, $1, ?, ??, :name, @name";
     assert!(matches!(
-        rewrite_query(CompatibleMode::Pg, SqlParseSettings::default(), sql).unwrap(),
+        rewrite_query(CompatibleMode::Pg, SqlParseSettings::default(), sql, &[]).unwrap(),
         std::borrow::Cow::Borrowed(s) if s == sql
     ));
 }

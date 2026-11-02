@@ -75,10 +75,15 @@ where
             .map(|(_, type_)| type_.oid())
             .collect::<Vec<_>>();
 
+        let types = params
+            .iter()
+            .map(|(_, type_)| type_.clone())
+            .collect::<Vec<_>>();
         let query = crate::sql_compat::rewrite_query(
             client.compatible_mode(),
             client.sql_parse_settings(),
             query,
+            &types,
         )
         .map_err(Error::encode)?;
         client.with_buf(|buf| {
@@ -145,10 +150,15 @@ where
             .map(|(_, type_)| type_.oid())
             .collect::<Vec<_>>();
 
+        let types = params
+            .iter()
+            .map(|(_, type_)| type_.clone())
+            .collect::<Vec<_>>();
         let query = crate::sql_compat::rewrite_query(
             client.compatible_mode(),
             client.sql_parse_settings(),
             query,
+            &types,
         )
         .map_err(Error::encode)?;
         client.with_buf(|buf| {

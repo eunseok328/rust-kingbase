@@ -74,7 +74,7 @@ pub async fn prepare(
     types: &[Type],
 ) -> Result<Statement, Error> {
     let param_oids = types.iter().map(Type::oid).collect::<Vec<_>>();
-    prepare_with_param_oids(client, query, &param_oids).await
+    prepare_inner(client, query, &param_oids, Some(types)).await
 }
 
 pub(crate) async fn prepare_with_param_oids(
@@ -82,8 +82,17 @@ pub(crate) async fn prepare_with_param_oids(
     query: &str,
     param_oids: &[Oid],
 ) -> Result<Statement, Error> {
+    prepare_inner(client, query, param_oids, None).await
+}
+
+async fn prepare_inner(
+    client: &Arc<InnerClient>,
+    query: &str,
+    param_oids: &[Oid],
+    types: Option<&[Type]>,
+) -> Result<Statement, Error> {
     let name = format!("s{}", NEXT_ID.fetch_add(1, Ordering::SeqCst));
-    let buf = encode(client, &name, query, param_oids)?;
+    let buf = encode(client, &name, query, param_oids, types)?;
     let mut responses = client.send(RequestMessages::Single(FrontendMessage::Raw(buf)))?;
 
     match responses.next().await? {
@@ -141,6 +150,7 @@ fn encode(
     name: &str,
     query: &str,
     param_oids: &[Oid],
+    types: Option<&[Type]>,
 ) -> Result<Bytes, Error> {
     if param_oids.is_empty() {
         debug!("preparing query {name}: {query}");
@@ -152,6 +162,7 @@ fn encode(
         client.compatible_mode(),
         client.sql_parse_settings(),
         query,
+        types.unwrap_or(&[]),
     )
     .map_err(Error::encode)?;
     client.with_buf(|buf| {

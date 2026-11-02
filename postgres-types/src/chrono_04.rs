@@ -131,7 +131,7 @@ impl<'a> FromSql<'a> for NaiveDate {
             .ok_or_else(|| "value too large to decode".into())
     }
 
-    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
+    accepts!(DATE, SQLSERVER_SYS_DATE);
 }
 
 impl ToSql for NaiveDate {
@@ -143,7 +143,7 @@ impl ToSql for NaiveDate {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
+    accepts!(DATE, SQLSERVER_SYS_DATE);
     to_sql_checked!();
 }
 

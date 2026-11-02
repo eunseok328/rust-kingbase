@@ -16,6 +16,179 @@ use crate::{FromSql, IsNull, Kind, ToSql, Type};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SqlServerTinyInt(pub u8);
 
+/// A finite KingbaseES MySQL-compatible `sys.date` value.
+///
+/// The complete supported range is November 24, 4714 BC through December 31,
+/// 5874897 AD. Years use astronomical numbering: year 0 is 1 BC and year
+/// -4713 is 4714 BC. This type does not depend on a third-party date library.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MySqlDate {
+    days: i32,
+}
+
+/// An error constructing or decoding a finite [`MySqlDate`].
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MySqlDateError {
+    /// The month or day is invalid in the proleptic Gregorian calendar.
+    InvalidDate {
+        /// The astronomical year.
+        year: i32,
+        /// The rejected month.
+        month: u32,
+        /// The rejected day.
+        day: u32,
+    },
+    /// The date is outside KingbaseES MySQL DATE's finite range.
+    OutOfRange {
+        /// The rejected day count relative to January 1, 2000.
+        days_since_2000: i64,
+    },
+}
+
+impl fmt::Display for MySqlDateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::InvalidDate { year, month, day } => {
+                write!(
+                    f,
+                    "invalid MySqlDate calendar date: {year}-{month:02}-{day:02}"
+                )
+            }
+            Self::OutOfRange { days_since_2000 } => {
+                write!(
+                    f,
+                    "MySqlDate out of range: {days_since_2000} days since 2000-01-01"
+                )
+            }
+        }
+    }
+}
+
+impl Error for MySqlDateError {}
+
+impl MySqlDate {
+    /// November 24, 4714 BC (astronomical year -4713).
+    pub const MIN: Self = Self { days: -2_451_545 };
+
+    /// December 31, 5874897 AD.
+    pub const MAX: Self = Self {
+        days: 2_145_031_948,
+    };
+
+    /// Creates a finite date from an astronomical year, month, and day.
+    pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, MySqlDateError> {
+        let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+        let month_days = match month {
+            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+            4 | 6 | 9 | 11 => 30,
+            2 if leap => 29,
+            2 => 28,
+            _ => 0,
+        };
+        if day == 0 || day > month_days {
+            return Err(MySqlDateError::InvalidDate { year, month, day });
+        }
+
+        // March-based Gregorian eras; the offset makes 2000-01-01 day zero.
+        let year = i64::from(year) - i64::from(month <= 2);
+        let era = year.div_euclid(400);
+        let year_of_era = year - era * 400;
+        let month = i64::from(month);
+        let day_of_year =
+            (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + i64::from(day) - 1;
+        let days = era * 146_097 + year_of_era * 365 + year_of_era / 4 - year_of_era / 100
+            + day_of_year
+            - 730_425;
+        Self::checked_days(days)
+    }
+
+    /// Creates a finite date from days relative to January 1, 2000.
+    ///
+    /// Infinite dates and day counts outside the supported range are rejected.
+    pub fn from_days_since_2000(days: i32) -> Result<Self, MySqlDateError> {
+        Self::checked_days(i64::from(days))
+    }
+
+    fn checked_days(days: i64) -> Result<Self, MySqlDateError> {
+        if !(i64::from(Self::MIN.days)..=i64::from(Self::MAX.days)).contains(&days) {
+            return Err(MySqlDateError::OutOfRange {
+                days_since_2000: days,
+            });
+        }
+        Ok(Self { days: days as i32 })
+    }
+
+    /// Returns the astronomical year, month, and day.
+    pub fn year_month_day(self) -> (i32, u32, u32) {
+        let days = i64::from(self.days) + 730_425;
+        let era = days.div_euclid(146_097);
+        let day_of_era = days - era * 146_097;
+        let year_of_era =
+            (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+        let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+        let march_month = (5 * day_of_year + 2) / 153;
+        let day = day_of_year - (153 * march_month + 2) / 5 + 1;
+        let month = march_month + if march_month < 10 { 3 } else { -9 };
+        let year = era * 400 + year_of_era + i64::from(month <= 2);
+        (year as i32, month as u32, day as u32)
+    }
+
+    /// Returns the astronomical year (0 is 1 BC).
+    pub fn year(self) -> i32 {
+        self.year_month_day().0
+    }
+
+    /// Returns the month in the range 1 through 12.
+    pub fn month(self) -> u32 {
+        self.year_month_day().1
+    }
+
+    /// Returns the day of the month.
+    pub fn day(self) -> u32 {
+        self.year_month_day().2
+    }
+
+    /// Returns the signed number of days since January 1, 2000.
+    pub fn days_since_2000(self) -> i32 {
+        self.days
+    }
+}
+
+impl fmt::Display for MySqlDate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (year, month, day) = self.year_month_day();
+        if year <= 0 {
+            write!(f, "{:04}-{month:02}-{day:02} BC", 1 - year)
+        } else {
+            write!(f, "{year:04}-{month:02}-{day:02}")
+        }
+    }
+}
+
+impl<'a> FromSql<'a> for MySqlDate {
+    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
+        let days = postgres_protocol::types::date_from_sql(raw)?;
+        Self::from_days_since_2000(days).map_err(Into::into)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::MYSQL_SYS_DATE
+    }
+}
+
+impl ToSql for MySqlDate {
+    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        postgres_protocol::types::date_to_sql(self.days, out);
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty == &Type::MYSQL_SYS_DATE
+    }
+
+    to_sql_checked!();
+}
+
 /// A KingbaseES MySQL-compatible `pg_catalog.jsonpath` value.
 ///
 /// The PostgreSQL protocol represents JSONPATH in a server-defined binary
@@ -216,7 +389,9 @@ fn decode_oracle_rowid_binary(raw: &[u8]) -> Result<OracleRowIdParts, OracleRowI
 }
 
 fn decode_oracle_rowid_binary_field(raw: &[u8]) -> u64 {
+    // Kingbase ROWID's compact integer fields are little-endian.
     raw.iter()
+        .rev()
         .fold(0, |value, byte| (value << 8) | u64::from(*byte))
 }
 
@@ -290,9 +465,9 @@ fn minimal_oracle_rowid_bytes(value: u64, empty_zero: bool) -> Vec<u8> {
         return if empty_zero { Vec::new() } else { vec![0] };
     }
 
-    let bytes = value.to_be_bytes();
-    let first = bytes.iter().position(|byte| *byte != 0).unwrap();
-    bytes[first..].to_vec()
+    let bytes = value.to_le_bytes();
+    let last = bytes.iter().rposition(|byte| *byte != 0).unwrap();
+    bytes[..=last].to_vec()
 }
 
 fn encode_oracle_rowid_text(parts: OracleRowIdParts) -> String {

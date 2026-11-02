@@ -113,7 +113,7 @@ impl<'a> FromSql<'a> for Date {
             .and_then(|s| base().date().checked_add(s))
             .map_err(decode_err)
     }
-    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
+    accepts!(DATE, SQLSERVER_SYS_DATE);
 }
 
 impl ToSql for Date {
@@ -123,7 +123,7 @@ impl ToSql for Date {
         Ok(IsNull::No)
     }
 
-    accepts!(DATE, MYSQL_SYS_DATE, SQLSERVER_SYS_DATE);
+    accepts!(DATE, SQLSERVER_SYS_DATE);
     to_sql_checked!();
 }
 
