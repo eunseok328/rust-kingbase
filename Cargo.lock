@@ -2149,6 +2149,7 @@ dependencies = [
  "jiff 0.2.23",
  "log",
  "network-interface",
+ "openssl",
  "parking_lot",
  "percent-encoding",
  "phf",

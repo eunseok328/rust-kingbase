@@ -33,6 +33,12 @@ use tokio_postgres::{Error, Socket};
 ///
 /// * `user` - The username to authenticate with. Defaults to the user executing this process.
 /// * `password` - The password to authenticate with.
+/// * `kingbase_client_cert` - Path to a PEM or DER client certificate for KingbaseES RSA `kcert` authentication.
+///     Requires the `with-kingbase-cert` feature. This is separate from TLS client authentication.
+/// * `kingbase_client_key` - Path to the RSA private key (PEM/DER, including PKCS#8) or a PKCS#12 (`.p12`/`.pfx`) bundle.
+///     A PKCS#12 bundle can supply both the certificate and key.
+/// * `kingbase_client_key_password` - Password for the private key or PKCS#12 bundle, separate from `password`.
+///     The database password is additionally required for `kcert_scram`.
 /// * `dbname` - The name of the database to connect to. Defaults to the username.
 /// * `options` - Command line options used to configure the server.
 /// * `application_name` - Sets the `application_name` parameter on the server.
@@ -182,6 +188,43 @@ impl Config {
     /// the `password` method.
     pub fn get_password(&self) -> Option<&[u8]> {
         self.config.get_password()
+    }
+
+    /// Sets the PEM/DER client certificate for KingbaseES RSA `kcert` authentication.
+    /// Requires `with-kingbase-cert`; does not configure TLS client authentication.
+    pub fn kingbase_client_cert(&mut self, path: impl AsRef<Path>) -> &mut Config {
+        self.config.kingbase_client_cert(path);
+        self
+    }
+
+    /// Gets the KingbaseES certificate authentication certificate path.
+    pub fn get_kingbase_client_cert(&self) -> Option<&Path> {
+        self.config.get_kingbase_client_cert()
+    }
+
+    /// Sets the PEM/DER private key or PKCS#12 bundle for KingbaseES RSA authentication.
+    /// Requires `with-kingbase-cert`.
+    pub fn kingbase_client_key(&mut self, path: impl AsRef<Path>) -> &mut Config {
+        self.config.kingbase_client_key(path);
+        self
+    }
+
+    /// Gets the KingbaseES certificate authentication private key path.
+    pub fn get_kingbase_client_key(&self) -> Option<&Path> {
+        self.config.get_kingbase_client_key()
+    }
+
+    /// Sets the private key passphrase (PIN), separately from the database password.
+    ///
+    /// Must not contain NUL bytes. PKCS#12 passwords must also be valid UTF-8.
+    pub fn kingbase_client_key_password<T: AsRef<[u8]>>(&mut self, password: T) -> &mut Config {
+        self.config.kingbase_client_key_password(password);
+        self
+    }
+
+    /// Gets the KingbaseES private key passphrase, if configured.
+    pub fn get_kingbase_client_key_password(&self) -> Option<&[u8]> {
+        self.config.get_kingbase_client_key_password()
     }
 
     /// Sets the name of the database to connect to.

@@ -255,7 +255,10 @@ where
     T: TlsStream + Unpin,
 {
     let mut mac_addresses = None;
-    match read_authentication_message(stream, &mut mac_addresses).await? {
+    let mut certificate_sent = false;
+    match read_authentication_message(stream, &mut mac_addresses, config, &mut certificate_sent)
+        .await?
+    {
         Some(Message::AuthenticationOk) => {
             can_skip_channel_binding(config)?;
             return Ok(());
@@ -281,6 +284,17 @@ where
             let output = authentication::md5_hash(user.as_bytes(), pass, body.salt());
             authenticate_password(stream, output.as_bytes()).await?;
         }
+        Some(Message::AuthenticationMd5ShardingPassword(body)) => {
+            can_skip_channel_binding(config)?;
+
+            let pass = config
+                .password
+                .as_ref()
+                .ok_or_else(|| Error::config("password missing".into()))?;
+
+            let output = authentication::md5_hash_sharding(user.as_bytes(), pass, body.salt());
+            authenticate_password(stream, output.as_bytes()).await?;
+        }
         Some(Message::AuthenticationSasl(body)) => {
             authenticate_sasl(stream, body, config).await?;
         }
@@ -297,7 +311,9 @@ where
         None => return Err(Error::closed()),
     }
 
-    match read_authentication_message(stream, &mut mac_addresses).await? {
+    match read_authentication_message(stream, &mut mac_addresses, config, &mut certificate_sent)
+        .await?
+    {
         Some(Message::AuthenticationOk) => Ok(()),
         Some(Message::ErrorResponse(body)) => Err(Error::db(body)),
         Some(_) => Err(Error::unexpected_message()),
@@ -308,6 +324,8 @@ where
 async fn read_authentication_message<S, T>(
     stream: &mut StartupStream<S, T>,
     mac_addresses: &mut Option<String>,
+    config: &Config,
+    certificate_sent: &mut bool,
 ) -> Result<Option<Message>, Error>
 where
     S: AsyncRead + AsyncWrite + Unpin,
@@ -323,10 +341,36 @@ where
                             .map_err(|error| Error::authentication(error.into()))?,
                     ),
                 };
-                // JDBC responds to type 19 with a NUL-terminated 'p' message.
+                // Respond to type 19 with a NUL-terminated 'p' message.
                 // This is an extra login check, so continue waiting for the
                 // actual authentication request or AuthenticationOk.
                 authenticate_password(stream, addresses.as_bytes()).await?;
+            }
+            Some(Message::AuthenticationKingbaseCertificate(challenge)) => {
+                if *certificate_sent {
+                    return Err(Error::authentication(
+                        "repeated Kingbase certificate authentication request".into(),
+                    ));
+                }
+                *certificate_sent = true;
+                #[cfg(feature = "with-kingbase-cert")]
+                {
+                    let response = crate::kingbase_cert::response(config, &challenge)
+                        .map_err(Error::authentication)?;
+                    stream
+                        .send(FrontendMessage::Raw(response))
+                        .await
+                        .map_err(Error::io)?;
+                }
+                #[cfg(not(feature = "with-kingbase-cert"))]
+                {
+                    let _ = (challenge, config);
+                    return Err(Error::authentication(
+                        "Kingbase certificate authentication requires the with-kingbase-cert Cargo feature"
+                            .into(),
+                    ));
+                }
+                // kcert completes with AuthenticationOk; kcert_scram continues with SASL.
             }
             message => return Ok(message),
         }
