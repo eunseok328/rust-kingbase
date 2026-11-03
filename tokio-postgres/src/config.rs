@@ -20,7 +20,6 @@ use std::net::IpAddr;
 use std::ops::Deref;
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
-#[cfg(unix)]
 use std::path::{Path, PathBuf};
 use std::str;
 use std::str::FromStr;
@@ -113,6 +112,12 @@ pub enum Host {
 ///
 /// * `user` - The username to authenticate with. Defaults to the user executing this process.
 /// * `password` - The password to authenticate with.
+/// * `kingbase_client_cert` - Path to a PEM or DER client certificate for KingbaseES RSA `kcert` authentication.
+///     Requires the `with-kingbase-cert` feature. This is separate from TLS client authentication.
+/// * `kingbase_client_key` - Path to the RSA private key (PEM/DER, including PKCS#8) or a PKCS#12 (`.p12`/`.pfx`) bundle.
+///     A PKCS#12 bundle can supply both the certificate and key.
+/// * `kingbase_client_key_password` - Password for the private key or PKCS#12 bundle, separate from `password`.
+///     The database password is additionally required for `kcert_scram`.
 /// * `dbname` - The name of the database to connect to. Defaults to the username.
 /// * `options` - Command line options used to configure the server.
 /// * `application_name` - Sets the `application_name` parameter on the server.
@@ -219,6 +224,9 @@ pub enum Host {
 pub struct Config {
     pub(crate) user: Option<String>,
     pub(crate) password: Option<Vec<u8>>,
+    pub(crate) kingbase_client_cert: Option<PathBuf>,
+    pub(crate) kingbase_client_key: Option<PathBuf>,
+    pub(crate) kingbase_client_key_password: Option<Vec<u8>>,
     pub(crate) dbname: Option<String>,
     pub(crate) options: Option<String>,
     pub(crate) application_name: Option<String>,
@@ -249,6 +257,9 @@ impl Config {
         Config {
             user: None,
             password: None,
+            kingbase_client_cert: None,
+            kingbase_client_key: None,
+            kingbase_client_key_password: None,
             dbname: None,
             options: None,
             application_name: None,
@@ -299,6 +310,47 @@ impl Config {
     /// the `password` method.
     pub fn get_password(&self) -> Option<&[u8]> {
         self.password.as_deref()
+    }
+
+    /// Sets the client certificate for KingbaseES RSA `kcert` authentication.
+    ///
+    /// Accepts PEM or DER X.509 certificates. Requires `with-kingbase-cert`.
+    /// This is separate from the TLS connector's client certificate configuration.
+    pub fn kingbase_client_cert(&mut self, path: impl AsRef<Path>) -> &mut Config {
+        self.kingbase_client_cert = Some(path.as_ref().to_owned());
+        self
+    }
+
+    /// Gets the KingbaseES certificate authentication certificate path.
+    pub fn get_kingbase_client_cert(&self) -> Option<&Path> {
+        self.kingbase_client_cert.as_deref()
+    }
+
+    /// Sets the private key for KingbaseES RSA `kcert` authentication.
+    ///
+    /// Accepts PEM/DER RSA keys, including PKCS#8, or a `.p12`/`.pfx` bundle.
+    /// A PKCS#12 bundle may also supply the certificate. Requires `with-kingbase-cert`.
+    pub fn kingbase_client_key(&mut self, path: impl AsRef<Path>) -> &mut Config {
+        self.kingbase_client_key = Some(path.as_ref().to_owned());
+        self
+    }
+
+    /// Gets the KingbaseES certificate authentication private key path.
+    pub fn get_kingbase_client_key(&self) -> Option<&Path> {
+        self.kingbase_client_key.as_deref()
+    }
+
+    /// Sets the private key passphrase (PIN), separately from the database password.
+    ///
+    /// Must not contain NUL bytes. PKCS#12 passwords must also be valid UTF-8.
+    pub fn kingbase_client_key_password<T: AsRef<[u8]>>(&mut self, password: T) -> &mut Config {
+        self.kingbase_client_key_password = Some(password.as_ref().to_vec());
+        self
+    }
+
+    /// Gets the KingbaseES private key passphrase, if configured.
+    pub fn get_kingbase_client_key_password(&self) -> Option<&[u8]> {
+        self.kingbase_client_key_password.as_deref()
     }
 
     /// Sets the name of the database to connect to.
@@ -572,6 +624,15 @@ impl Config {
             "password" => {
                 self.password(value);
             }
+            "kingbase_client_cert" => {
+                self.kingbase_client_cert(value);
+            }
+            "kingbase_client_key" => {
+                self.kingbase_client_key(value);
+            }
+            "kingbase_client_key_password" => {
+                self.kingbase_client_key_password(value);
+            }
             "dbname" => {
                 self.dbname(value);
             }
@@ -774,6 +835,15 @@ impl fmt::Debug for Config {
         config_dbg = config_dbg
             .field("user", &self.user)
             .field("password", &self.password.as_ref().map(|_| Redaction {}))
+            .field("kingbase_client_cert", &self.kingbase_client_cert)
+            .field("kingbase_client_key", &self.kingbase_client_key)
+            .field(
+                "kingbase_client_key_password",
+                &self
+                    .kingbase_client_key_password
+                    .as_ref()
+                    .map(|_| Redaction {}),
+            )
             .field("dbname", &self.dbname)
             .field("options", &self.options)
             .field("application_name", &self.application_name)
@@ -1007,7 +1077,6 @@ impl<'a> UrlParser<'a> {
                 return Some(stripped);
             }
         }
-        // KingbaseES CHANGE END.
 
         None
     }

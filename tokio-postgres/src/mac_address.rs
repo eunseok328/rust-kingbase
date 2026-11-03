@@ -21,9 +21,8 @@ pub(crate) fn mac_addresses() -> io::Result<String> {
     let mut interfaces = NetworkInterface::show().map_err(io::Error::other)?;
     interfaces.sort_by_key(|interface| interface.index);
 
-    // Match JDBC ConnectionFactoryImpl.getMacAddressString(): all hardware
-    // addresses, uppercase colon-separated octets, joined by '/', without a
-    // trailing separator. Loopback interfaces have no hardware address in Java.
+    // Report non-internal interfaces' hardware addresses in uppercase,
+    // joined by '/' without a trailing separator.
     Ok(interfaces
         .into_iter()
         .filter(|interface| !interface.internal)

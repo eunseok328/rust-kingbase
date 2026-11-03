@@ -217,6 +217,26 @@ pub fn password_message(password: &[u8], buf: &mut BytesMut) -> io::Result<()> {
     write_body(buf, |buf| write_cstr(password, buf))
 }
 
+/// Encodes the KingbaseES certificate proof. Only the inner lengths use little endian.
+pub fn kingbase_certificate_response(
+    client_nonce: &[u8; 4],
+    signature: &[u8],
+    certificate: &[u8],
+    buf: &mut BytesMut,
+) -> io::Result<()> {
+    let signature_len = i32::from_usize(signature.len())?;
+    let certificate_len = i32::from_usize(certificate.len())?;
+    buf.put_u8(b'c');
+    write_body(buf, |buf| {
+        buf.put_slice(client_nonce);
+        buf.put_i32_le(signature_len);
+        buf.put_i32_le(certificate_len);
+        buf.put_slice(signature);
+        buf.put_slice(certificate);
+        Ok(())
+    })
+}
+
 #[inline]
 pub fn query(query: &str, buf: &mut BytesMut) -> io::Result<()> {
     buf.put_u8(b'Q');

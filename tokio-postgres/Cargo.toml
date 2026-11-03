@@ -24,6 +24,7 @@ all-features = true
 [features]
 default = ["runtime"]
 runtime = ["tokio/net", "tokio/time"]
+with-kingbase-cert = ["dep:openssl"]
 
 array-impls = ["postgres-types/array-impls"]
 with-bit-vec-0_6 = ["postgres-types/with-bit-vec-0_6"]
@@ -75,6 +76,10 @@ socket2 = { version = "0.6", features = ["all"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "illumos", target_os = "windows"))'.dependencies]
 network-interface = "2.0.5"
+
+[dependencies.openssl]
+version = "0.10"
+optional = true
 
 [dev-dependencies]
 futures-util = { version = "0.3", default-features = false, features = [

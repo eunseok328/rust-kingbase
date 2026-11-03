@@ -85,8 +85,12 @@ pub enum Message {
     AuthenticationSasl(AuthenticationSaslBody),
     AuthenticationSaslContinue(AuthenticationSaslContinueBody),
     AuthenticationSaslFinal(AuthenticationSaslFinalBody),
+    /// A KingbaseES certificate authentication challenge (type 14).
+    AuthenticationKingbaseCertificate(AuthenticationKingbaseCertificateBody),
     /// A KingbaseES request for the client's network interface MAC addresses (type 19).
     AuthenticationMac,
+    /// A KingbaseES MD5_SHARDING password challenge (type 21), with a four-byte salt.
+    AuthenticationMd5ShardingPassword(AuthenticationMd5PasswordBody),
     BackendKeyData(BackendKeyDataBody),
     BindComplete,
     CloseComplete,
@@ -234,7 +238,26 @@ impl Message {
                     let storage = buf.read_all();
                     Message::AuthenticationSaslFinal(AuthenticationSaslFinalBody(storage))
                 }
+                14 => {
+                    let storage = buf.read_all();
+                    if storage.len() < 2 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "invalid Kingbase certificate challenge",
+                        ));
+                    }
+                    Message::AuthenticationKingbaseCertificate(
+                        AuthenticationKingbaseCertificateBody(storage),
+                    )
+                }
                 19 => Message::AuthenticationMac,
+                21 => {
+                    let mut salt = [0; 4];
+                    buf.read_exact(&mut salt)?;
+                    Message::AuthenticationMd5ShardingPassword(AuthenticationMd5PasswordBody {
+                        salt,
+                    })
+                }
                 tag => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
@@ -333,6 +356,21 @@ impl Read for Buffer {
         };
         self.idx += len;
         Ok(len)
+    }
+}
+
+/// A certificate challenge followed by the server's certificate algorithm marker.
+pub struct AuthenticationKingbaseCertificateBody(Bytes);
+
+impl AuthenticationKingbaseCertificateBody {
+    /// Returns the bytes to sign, without the algorithm marker.
+    pub fn challenge(&self) -> &[u8] {
+        &self.0[..self.0.len() - 1]
+    }
+
+    /// Returns the algorithm marker (`b'1'` for RSA, `b'2'` for SM2).
+    pub fn algorithm(&self) -> u8 {
+        self.0[self.0.len() - 1]
     }
 }
 

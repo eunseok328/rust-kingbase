@@ -105,6 +105,7 @@
 //! | ------- | ----------- | ------------------ | ------- |
 //! | `runtime` | Enable convenience API for the connection process based on the `tokio` crate. | [tokio](https://crates.io/crates/tokio) 1.0 with the features `net` and `time` | yes |
 //! | `array-impls` | Enables `ToSql` and `FromSql` trait impls for arrays | - | no |
+//! | `with-kingbase-cert` | Enable RSA `kcert` and `kcert_scram` authentication for KingbaseES. | [openssl](https://crates.io/crates/openssl) 0.10 | no |
 //! | `with-bit-vec-0_6` | Enable support for the `bit-vec` crate. | [bit-vec](https://crates.io/crates/bit-vec) 0.6 | no |
 //! | `with-bit-vec-0_7` | Enable support for the `bit-vec` crate. | [bit-vec](https://crates.io/crates/bit-vec) 0.7 | no |
 //! | `with-bit-vec-0_8` | Enable support for the `bit-vec` crate. | [bit-vec](https://crates.io/crates/bit-vec) 0.8 | no |
@@ -125,11 +126,7 @@
 #![warn(rust_2018_idioms, clippy::all, missing_docs)]
 
 pub use crate::cancel_token::CancelToken;
-// ═══════════════════ [修改开始] KingbaseES 导出连接级兼容模式 ═══════════════════
-// 原代码保留：
-// pub use crate::client::Client;
 pub use crate::client::{Client, CompatibleMode};
-// ═══════════════════ [修改结束] KingbaseES 导出连接级兼容模式 ═══════════════════
 pub use crate::config::Config;
 pub use crate::connection::Connection;
 pub use crate::copy_in::CopyInSink;
@@ -176,6 +173,8 @@ pub mod error;
 mod generic_client;
 #[cfg(not(target_arch = "wasm32"))]
 mod keepalive;
+#[cfg(feature = "with-kingbase-cert")]
+mod kingbase_cert;
 mod mac_address;
 mod maybe_tls_stream;
 mod portal;
