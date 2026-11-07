@@ -77,14 +77,6 @@ pub async fn prepare(
     prepare_inner(client, query, &param_oids, Some(types)).await
 }
 
-pub(crate) async fn prepare_with_param_oids(
-    client: &Arc<InnerClient>,
-    query: &str,
-    param_oids: &[Oid],
-) -> Result<Statement, Error> {
-    prepare_inner(client, query, param_oids, None).await
-}
-
 async fn prepare_inner(
     client: &Arc<InnerClient>,
     query: &str,
