@@ -208,7 +208,7 @@ pub use postgres_protocol::Oid;
 pub use pg_lsn::PgLsn;
 
 pub use crate::special::{Date, Timestamp};
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{BufMut, BytesMut};
 
 // Number of seconds from 1970-01-01 to 2000-01-01
 const TIME_SEC_CONVERSION: u64 = 946_684_800;
@@ -915,80 +915,6 @@ macro_rules! simple_from {
     }
 }
 
-fn numeric_to_i64(mut raw: &[u8]) -> Result<i64, Box<dyn Error + Sync + Send>> {
-    const SIGN_POS: u16 = 0x0000;
-    const SIGN_NEG: u16 = 0x4000;
-    const SIGN_NAN: u16 = 0xC000;
-
-    if raw.len() < 8 {
-        return Err("invalid NUMERIC value".into());
-    }
-
-    let ndigits = raw.get_i16();
-    let weight = raw.get_i16();
-    let sign = raw.get_u16();
-    let dscale = raw.get_i16();
-
-    if ndigits < 0 || dscale < 0 || raw.len() != ndigits as usize * 2 {
-        return Err("invalid NUMERIC value".into());
-    }
-    if sign == SIGN_NAN {
-        return Err("NaN NUMERIC values cannot be decoded as i64".into());
-    }
-    if sign != SIGN_POS && sign != SIGN_NEG {
-        return Err("invalid NUMERIC sign".into());
-    }
-
-    let mut digits = Vec::with_capacity(ndigits as usize);
-    for _ in 0..ndigits {
-        let digit = raw.get_i16();
-        if !(0..10000).contains(&digit) {
-            return Err("invalid NUMERIC digit".into());
-        }
-        digits.push(digit);
-    }
-
-    if digits.is_empty() {
-        return Ok(0);
-    }
-
-    let integer_groups =
-        usize::try_from((i32::from(weight) + 1).max(0)).map_err(|_| "invalid NUMERIC weight")?;
-    if digits
-        .get(integer_groups..)
-        .unwrap_or_default()
-        .iter()
-        .any(|&digit| digit != 0)
-    {
-        return Err("NUMERIC value is not an integer".into());
-    }
-
-    let limit = if sign == SIGN_NEG {
-        1_u64 << 63
-    } else {
-        i64::MAX as u64
-    };
-    let mut magnitude = 0_u64;
-    for index in 0..integer_groups {
-        let digit = digits.get(index).copied().unwrap_or(0) as u64;
-        magnitude = magnitude
-            .checked_mul(10_000)
-            .and_then(|value| value.checked_add(digit))
-            .filter(|&value| value <= limit)
-            .ok_or("NUMERIC value out of range for i64")?;
-    }
-
-    if sign == SIGN_NEG {
-        if magnitude == 1_u64 << 63 {
-            Ok(i64::MIN)
-        } else {
-            Ok(-(magnitude as i64))
-        }
-    } else {
-        Ok(magnitude as i64)
-    }
-}
-
 simple_from!(bool, bool_from_sql, BOOL, SQLSERVER_SYS_BIT);
 simple_from!(i8, char_from_sql, CHAR, MYSQL_TINYINT, ORACLE_TINYINT);
 simple_from!(i16, int2_from_sql, INT2);
@@ -1020,17 +946,7 @@ impl<'a> FromSql<'a> for u64 {
 
     accepts!(MYSQL_UINT8);
 }
-impl<'a> FromSql<'a> for i64 {
-    fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<i64, Box<dyn Error + Sync + Send>> {
-        if ty == &Type::NUMERIC {
-            return numeric_to_i64(raw);
-        }
-
-        types::int8_from_sql(raw)
-    }
-
-    accepts!(INT8, NUMERIC);
-}
+simple_from!(i64, int8_from_sql, INT8);
 simple_from!(f32, float4_from_sql, FLOAT4);
 simple_from!(f64, float8_from_sql, FLOAT8);
 

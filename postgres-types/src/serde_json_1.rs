@@ -6,7 +6,13 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::io::Read;
 
+mod lax;
+
 /// A wrapper type to allow arbitrary `Serialize`/`Deserialize` types to convert to Postgres JSON values.
+///
+/// Kingbase Oracle lax JSON is normalized when strict JSON deserialization fails.
+/// This fallback uses owned values; borrowed fields require strict JSON input.
+/// It applies to the shared JSON type (OID 114); JSONB decoding stays strict.
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Json<T>(pub T);
 
@@ -39,9 +45,24 @@ where
                 return Err("unsupported JSONB encoding version".into());
             }
         }
-        serde_json_1::de::from_slice(raw)
-            .map(Json)
-            .map_err(Into::into)
+        match serde_json_1::de::from_slice(raw) {
+            Ok(value) => Ok(Json(value)),
+            Err(error) => {
+                // JSON (OID 114) is shared across database modes. Valid strict
+                // JSON keeps the fast path, including borrowed deserialization.
+                // Never apply Oracle text extensions to JSONB's wire format.
+                if *ty == Type::JSON
+                    && serde_json_1::from_slice::<serde_1::de::IgnoredAny>(raw).is_err()
+                {
+                    if let Some(normalized) = lax::normalize(raw) {
+                        if let Ok(value) = serde_json_1::from_slice::<Value>(&normalized) {
+                            return T::deserialize(value).map(Json).map_err(Into::into);
+                        }
+                    }
+                }
+                Err(error.into())
+            }
+        }
     }
 
     accepts!(JSON, JSONB, MYSQL_SYS_JSON);
