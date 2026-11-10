@@ -874,7 +874,10 @@ impl fmt::Display for SqlServerTimeError {
 
 impl Error for SqlServerTimeError {}
 
-/// A KingbaseES SQL Server-compatible `sys.money` value.
+/// A KingbaseES SQL Server-compatible `sys.money` or `sys.smallmoney` value.
+///
+/// Both types store integer units scaled by 10,000. SMALLMONEY uses a signed
+/// 32-bit payload; binding a larger scaled value returns an encoding error.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SqlServerMoney {
     scaled_value: i64,
@@ -884,7 +887,7 @@ impl SqlServerMoney {
     /// The number of stored units in one monetary unit.
     pub const SCALE: i64 = 10_000;
 
-    /// Creates a MONEY value from its exact scaled integer representation.
+    /// Creates a value from its exact scaled integer representation.
     pub fn new(scaled_value: i64) -> SqlServerMoney {
         SqlServerMoney { scaled_value }
     }
@@ -1471,7 +1474,7 @@ fn accepts_sqlserver_time(ty: &Type) -> bool {
 }
 
 fn accepts_sqlserver_money(ty: &Type) -> bool {
-    ty == &Type::SQLSERVER_SYS_MONEY
+    matches!(*ty, Type::SQLSERVER_SYS_MONEY | Type::SQLSERVER_SMALLMONEY)
 }
 
 fn accepts_sqlserver_rowversion(ty: &Type) -> bool {
@@ -1869,8 +1872,13 @@ impl ToSql for SqlServerTime {
 }
 
 impl<'a> FromSql<'a> for SqlServerMoney {
-    fn from_sql(_: &Type, raw: &'a [u8]) -> Result<SqlServerMoney, Box<dyn Error + Sync + Send>> {
-        Ok(SqlServerMoney::new(decode_i64(raw, "SQL Server money")?))
+    fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<SqlServerMoney, Box<dyn Error + Sync + Send>> {
+        let scaled = if ty == &Type::SQLSERVER_SMALLMONEY {
+            i64::from(postgres_protocol::types::int4_from_sql(raw)?)
+        } else {
+            decode_i64(raw, "SQL Server money")?
+        };
+        Ok(SqlServerMoney::new(scaled))
     }
 
     fn accepts(ty: &Type) -> bool {
@@ -1879,8 +1887,18 @@ impl<'a> FromSql<'a> for SqlServerMoney {
 }
 
 impl ToSql for SqlServerMoney {
-    fn to_sql(&self, _: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        encode_i64(self.scaled_value, out);
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut BytesMut,
+    ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
+        if ty == &Type::SQLSERVER_SMALLMONEY {
+            let scaled = i32::try_from(self.scaled_value)
+                .map_err(|_| "SQL Server SMALLMONEY value out of range")?;
+            postgres_protocol::types::int4_to_sql(scaled, out);
+        } else {
+            encode_i64(self.scaled_value, out);
+        }
         Ok(IsNull::No)
     }
 
