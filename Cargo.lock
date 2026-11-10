@@ -1286,7 +1286,7 @@ dependencies = [
 
 [[package]]
 name = "postgres"
-version = "0.19.13"
+version = "0.19.14"
 dependencies = [
  "bytes",
  "criterion",
@@ -1299,7 +1299,7 @@ dependencies = [
 
 [[package]]
 name = "postgres-derive"
-version = "0.4.8"
+version = "0.4.9"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -1342,7 +1342,7 @@ dependencies = [
 
 [[package]]
 name = "postgres-protocol"
-version = "0.6.11"
+version = "0.6.12"
 dependencies = [
  "base64",
  "byteorder",
@@ -1359,7 +1359,7 @@ dependencies = [
 
 [[package]]
 name = "postgres-types"
-version = "0.2.13"
+version = "0.2.14"
 dependencies = [
  "array-init",
  "bigdecimal",
@@ -2126,7 +2126,7 @@ dependencies = [
 
 [[package]]
 name = "tokio-postgres"
-version = "0.7.17"
+version = "0.7.18"
 dependencies = [
  "async-trait",
  "bit-vec 0.6.3",

@@ -1,6 +1,6 @@
 [package]
 name = "postgres-types"
-version = "0.2.13"
+version = "0.2.14"
 authors = ["Steven Fackler <sfackler@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -40,8 +40,8 @@ with-time-0_3 = ["time-03"]
 [dependencies]
 bytes = "1.11"
 fallible-iterator = "0.2"
-postgres-protocol = { version = "0.6.9", path = "../postgres-protocol" }
-postgres-derive = { version = "0.4.7", optional = true, path = "../postgres-derive" }
+postgres-protocol = { version = "0.6.12", path = "../postgres-protocol" }
+postgres-derive = { version = "0.4.9", optional = true, path = "../postgres-derive" }
 
 array-init = { version = "2", optional = true }
 bit-vec-06 = { version = "0.6", package = "bit-vec", optional = true }

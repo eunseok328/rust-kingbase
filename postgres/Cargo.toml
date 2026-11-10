@@ -1,6 +1,6 @@
 [package]
 name = "postgres"
-version = "0.19.13"
+version = "0.19.14"
 authors = ["Steven Fackler <sfackler@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -50,7 +50,7 @@ futures-util = { version = "0.3.14", default-features = false, features = [
   "sink",
 ] }
 log = "0.4"
-tokio-postgres = { version = "0.7.17", path = "../tokio-postgres" }
+tokio-postgres = { version = "0.7.18", path = "../tokio-postgres" }
 tokio = { version = "1.0", features = ["rt", "time"] }
 
 [dev-dependencies]

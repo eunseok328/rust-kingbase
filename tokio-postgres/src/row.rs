@@ -8,6 +8,7 @@ use crate::{Error, Statement};
 use fallible_iterator::FallibleIterator;
 use postgres_protocol::message::backend::DataRowBody;
 use std::fmt;
+use std::io;
 use std::ops::Range;
 use std::str;
 use std::sync::Arc;
@@ -113,11 +114,21 @@ impl fmt::Debug for Row {
 impl Row {
     pub(crate) fn new(statement: Statement, body: DataRowBody) -> Result<Row, Error> {
         let ranges = body.ranges().collect().map_err(Error::parse)?;
-        Ok(Row {
+        let row = Row {
             statement,
             body,
             ranges,
-        })
+        };
+        // The DataRow field count is sent by the server independently of the
+        // RowDescription column count; a mismatch would make column accessors
+        // index `ranges` out of bounds and panic, so reject it up front.
+        if row.ranges.len() != row.statement.columns().len() {
+            return Err(Error::parse(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "DataRow field count does not match the number of columns",
+            )));
+        }
+        Ok(row)
     }
 
     /// Returns information about the columns of data in the row.
@@ -217,11 +228,21 @@ impl SimpleQueryRow {
         body: DataRowBody,
     ) -> Result<SimpleQueryRow, Error> {
         let ranges = body.ranges().collect().map_err(Error::parse)?;
-        Ok(SimpleQueryRow {
+        let row = SimpleQueryRow {
             columns,
             body,
             ranges,
-        })
+        };
+        // The DataRow field count is sent by the server independently of the
+        // RowDescription column count; a mismatch would make column accessors
+        // index `ranges` out of bounds and panic, so reject it up front.
+        if row.ranges.len() != row.columns.len() {
+            return Err(Error::parse(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "DataRow field count does not match the number of columns",
+            )));
+        }
+        Ok(row)
     }
 
     /// Returns information about the columns of data in the row.
