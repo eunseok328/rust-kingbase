@@ -14,7 +14,7 @@ impl<'a> FromSql<'a> for BigDecimal {
         BigDecimal::parse_bytes(text.as_bytes(), 10).ok_or_else(|| "invalid NUMERIC value".into())
     }
 
-    accepts!(NUMERIC);
+    accepts!(NUMERIC, SQLSERVER_SYS_NUMERIC);
 }
 
 impl ToSql for BigDecimal {
@@ -24,7 +24,7 @@ impl ToSql for BigDecimal {
         Ok(IsNull::No)
     }
 
-    accepts!(NUMERIC);
+    accepts!(NUMERIC, SQLSERVER_SYS_NUMERIC);
 
     to_sql_checked!();
 }

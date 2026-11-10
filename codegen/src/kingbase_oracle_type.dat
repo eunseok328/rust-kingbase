@@ -74,11 +74,13 @@
   typname => '_tinyint', variant => 'TinyintArray', ident => 'TINYINT_ARRAY',
   typcategory => 'A', typbasetype => '8100', schema => 'pg_catalog' },
 
-{ oid => '49641', descr => 'KingbaseES Oracle-compatible RAW type',
-  typname => 'raw', variant => 'Raw', typcategory => 'S',
-  schema => 'sys' },
-{ oid => '49669', descr => 'KingbaseES Oracle-compatible RAW array type',
-  typname => '_raw', variant => 'RawArray', ident => 'RAW_ARRAY',
-  typcategory => 'A', typbasetype => '49641', schema => 'sys' },
+
+
+{ oid => '3384', descr => 'KingbaseES oracle-compatible VARBINARY type',
+  typname => 'varbinary', variant => 'Varbinary', ident => 'VARBINARY',
+  typcategory => 'S', schema => 'sys' },
+{ oid => '3386', descr => 'KingbaseES oracle-compatible _VARBINARY type',
+  typname => '_varbinary', variant => 'VarbinaryArray', ident => 'VARBINARY_ARRAY',
+  typcategory => 'A', typbasetype => '3384', schema => 'sys' },
 
 ]

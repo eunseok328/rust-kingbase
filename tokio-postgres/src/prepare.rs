@@ -201,12 +201,10 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     };
 
     let compatible_mode = client.compatible_mode();
-    let kind = if info.type_ == b'e' as i8 {
-        let variants = get_enum_variants(client, oid).await?;
-        Kind::Enum(variants)
-    } else if compatible_mode == crate::client::CompatibleMode::Mysql
-        && info.type_ == b'l' as i8
-        && info.name.starts_with("Enum_")
+    let kind = if info.type_ == b'e' as i8
+        || (compatible_mode == crate::client::CompatibleMode::Mysql
+            && info.type_ == b'l' as i8
+            && info.name.starts_with("Enum_"))
     {
         let variants = get_enum_variants(client, oid).await?;
         Kind::Enum(variants)
@@ -216,12 +214,14 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
         Kind::Set
     } else if info.type_ == b'p' as i8 {
         Kind::Pseudo
+    } else if info.elem_oid != 0 && info.type_ != b'd' as i8 {
+        // Kingbase arrays can retain their element domain's typbasetype.
+        // An actual domain over an array still needs its domain identity.
+        let type_ = get_type_rec(client, info.elem_oid).await?;
+        Kind::Array(type_)
     } else if info.basetype != 0 {
         let type_ = get_type_rec(client, info.basetype).await?;
         Kind::Domain(type_)
-    } else if info.elem_oid != 0 {
-        let type_ = get_type_rec(client, info.elem_oid).await?;
-        Kind::Array(type_)
     } else if info.relid != 0 {
         let fields = get_composite_fields(client, info.relid).await?;
         Kind::Composite(fields)

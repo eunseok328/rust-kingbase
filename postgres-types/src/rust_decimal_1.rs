@@ -26,7 +26,7 @@ impl<'a> FromSql<'a> for Decimal {
             })
     }
 
-    accepts!(NUMERIC);
+    accepts!(NUMERIC, SQLSERVER_SYS_NUMERIC);
 }
 
 impl ToSql for Decimal {
@@ -35,7 +35,7 @@ impl ToSql for Decimal {
         Ok(IsNull::No)
     }
 
-    accepts!(NUMERIC);
+    accepts!(NUMERIC, SQLSERVER_SYS_NUMERIC);
     to_sql_checked!();
 }
 

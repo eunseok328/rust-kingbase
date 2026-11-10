@@ -4,6 +4,8 @@ use crate::{Kind, Oid, Type};
 
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Inner {
+    Varbinary,
+    VarbinaryArray,
     Rowid,
     RowidArray,
     Urowid,
@@ -25,13 +27,13 @@ pub enum Inner {
     BfileArray,
     Tinyint,
     TinyintArray,
-    Raw,
-    RawArray,
 }
 
 impl Inner {
     pub fn from_oid(oid: Oid) -> Option<Inner> {
         match oid {
+            3384 => Some(Inner::Varbinary),
+            3386 => Some(Inner::VarbinaryArray),
             6123 => Some(Inner::Rowid),
             6124 => Some(Inner::RowidArray),
             6125 => Some(Inner::Urowid),
@@ -53,14 +55,14 @@ impl Inner {
             8079 => Some(Inner::BfileArray),
             8100 => Some(Inner::Tinyint),
             8101 => Some(Inner::TinyintArray),
-            49641 => Some(Inner::Raw),
-            49669 => Some(Inner::RawArray),
             _ => None,
         }
     }
 
     pub fn oid(&self) -> Oid {
         match *self {
+            Inner::Varbinary => 3384,
+            Inner::VarbinaryArray => 3386,
             Inner::Rowid => 6123,
             Inner::RowidArray => 6124,
             Inner::Urowid => 6125,
@@ -82,13 +84,13 @@ impl Inner {
             Inner::BfileArray => 8079,
             Inner::Tinyint => 8100,
             Inner::TinyintArray => 8101,
-            Inner::Raw => 49641,
-            Inner::RawArray => 49669,
         }
     }
 
     pub fn kind(&self) -> &Kind {
         match *self {
+            Inner::Varbinary => &Kind::Simple,
+            Inner::VarbinaryArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Varbinary))),
             Inner::Rowid => &Kind::Simple,
             Inner::RowidArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Rowid))),
             Inner::Urowid => &Kind::Simple,
@@ -112,13 +114,13 @@ impl Inner {
             Inner::BfileArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Bfile))),
             Inner::Tinyint => &Kind::Simple,
             Inner::TinyintArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Tinyint))),
-            Inner::Raw => &Kind::Simple,
-            Inner::RawArray => &Kind::Array(Type(TypeInner::Oracle(Inner::Raw))),
         }
     }
 
     pub fn name(&self) -> &str {
         match *self {
+            Inner::Varbinary => "varbinary",
+            Inner::VarbinaryArray => "_varbinary",
             Inner::Rowid => "rowid",
             Inner::RowidArray => "_rowid",
             Inner::Urowid => "urowid",
@@ -140,13 +142,13 @@ impl Inner {
             Inner::BfileArray => "_bfile",
             Inner::Tinyint => "tinyint",
             Inner::TinyintArray => "_tinyint",
-            Inner::Raw => "raw",
-            Inner::RawArray => "_raw",
         }
     }
 
     pub fn schema(&self) -> &str {
         match *self {
+            Inner::Varbinary => "sys",
+            Inner::VarbinaryArray => "sys",
             Inner::Rowid => "pg_catalog",
             Inner::RowidArray => "pg_catalog",
             Inner::Urowid => "pg_catalog",
@@ -168,8 +170,6 @@ impl Inner {
             Inner::BfileArray => "pg_catalog",
             Inner::Tinyint => "pg_catalog",
             Inner::TinyintArray => "pg_catalog",
-            Inner::Raw => "sys",
-            Inner::RawArray => "sys",
         }
     }
 }

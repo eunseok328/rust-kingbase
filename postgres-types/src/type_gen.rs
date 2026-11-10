@@ -638,17 +638,17 @@ impl Type {
     pub const INT8MULTI_RANGE_ARRAY: Type =
         Type(Inner::Pg(crate::pg_type_gen::Inner::Int8multiRangeArray));
 
-    /// sys.binary - KingbaseES MySQL-compatible type
+    /// pg_catalog.binary - KingbaseES MySQL-compatible type
     pub const MYSQL_BINARY: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Binary));
 
-    /// sys.varbinary - KingbaseES MySQL-compatible type
+    /// pg_catalog.varbinary - KingbaseES MySQL-compatible type
     pub const MYSQL_VARBINARY: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Varbinary));
 
-    /// sys._binary - KingbaseES MySQL-compatible array type
+    /// pg_catalog._binary - KingbaseES MySQL-compatible array type
     pub const MYSQL_BINARY_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::BinaryArray));
 
-    /// sys._varbinary - KingbaseES MySQL-compatible array type
+    /// pg_catalog._varbinary - KingbaseES MySQL-compatible array type
     pub const MYSQL_VARBINARY_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::VarbinaryArray));
 
@@ -659,12 +659,14 @@ impl Type {
     pub const MYSQL_SYS_BIT_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlBitArray));
 
-    /// sys.rowid - KingbaseES MySQL-compatible type
-    pub const MYSQL_ROWID: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Rowid));
+    /// sys.mysql_json - KingbaseES MySQL JSON binary type
+    pub const MYSQL_MYSQL_JSON: Type =
+        Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlJsonBase));
 
-    /// sys._rowid - KingbaseES MySQL-compatible array type
-    pub const MYSQL_ROWID_ARRAY: Type =
-        Type(Inner::Mysql(crate::mysql_type_gen::Inner::RowidArray));
+    /// sys._mysql_json - KingbaseES MySQL JSON binary array type
+    pub const MYSQL_MYSQL_JSON_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::MysqlJsonBaseArray,
+    ));
 
     /// sys._date - KingbaseES MySQL-compatible array type
     pub const MYSQL_SYS_DATE_ARRAY: Type =
@@ -706,22 +708,41 @@ impl Type {
     /// sys.year - KingbaseES MySQL-compatible domain
     pub const MYSQL_YEAR: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Year));
 
-    /// sys.uint4 - KingbaseES MySQL-compatible type
+    /// pg_catalog.uint4 - KingbaseES MySQL-compatible type
     pub const MYSQL_UINT4: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Uint4));
 
-    /// sys._uint4 - KingbaseES MySQL-compatible array type
+    /// pg_catalog._uint4 - KingbaseES MySQL-compatible array type
     pub const MYSQL_UINT4_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::Uint4Array));
 
-    /// sys.uint8 - KingbaseES MySQL-compatible type
+    /// pg_catalog.uint8 - KingbaseES MySQL-compatible type
     pub const MYSQL_UINT8: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Uint8));
 
-    /// sys._uint8 - KingbaseES MySQL-compatible array type
+    /// pg_catalog._uint8 - KingbaseES MySQL-compatible array type
     pub const MYSQL_UINT8_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::Uint8Array));
 
+    /// sys.unsignedsmallint - KingbaseES mysql-compatible UNSIGNEDSMALLINT type
+    pub const MYSQL_UNSIGNED_SMALLINT: Type =
+        Type(Inner::Mysql(crate::mysql_type_gen::Inner::UnsignedSmallint));
+
+    /// sys.unsignedmediumint - KingbaseES mysql-compatible UNSIGNEDMEDIUMINT type
+    pub const MYSQL_UNSIGNED_MEDIUMINT: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::UnsignedMediumint,
+    ));
+
+    /// sys._unsignedmediumint - KingbaseES mysql-compatible _UNSIGNEDMEDIUMINT type
+    pub const MYSQL_UNSIGNED_MEDIUMINT_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::UnsignedMediumintArray,
+    ));
+
     /// sys.date - KingbaseES MySQL-compatible type
     pub const MYSQL_SYS_DATE: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlDate));
+
+    /// sys._unsignedsmallint - KingbaseES mysql-compatible _UNSIGNEDSMALLINT type
+    pub const MYSQL_UNSIGNED_SMALLINT_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::UnsignedSmallintArray,
+    ));
 
     /// sys.time - KingbaseES MySQL-compatible type
     pub const MYSQL_SYS_TIME: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlTime));
@@ -746,36 +767,53 @@ impl Type {
         crate::mysql_type_gen::Inner::MysqlTimestampArray,
     ));
 
-    /// sys.blob - KingbaseES MySQL-compatible domain
+    /// pg_catalog.blob - KingbaseES MySQL-compatible domain
     pub const MYSQL_BLOB: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Blob));
 
-    /// sys.clob - KingbaseES MySQL-compatible domain
+    /// pg_catalog.clob - KingbaseES MySQL-compatible domain
     pub const MYSQL_CLOB: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Clob));
 
-    /// sys.nclob - KingbaseES MySQL-compatible domain
+    /// pg_catalog.nclob - KingbaseES MySQL-compatible domain
     pub const MYSQL_NCLOB: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Nclob));
 
-    /// sys.bpcharbyte - KingbaseES MySQL-compatible type
+    /// pg_catalog.bpcharbyte - KingbaseES MySQL-compatible type
     pub const MYSQL_BPCHARBYTE: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Bpcharbyte));
 
-    /// sys._bpcharbyte - KingbaseES MySQL-compatible array type
+    /// pg_catalog._bpcharbyte - KingbaseES MySQL-compatible array type
     pub const MYSQL_BPCHARBYTE_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::BpcharbyteArray));
 
-    /// sys.varcharbyte - KingbaseES MySQL-compatible type
+    /// pg_catalog.varcharbyte - KingbaseES MySQL-compatible type
     pub const MYSQL_VARCHARBYTE: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::Varcharbyte));
 
-    /// sys._varcharbyte - KingbaseES MySQL-compatible array type
+    /// pg_catalog._varcharbyte - KingbaseES MySQL-compatible array type
     pub const MYSQL_VARCHARBYTE_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::VarcharbyteArray));
 
-    /// sys.tinyint - KingbaseES MySQL-compatible type
+    /// sys.unsignedtinyint - KingbaseES mysql-compatible UNSIGNEDTINYINT type
+    pub const MYSQL_UNSIGNED_TINYINT: Type =
+        Type(Inner::Mysql(crate::mysql_type_gen::Inner::UnsignedTinyint));
+
+    /// sys._unsignedtinyint - KingbaseES mysql-compatible _UNSIGNEDTINYINT type
+    pub const MYSQL_UNSIGNED_TINYINT_ARRAY: Type = Type(Inner::Mysql(
+        crate::mysql_type_gen::Inner::UnsignedTinyintArray,
+    ));
+
+    /// pg_catalog.tinyint - KingbaseES MySQL-compatible type
     pub const MYSQL_TINYINT: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::Tinyint));
 
-    /// sys._tinyint - KingbaseES MySQL-compatible array type
+    /// pg_catalog._tinyint - KingbaseES MySQL-compatible array type
     pub const MYSQL_TINYINT_ARRAY: Type =
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::TinyintArray));
+
+    /// sys.varbinary - KingbaseES oracle-compatible VARBINARY type
+    pub const ORACLE_VARBINARY: Type =
+        Type(Inner::Oracle(crate::oracle_type_gen::Inner::Varbinary));
+
+    /// sys._varbinary - KingbaseES oracle-compatible _VARBINARY type
+    pub const ORACLE_VARBINARY_ARRAY: Type =
+        Type(Inner::Oracle(crate::oracle_type_gen::Inner::VarbinaryArray));
 
     /// pg_catalog.rowid - KingbaseES Oracle-compatible ROWID type
     pub const ORACLE_ROWID: Type = Type(Inner::Oracle(crate::oracle_type_gen::Inner::Rowid));
@@ -857,12 +895,6 @@ impl Type {
     pub const ORACLE_TINYINT_ARRAY: Type =
         Type(Inner::Oracle(crate::oracle_type_gen::Inner::TinyintArray));
 
-    /// sys.raw - KingbaseES Oracle-compatible RAW type
-    pub const ORACLE_RAW: Type = Type(Inner::Oracle(crate::oracle_type_gen::Inner::Raw));
-
-    /// sys._raw - KingbaseES Oracle-compatible RAW array type
-    pub const ORACLE_RAW_ARRAY: Type = Type(Inner::Oracle(crate::oracle_type_gen::Inner::RawArray));
-
     /// sys.uniqueidentifier - KingbaseES SQL Server-compatible UNIQUEIDENTIFIER type
     pub const SQLSERVER_UNIQUEIDENTIFIER: Type = Type(Inner::SqlServer(
         crate::sqlserver_type_gen::Inner::Uniqueidentifier,
@@ -934,6 +966,41 @@ impl Type {
         crate::sqlserver_type_gen::Inner::SmalldatetimeArray,
     ));
 
+    /// sys.smallint - KingbaseES SQL Server-compatible SMALLINT type
+    pub const SQLSERVER_SMALLINT: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Smallint));
+
+    /// sys._smallint - KingbaseES SQL Server-compatible SMALLINT array type
+    pub const SQLSERVER_SMALLINT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SmallintArray,
+    ));
+
+    /// sys.int - KingbaseES SQL Server-compatible INT type
+    pub const SQLSERVER_INT: Type = Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Int));
+
+    /// sys._int - KingbaseES SQL Server-compatible INT array type
+    pub const SQLSERVER_INT_ARRAY: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::IntArray));
+
+    /// sys.bigint - KingbaseES SQL Server-compatible BIGINT type
+    pub const SQLSERVER_BIGINT: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Bigint));
+
+    /// sys._bigint - KingbaseES SQL Server-compatible BIGINT array type
+    pub const SQLSERVER_BIGINT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::BigintArray,
+    ));
+
+    /// sys.numeric - KingbaseES SQL Server-compatible NUMERIC type
+    pub const SQLSERVER_SYS_NUMERIC: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerNumeric,
+    ));
+
+    /// sys._numeric - KingbaseES SQL Server-compatible NUMERIC array type
+    pub const SQLSERVER_SYS_NUMERIC_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerNumericArray,
+    ));
+
     /// sys.money - KingbaseES SQL Server-compatible MONEY type
     pub const SQLSERVER_SYS_MONEY: Type = Type(Inner::SqlServer(
         crate::sqlserver_type_gen::Inner::SqlServerMoney,
@@ -943,6 +1010,55 @@ impl Type {
     pub const SQLSERVER_SYS_MONEY_ARRAY: Type = Type(Inner::SqlServer(
         crate::sqlserver_type_gen::Inner::SqlServerMoneyArray,
     ));
+
+    /// sys.real - KingbaseES SQL Server-compatible REAL type
+    pub const SQLSERVER_REAL: Type = Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Real));
+
+    /// sys._real - KingbaseES SQL Server-compatible REAL array type
+    pub const SQLSERVER_REAL_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::RealArray,
+    ));
+
+    /// sys.float - KingbaseES SQL Server-compatible FLOAT type
+    pub const SQLSERVER_FLOAT: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Float));
+
+    /// sys._float - KingbaseES SQL Server-compatible FLOAT array type
+    pub const SQLSERVER_FLOAT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::FloatArray,
+    ));
+
+    /// sys.image - KingbaseES sqlserver-compatible IMAGE type
+    pub const SQLSERVER_IMAGE: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Image));
+
+    /// sys._image - KingbaseES sqlserver-compatible _IMAGE type
+    pub const SQLSERVER_IMAGE_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::ImageArray,
+    ));
+
+    /// sys.text - KingbaseES SQL Server-compatible TEXT type
+    pub const SQLSERVER_SYS_TEXT: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerText,
+    ));
+
+    /// sys._text - KingbaseES SQL Server-compatible TEXT array type
+    pub const SQLSERVER_SYS_TEXT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SqlServerTextArray,
+    ));
+
+    /// sys.ntext - KingbaseES sqlserver-compatible NTEXT type
+    pub const SQLSERVER_NTEXT: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Ntext));
+
+    /// sys._ntext - KingbaseES sqlserver-compatible _NTEXT type
+    pub const SQLSERVER_NTEXT_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::NtextArray,
+    ));
+
+    /// sys.sysname - KingbaseES SQL Server-compatible SYSNAME domain
+    pub const SQLSERVER_SYSNAME: Type =
+        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Sysname));
 
     /// sys._sysname - KingbaseES SQL Server-compatible SYSNAME array type
     pub const SQLSERVER_SYSNAME_ARRAY: Type = Type(Inner::SqlServer(
@@ -958,10 +1074,6 @@ impl Type {
     pub const SQLSERVER_SQL_VARIANT_ARRAY: Type = Type(Inner::SqlServer(
         crate::sqlserver_type_gen::Inner::SqlVariantArray,
     ));
-
-    /// sys.sysname - KingbaseES SQL Server-compatible SYSNAME domain
-    pub const SQLSERVER_SYSNAME: Type =
-        Type(Inner::SqlServer(crate::sqlserver_type_gen::Inner::Sysname));
 
     /// sys._datetime2 - KingbaseES SQL Server-compatible DATETIME2 array type
     pub const SQLSERVER_DATETIME2_ARRAY: Type = Type(Inner::SqlServer(
@@ -1010,6 +1122,16 @@ impl Type {
     /// sys._bit - KingbaseES SQL Server-compatible BIT array type
     pub const SQLSERVER_SYS_BIT_ARRAY: Type = Type(Inner::SqlServer(
         crate::sqlserver_type_gen::Inner::SqlServerBitArray,
+    ));
+
+    /// sys.smallmoney - KingbaseES sqlserver-compatible SMALLMONEY type
+    pub const SQLSERVER_SMALLMONEY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::Smallmoney,
+    ));
+
+    /// sys._smallmoney - KingbaseES sqlserver-compatible _SMALLMONEY type
+    pub const SQLSERVER_SMALLMONEY_ARRAY: Type = Type(Inner::SqlServer(
+        crate::sqlserver_type_gen::Inner::SmallmoneyArray,
     ));
 
     /// sys.bpcharbyte - KingbaseES SQL Server-compatible byte-length CHAR type

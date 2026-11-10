@@ -789,24 +789,34 @@ impl<'a, T: FromSql<'a>> FromSql<'a> for Box<[T]> {
     }
 }
 
+// kdb_raw allocates RAW and its array OIDs when the extension is installed.
+// The dynamically discovered sys.raw base type has the BYTEA wire layout.
+fn accepts_bytes(ty: &Type) -> bool {
+    matches!(
+        *ty,
+        Type::BYTEA
+            | Type::MYSQL_BINARY
+            | Type::MYSQL_VARBINARY
+            | Type::MYSQL_BLOB
+            | Type::MYSQL_LONGBLOB
+            | Type::MYSQL_MEDIUMBLOB
+            | Type::MYSQL_TINYBLOB
+            | Type::ORACLE_BLOB
+            | Type::ORACLE_VARBINARY
+            | Type::SQLSERVER_BINARY
+            | Type::SQLSERVER_VARBINARY
+            | Type::SQLSERVER_IMAGE
+    ) || (ty.schema() == "sys" && ty.name() == "raw" && matches!(ty.kind(), Kind::Simple))
+}
+
 impl<'a> FromSql<'a> for Vec<u8> {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<Vec<u8>, Box<dyn Error + Sync + Send>> {
         Ok(types::bytea_from_sql(raw).to_owned())
     }
 
-    accepts!(
-        BYTEA,
-        MYSQL_BINARY,
-        MYSQL_VARBINARY,
-        MYSQL_BLOB,
-        MYSQL_LONGBLOB,
-        MYSQL_MEDIUMBLOB,
-        MYSQL_TINYBLOB,
-        ORACLE_BLOB,
-        ORACLE_RAW,
-        SQLSERVER_BINARY,
-        SQLSERVER_VARBINARY
-    );
+    fn accepts(ty: &Type) -> bool {
+        accepts_bytes(ty)
+    }
 }
 
 impl<'a> FromSql<'a> for &'a [u8] {
@@ -814,19 +824,9 @@ impl<'a> FromSql<'a> for &'a [u8] {
         Ok(types::bytea_from_sql(raw))
     }
 
-    accepts!(
-        BYTEA,
-        MYSQL_BINARY,
-        MYSQL_VARBINARY,
-        MYSQL_BLOB,
-        MYSQL_LONGBLOB,
-        MYSQL_MEDIUMBLOB,
-        MYSQL_TINYBLOB,
-        ORACLE_BLOB,
-        ORACLE_RAW,
-        SQLSERVER_BINARY,
-        SQLSERVER_VARBINARY
-    );
+    fn accepts(ty: &Type) -> bool {
+        accepts_bytes(ty)
+    }
 }
 
 impl<'a> FromSql<'a> for String {
@@ -887,6 +887,8 @@ impl<'a> FromSql<'a> for &'a str {
             || ty == &Type::SQLSERVER_BPCHARBYTE
             || ty == &Type::SQLSERVER_VARCHARBYTE
             || ty == &Type::SQLSERVER_SYSNAME
+            || ty == &Type::SQLSERVER_SYS_TEXT
+            || ty == &Type::SQLSERVER_NTEXT
             || ty == &Type::ORACLE_BFILE
             || ty == &Type::XML
             || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
@@ -917,7 +919,7 @@ macro_rules! simple_from {
 
 simple_from!(bool, bool_from_sql, BOOL, SQLSERVER_SYS_BIT);
 simple_from!(i8, char_from_sql, CHAR, MYSQL_TINYINT, ORACLE_TINYINT);
-simple_from!(i16, int2_from_sql, INT2);
+simple_from!(i16, int2_from_sql, INT2, SQLSERVER_SMALLINT);
 impl<'a> FromSql<'a> for i32 {
     fn from_sql(_: &Type, raw: &'a [u8]) -> Result<i32, Box<dyn Error + Sync + Send>> {
         types::int4_from_sql(raw)
@@ -927,11 +929,15 @@ impl<'a> FromSql<'a> for i32 {
         matches!(
             *ty,
             Type::INT4
+                | Type::SQLSERVER_INT
                 | Type::MYSQL_INT1
                 | Type::MYSQL_INT3
                 | Type::MYSQL_MEDIUMINT
                 | Type::MYSQL_MIDDLEINT
                 | Type::MYSQL_YEAR
+                | Type::MYSQL_UNSIGNED_TINYINT
+                | Type::MYSQL_UNSIGNED_SMALLINT
+                | Type::MYSQL_UNSIGNED_MEDIUMINT
         )
     }
 }
@@ -946,9 +952,9 @@ impl<'a> FromSql<'a> for u64 {
 
     accepts!(MYSQL_UINT8);
 }
-simple_from!(i64, int8_from_sql, INT8);
-simple_from!(f32, float4_from_sql, FLOAT4);
-simple_from!(f64, float8_from_sql, FLOAT8);
+simple_from!(i64, int8_from_sql, INT8, SQLSERVER_BIGINT);
+simple_from!(f32, float4_from_sql, FLOAT4, SQLSERVER_REAL);
+simple_from!(f64, float8_from_sql, FLOAT8, SQLSERVER_FLOAT);
 
 impl<'a, S> FromSql<'a> for HashMap<String, Option<String>, S>
 where
@@ -1233,19 +1239,9 @@ impl ToSql for &[u8] {
         Ok(IsNull::No)
     }
 
-    accepts!(
-        BYTEA,
-        MYSQL_BINARY,
-        MYSQL_VARBINARY,
-        MYSQL_BLOB,
-        MYSQL_LONGBLOB,
-        MYSQL_MEDIUMBLOB,
-        MYSQL_TINYBLOB,
-        ORACLE_BLOB,
-        ORACLE_RAW,
-        SQLSERVER_BINARY,
-        SQLSERVER_VARBINARY
-    );
+    fn accepts(ty: &Type) -> bool {
+        accepts_bytes(ty)
+    }
 
     to_sql_checked!();
 }
@@ -1257,19 +1253,9 @@ impl<const N: usize> ToSql for [u8; N] {
         Ok(IsNull::No)
     }
 
-    accepts!(
-        BYTEA,
-        MYSQL_BINARY,
-        MYSQL_VARBINARY,
-        MYSQL_BLOB,
-        MYSQL_LONGBLOB,
-        MYSQL_MEDIUMBLOB,
-        MYSQL_TINYBLOB,
-        ORACLE_BLOB,
-        ORACLE_RAW,
-        SQLSERVER_BINARY,
-        SQLSERVER_VARBINARY
-    );
+    fn accepts(ty: &Type) -> bool {
+        accepts_bytes(ty)
+    }
 
     to_sql_checked!();
 }
@@ -1384,6 +1370,8 @@ impl ToSql for &str {
             || ty == &Type::SQLSERVER_BPCHARBYTE
             || ty == &Type::SQLSERVER_VARCHARBYTE
             || ty == &Type::SQLSERVER_SYSNAME
+            || ty == &Type::SQLSERVER_SYS_TEXT
+            || ty == &Type::SQLSERVER_NTEXT
             || ty == &Type::ORACLE_BFILE
             || ty == &Type::XML
             || matches!(ty.name(), "citext" | "ltree" | "lquery" | "ltxtquery")
@@ -1448,7 +1436,7 @@ macro_rules! simple_to {
 
 simple_to!(bool, bool_to_sql, BOOL, SQLSERVER_SYS_BIT);
 simple_to!(i8, char_to_sql, CHAR, MYSQL_TINYINT, ORACLE_TINYINT);
-simple_to!(i16, int2_to_sql, INT2);
+simple_to!(i16, int2_to_sql, INT2, SQLSERVER_SMALLINT);
 impl ToSql for i32 {
     fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         types::int4_to_sql(*self, w);
@@ -1459,11 +1447,15 @@ impl ToSql for i32 {
         matches!(
             *ty,
             Type::INT4
+                | Type::SQLSERVER_INT
                 | Type::MYSQL_INT1
                 | Type::MYSQL_INT3
                 | Type::MYSQL_MEDIUMINT
                 | Type::MYSQL_MIDDLEINT
                 | Type::MYSQL_YEAR
+                | Type::MYSQL_UNSIGNED_TINYINT
+                | Type::MYSQL_UNSIGNED_SMALLINT
+                | Type::MYSQL_UNSIGNED_MEDIUMINT
         )
     }
 
@@ -1480,9 +1472,9 @@ impl ToSql for u64 {
 
     to_sql_checked!();
 }
-simple_to!(i64, int8_to_sql, INT8);
-simple_to!(f32, float4_to_sql, FLOAT4);
-simple_to!(f64, float8_to_sql, FLOAT8);
+simple_to!(i64, int8_to_sql, INT8, SQLSERVER_BIGINT);
+simple_to!(f32, float4_to_sql, FLOAT4, SQLSERVER_REAL);
+simple_to!(f64, float8_to_sql, FLOAT8, SQLSERVER_FLOAT);
 
 impl<H> ToSql for HashMap<String, Option<String>, H>
 where
