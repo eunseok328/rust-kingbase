@@ -90,7 +90,7 @@ impl Numeric {
                 len => len,
             };
             groups.push(parse_group(&integer_padded[..first_len])?);
-            for chunk in integer_padded[first_len..].as_bytes().chunks(4) {
+            for chunk in integer_padded.as_bytes()[first_len..].chunks(4) {
                 groups.push(parse_group(std::str::from_utf8(chunk)?)?);
             }
         }
