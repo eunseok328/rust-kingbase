@@ -79,7 +79,7 @@ impl Numeric {
             };
 
             groups.push(parse_group(&integer[..first_len])?);
-            for chunk in integer[first_len..].as_bytes().chunks(4) {
+            for chunk in integer.as_bytes()[first_len..].chunks(4) {
                 groups.push(parse_group(std::str::from_utf8(chunk)?)?);
             }
         }
@@ -101,11 +101,7 @@ impl Numeric {
             }
         }
 
-        let integer_groups = if integer_len == 0 {
-            0
-        } else {
-            (integer_len + 3) / 4
-        };
+        let integer_groups = integer_len.div_ceil(4);
         let mut weight = if integer_groups == 0 {
             -1
         } else {
