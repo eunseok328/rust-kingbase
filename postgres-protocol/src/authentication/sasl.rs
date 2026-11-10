@@ -15,6 +15,16 @@ use std::str;
 
 const NONCE_LENGTH: usize = 24;
 
+/// The maximum SCRAM iteration count the client will accept from the server.
+///
+/// The iteration count is sent by the server and drives a PBKDF2 loop, so an
+/// unbounded value lets a malicious or impersonating server force the client to
+/// perform an arbitrary number of HMAC operations before authentication even
+/// completes (a denial of service). 100_000 is ~24x the PostgreSQL default of
+/// 4096 and matches the default cap the PostgreSQL JDBC driver (pgjdbc) adopted
+/// for the same issue (CVE-2026-42198).
+const MAX_ITERATION_COUNT: u32 = 100_000;
+
 /// The identifier of the SCRAM-SHA-256 SASL authentication mechanism.
 pub const SCRAM_SHA_256: &str = "SCRAM-SHA-256";
 /// The identifier of the SCRAM-SHA-256-PLUS SASL authentication mechanism.
@@ -190,6 +200,13 @@ impl ScramSha256 {
 
         if !parsed.nonce.starts_with(&client_nonce) {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid nonce"));
+        }
+
+        if parsed.iteration_count > MAX_ITERATION_COUNT {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "SCRAM iteration count exceeds the maximum allowed",
+            ));
         }
 
         let salt = match STANDARD.decode(parsed.salt) {
@@ -391,7 +408,7 @@ impl<'a> Parser<'a> {
     }
 
     fn value(&mut self) -> io::Result<&'a str> {
-        self.take_while(|c| matches!(c, '\0' | '=' | ','))
+        self.take_while(|c| !matches!(c, '\0' | '=' | ','))
     }
 
     fn server_error(&mut self) -> io::Result<Option<&'a str>> {
