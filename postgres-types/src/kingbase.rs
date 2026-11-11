@@ -2079,8 +2079,8 @@ impl ToSql for MySqlBit {
         out.put_u32(significant_bits as u32);
 
         if significant_bits > 0 {
-            let significant_len = bit_payload_len(significant_bits).expect("validated bit length");
-            let mut significant = vec![0; significant_len];
+            // Preserve the full bit width, padding after the significant bits.
+            let mut significant = vec![0; self.payload.len()];
             for index in 0..significant_bits as usize {
                 let source = leading_zero_bits as usize + index;
                 if self.payload[source / 8] & (0x80 >> (source % 8)) != 0 {

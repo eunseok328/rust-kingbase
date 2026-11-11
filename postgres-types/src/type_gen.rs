@@ -660,11 +660,10 @@ impl Type {
         Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlBitArray));
 
     /// sys.mysql_json - KingbaseES MySQL JSON binary type
-    pub const MYSQL_MYSQL_JSON: Type =
-        Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlJsonBase));
+    pub const MYSQL_JSON: Type = Type(Inner::Mysql(crate::mysql_type_gen::Inner::MysqlJsonBase));
 
     /// sys._mysql_json - KingbaseES MySQL JSON binary array type
-    pub const MYSQL_MYSQL_JSON_ARRAY: Type = Type(Inner::Mysql(
+    pub const MYSQL_JSON_ARRAY: Type = Type(Inner::Mysql(
         crate::mysql_type_gen::Inner::MysqlJsonBaseArray,
     ));
 

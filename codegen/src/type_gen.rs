@@ -840,6 +840,8 @@ fn make_compatible_consts(
         } else {
             type_.ident.clone()
         };
+        let mode_prefix = format!("{prefix}_");
+        let ident = ident.strip_prefix(&mode_prefix).unwrap_or(&ident);
         write!(
             w,
             "\n\n    /// {docs}\n    pub const {prefix}_{ident}: Type = Type(Inner::{mode}(\n        crate::{module}_type_gen::Inner::{variant},\n    ));",
