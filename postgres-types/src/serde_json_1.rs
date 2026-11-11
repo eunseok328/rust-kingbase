@@ -17,10 +17,7 @@ mod lax;
 pub struct Json<T>(pub T);
 
 fn is_jsonb(ty: &Type) -> bool {
-    matches!(
-        *ty,
-        Type::JSONB | Type::MYSQL_SYS_JSON | Type::MYSQL_MYSQL_JSON
-    )
+    matches!(*ty, Type::JSONB | Type::MYSQL_SYS_JSON | Type::MYSQL_JSON)
 }
 
 impl<T: Serialize> Serialize for Json<T> {
@@ -68,7 +65,7 @@ where
         }
     }
 
-    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_MYSQL_JSON);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_JSON);
 }
 
 impl<T> ToSql for Json<T>
@@ -87,7 +84,7 @@ where
         Ok(IsNull::No)
     }
 
-    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_MYSQL_JSON);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_JSON);
     to_sql_checked!();
 }
 
@@ -96,7 +93,7 @@ impl<'a> FromSql<'a> for Value {
         Json::<Value>::from_sql(ty, raw).map(|json| json.0)
     }
 
-    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_MYSQL_JSON);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_JSON);
 }
 
 impl ToSql for Value {
@@ -108,6 +105,6 @@ impl ToSql for Value {
         Json(self).to_sql(ty, out)
     }
 
-    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_MYSQL_JSON);
+    accepts!(JSON, JSONB, MYSQL_SYS_JSON, MYSQL_JSON);
     to_sql_checked!();
 }
