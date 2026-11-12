@@ -931,6 +931,112 @@ dependencies = [
 ]
 
 [[package]]
+name = "kingbase"
+version = "0.19.14"
+dependencies = [
+ "bytes",
+ "criterion",
+ "fallible-iterator",
+ "futures-util",
+ "log",
+ "tokio",
+ "tokio-kingbase",
+]
+
+[[package]]
+name = "kingbase-derive"
+version = "0.4.9"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "kingbase-derive-test"
+version = "0.1.0"
+dependencies = [
+ "kingbase",
+ "kingbase-types",
+ "trybuild",
+]
+
+[[package]]
+name = "kingbase-native-tls"
+version = "0.5.3"
+dependencies = [
+ "futures-util",
+ "kingbase",
+ "native-tls",
+ "tokio",
+ "tokio-kingbase",
+ "tokio-native-tls",
+]
+
+[[package]]
+name = "kingbase-openssl"
+version = "0.5.3"
+dependencies = [
+ "futures-util",
+ "kingbase",
+ "openssl",
+ "tokio",
+ "tokio-kingbase",
+ "tokio-openssl",
+]
+
+[[package]]
+name = "kingbase-protocol"
+version = "0.6.12"
+dependencies = [
+ "base64",
+ "byteorder",
+ "bytes",
+ "fallible-iterator",
+ "getrandom 0.4.2",
+ "hmac",
+ "md-5",
+ "memchr",
+ "rand 0.10.0",
+ "sha2",
+ "stringprep",
+]
+
+[[package]]
+name = "kingbase-types"
+version = "0.2.14"
+dependencies = [
+ "array-init",
+ "bigdecimal",
+ "bit-vec 0.6.3",
+ "bit-vec 0.7.0",
+ "bit-vec 0.8.0",
+ "bit-vec 0.9.1",
+ "bytes",
+ "chrono",
+ "cidr 0.2.3",
+ "cidr 0.3.2",
+ "eui48 0.4.6",
+ "eui48 1.1.0",
+ "fallible-iterator",
+ "geo-types 0.6.2",
+ "geo-types 0.7.18",
+ "jiff 0.1.29",
+ "jiff 0.2.23",
+ "kingbase-derive",
+ "kingbase-protocol",
+ "rust_decimal",
+ "serde_core",
+ "serde_json",
+ "smol_str",
+ "time 0.2.27",
+ "time 0.3.45",
+ "uuid 0.8.2",
+ "uuid 1.23.0",
+]
+
+[[package]]
 name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1282,112 +1388,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "091397be61a01d4be58e7841595bd4bfedb15f1cd54977d79b8271e94ed799a3"
 dependencies = [
  "portable-atomic",
-]
-
-[[package]]
-name = "postgres"
-version = "0.19.14"
-dependencies = [
- "bytes",
- "criterion",
- "fallible-iterator",
- "futures-util",
- "log",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
-name = "postgres-derive"
-version = "0.4.9"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "postgres-derive-test"
-version = "0.1.0"
-dependencies = [
- "postgres",
- "postgres-types",
- "trybuild",
-]
-
-[[package]]
-name = "postgres-native-tls"
-version = "0.5.3"
-dependencies = [
- "futures-util",
- "native-tls",
- "postgres",
- "tokio",
- "tokio-native-tls",
- "tokio-postgres",
-]
-
-[[package]]
-name = "postgres-openssl"
-version = "0.5.3"
-dependencies = [
- "futures-util",
- "openssl",
- "postgres",
- "tokio",
- "tokio-openssl",
- "tokio-postgres",
-]
-
-[[package]]
-name = "postgres-protocol"
-version = "0.6.12"
-dependencies = [
- "base64",
- "byteorder",
- "bytes",
- "fallible-iterator",
- "getrandom 0.4.2",
- "hmac",
- "md-5",
- "memchr",
- "rand 0.10.0",
- "sha2",
- "stringprep",
-]
-
-[[package]]
-name = "postgres-types"
-version = "0.2.14"
-dependencies = [
- "array-init",
- "bigdecimal",
- "bit-vec 0.6.3",
- "bit-vec 0.7.0",
- "bit-vec 0.8.0",
- "bit-vec 0.9.1",
- "bytes",
- "chrono",
- "cidr 0.2.3",
- "cidr 0.3.2",
- "eui48 0.4.6",
- "eui48 1.1.0",
- "fallible-iterator",
- "geo-types 0.6.2",
- "geo-types 0.7.18",
- "jiff 0.1.29",
- "jiff 0.2.23",
- "postgres-derive",
- "postgres-protocol",
- "rust_decimal",
- "serde_core",
- "serde_json",
- "smol_str",
- "time 0.2.27",
- "time 0.3.45",
- "uuid 0.8.2",
- "uuid 1.23.0",
 ]
 
 [[package]]
@@ -2093,6 +2093,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-kingbase"
+version = "0.7.18"
+dependencies = [
+ "async-trait",
+ "bit-vec 0.6.3",
+ "bit-vec 0.7.0",
+ "bit-vec 0.8.0",
+ "bit-vec 0.9.1",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "criterion",
+ "env_logger",
+ "eui48 1.1.0",
+ "fallible-iterator",
+ "futures-channel",
+ "futures-executor",
+ "futures-util",
+ "geo-types 0.6.2",
+ "geo-types 0.7.18",
+ "jiff 0.1.29",
+ "jiff 0.2.23",
+ "kingbase-protocol",
+ "kingbase-types",
+ "log",
+ "network-interface",
+ "openssl",
+ "parking_lot",
+ "percent-encoding",
+ "phf",
+ "pin-project-lite",
+ "rand 0.10.0",
+ "serde_json",
+ "smol_str",
+ "socket2",
+ "time 0.2.27",
+ "time 0.3.45",
+ "tokio",
+ "tokio-util",
+ "uuid 0.8.2",
+ "uuid 1.23.0",
+ "whoami",
+]
+
+[[package]]
 name = "tokio-macros"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2122,51 +2167,6 @@ dependencies = [
  "openssl",
  "openssl-sys",
  "tokio",
-]
-
-[[package]]
-name = "tokio-postgres"
-version = "0.7.18"
-dependencies = [
- "async-trait",
- "bit-vec 0.6.3",
- "bit-vec 0.7.0",
- "bit-vec 0.8.0",
- "bit-vec 0.9.1",
- "byteorder",
- "bytes",
- "chrono",
- "criterion",
- "env_logger",
- "eui48 1.1.0",
- "fallible-iterator",
- "futures-channel",
- "futures-executor",
- "futures-util",
- "geo-types 0.6.2",
- "geo-types 0.7.18",
- "jiff 0.1.29",
- "jiff 0.2.23",
- "log",
- "network-interface",
- "openssl",
- "parking_lot",
- "percent-encoding",
- "phf",
- "pin-project-lite",
- "postgres-protocol",
- "postgres-types",
- "rand 0.10.0",
- "serde_json",
- "smol_str",
- "socket2",
- "time 0.2.27",
- "time 0.3.45",
- "tokio",
- "tokio-util",
- "uuid 0.8.2",
- "uuid 1.23.0",
- "whoami",
 ]
 
 [[package]]

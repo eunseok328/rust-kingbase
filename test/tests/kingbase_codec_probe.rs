@@ -1,12 +1,12 @@
-//! Codec behavior tests kept outside the postgres-types implementation crate.
+//! Codec behavior tests kept outside the kingbase-types implementation crate.
 
 use bytes::BytesMut;
-use postgres_types::kingbase::{
+use kingbase_types::kingbase::{
     Interval, MySqlBit, MySqlBitError, MySqlJsonPath, MySqlTime, MySqlYear, OracleDsInterval,
     OracleIntervalError, OracleRowId, OracleXmlType, OracleYmInterval, SqlServerDateTime2,
     SqlServerMoney, SqlServerRowVersion, SqlServerTime, SqlServerTinyInt, SqlServerVariant,
 };
-use postgres_types::{FromSql, IsNull, Kind, ToSql, Type};
+use kingbase_types::{FromSql, IsNull, Kind, ToSql, Type};
 
 fn assert_rejects_text_parameters<T>(value: &T)
 where
@@ -625,7 +625,7 @@ fn oracle_xmltype_uses_postgres_composite_layout() {
     let xml_type = Type::new(
         "xmltype".to_owned(),
         49_539,
-        Kind::Composite(vec![postgres_types::Field::new(
+        Kind::Composite(vec![kingbase_types::Field::new(
             "xml_data".to_owned(),
             Type::XML,
         )]),

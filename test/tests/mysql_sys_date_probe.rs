@@ -1,13 +1,13 @@
 use chrono::NaiveDate;
-use postgres_types::Type;
+use kingbase_types::Type;
 use std::env;
-use tokio_postgres::{CompatibleMode, NoTls};
+use tokio_kingbase::{CompatibleMode, NoTls};
 
-async fn connect() -> tokio_postgres::Client {
+async fn connect() -> tokio_kingbase::Client {
     let url = env::var("KINGBASE_TEST_URL")
         .or_else(|_| env::var("KINGBASE_MYSQL_URL"))
         .expect("set KINGBASE_TEST_URL or KINGBASE_MYSQL_URL");
-    let (client, connection) = tokio_postgres::connect(&url, NoTls)
+    let (client, connection) = tokio_kingbase::connect(&url, NoTls)
         .await
         .expect("connect to Kingbase MySQL mode");
     tokio::spawn(async move {

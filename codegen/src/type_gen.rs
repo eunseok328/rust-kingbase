@@ -32,25 +32,25 @@ pub fn build() {
     let oracle_types = parse_kingbase_overlay_types(KINGBASE_ORACLE_TYPE_DAT);
     let sqlserver_types = parse_kingbase_overlay_types(KINGBASE_SQLSERVER_TYPE_DAT);
 
-    let mut pg_file = BufWriter::new(File::create("../postgres-types/src/pg_type_gen.rs").unwrap());
+    let mut pg_file = BufWriter::new(File::create("../kingbase-types/src/pg_type_gen.rs").unwrap());
     make_mode_header(&mut pg_file);
     make_mode_enum(&mut pg_file, &types);
     make_pg_impl(&mut pg_file, &types);
 
     let mut mysql_file =
-        BufWriter::new(File::create("../postgres-types/src/mysql_type_gen.rs").unwrap());
+        BufWriter::new(File::create("../kingbase-types/src/mysql_type_gen.rs").unwrap());
     make_mode_header(&mut mysql_file);
     make_mode_enum(&mut mysql_file, &mysql_types);
     make_compatible_impl(&mut mysql_file, &mysql_types, &types, Mode::Mysql);
 
     let mut oracle_file =
-        BufWriter::new(File::create("../postgres-types/src/oracle_type_gen.rs").unwrap());
+        BufWriter::new(File::create("../kingbase-types/src/oracle_type_gen.rs").unwrap());
     make_mode_header(&mut oracle_file);
     make_mode_enum(&mut oracle_file, &oracle_types);
     make_compatible_impl(&mut oracle_file, &oracle_types, &types, Mode::Oracle);
 
     let mut sqlserver_file =
-        BufWriter::new(File::create("../postgres-types/src/sqlserver_type_gen.rs").unwrap());
+        BufWriter::new(File::create("../kingbase-types/src/sqlserver_type_gen.rs").unwrap());
     make_mode_header(&mut sqlserver_file);
     make_mode_enum(&mut sqlserver_file, &sqlserver_types);
     make_compatible_impl(
@@ -61,7 +61,7 @@ pub fn build() {
     );
 
     let mut wrapper_file =
-        BufWriter::new(File::create("../postgres-types/src/type_gen.rs").unwrap());
+        BufWriter::new(File::create("../kingbase-types/src/type_gen.rs").unwrap());
     make_wrapper_header(&mut wrapper_file);
     make_wrapper_enum(&mut wrapper_file);
     make_wrapper_impl(&mut wrapper_file);

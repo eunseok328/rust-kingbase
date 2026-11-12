@@ -1,36 +1,36 @@
-# Rust-Postgres
+# Rust-Kingbase
 
-PostgreSQL support for Rust.
+Kingbase support for Rust.
 
-## postgres [![Latest Version](https://img.shields.io/crates/v/postgres.svg)](https://crates.io/crates/postgres)
+## kingbase
 
-[Documentation](https://docs.rs/postgres)
+[Documentation](kingbase/src/lib.rs)
 
-A native, synchronous PostgreSQL client.
+A native, synchronous Kingbase client.
 
-## tokio-postgres [![Latest Version](https://img.shields.io/crates/v/tokio-postgres.svg)](https://crates.io/crates/tokio-postgres)
+## tokio-kingbase
 
-[Documentation](https://docs.rs/tokio-postgres)
+[Documentation](tokio-kingbase/src/lib.rs)
 
-A native, asynchronous PostgreSQL client.
+A native, asynchronous Kingbase client.
 
-## postgres-types [![Latest Version](https://img.shields.io/crates/v/postgres-types.svg)](https://crates.io/crates/postgres-types)
+## kingbase-types
 
-[Documentation](https://docs.rs/postgres-types)
+[Documentation](kingbase-types/src/lib.rs)
 
-Conversions between Rust and Postgres types.
+Conversions between Rust and Kingbase types.
 
-## postgres-native-tls [![Latest Version](https://img.shields.io/crates/v/postgres-native-tls.svg)](https://crates.io/crates/postgres-native-tls)
+## kingbase-native-tls
 
-[Documentation](https://docs.rs/postgres-native-tls)
+[Documentation](kingbase-native-tls/src/lib.rs)
 
-TLS support for postgres and tokio-postgres via native-tls.
+TLS support for kingbase and tokio-kingbase via native-tls.
 
-## postgres-openssl [![Latest Version](https://img.shields.io/crates/v/postgres-openssl.svg)](https://crates.io/crates/postgres-openssl)
+## kingbase-openssl
 
-[Documentation](https://docs.rs/postgres-openssl)
+[Documentation](kingbase-openssl/src/lib.rs)
 
-TLS support for postgres and tokio-postgres via openssl.
+TLS support for kingbase and tokio-kingbase via openssl.
 
 # Running test suite
 
@@ -40,7 +40,7 @@ The test suite requires postgres to be running in the correct configuration. The
    1. On ubuntu: `sudo apt install docker.io docker-compose`.
 1. Make sure your user has permissions for docker.
    1. On ubuntu: ``sudo usermod -aG docker $USER``
-1. Change to top-level directory of `rust-postgres` repo.
+1. Change to top-level directory of `rust-kingbase` repo.
 1. Run `docker-compose up -d`.
 1. Run `cargo test`.
 1. Run `docker-compose stop`.
