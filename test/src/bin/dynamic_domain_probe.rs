@@ -1,11 +1,11 @@
-use tokio_postgres::NoTls;
+use tokio_kingbase::NoTls;
 
 const CONNECTION: &str =
     "host=127.0.0.1 port=54322 user=system password=0319 dbname=test";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (client, connection) = tokio_postgres::connect(CONNECTION, NoTls).await?;
+    let (client, connection) = tokio_kingbase::connect(CONNECTION, NoTls).await?;
     tokio::spawn(async move {
         if let Err(error) = connection.await {
             eprintln!("Kingbase connection error: {error}");

@@ -288,9 +288,9 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "chrono",
- "postgres-types",
+ "kingbase-types",
  "tokio",
- "tokio-postgres",
+ "tokio-kingbase",
 ]
 
 [[package]]
@@ -438,7 +438,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
-name = "postgres-protocol"
+name = "kingbase-protocol"
 version = "0.6.11"
 dependencies = [
  "base64",
@@ -454,13 +454,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres-types"
+name = "kingbase-types"
 version = "0.2.13"
 dependencies = [
  "bytes",
  "chrono",
  "fallible-iterator",
- "postgres-protocol",
+ "kingbase-protocol",
 ]
 
 [[package]]
@@ -674,7 +674,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-postgres"
+name = "tokio-kingbase"
 version = "0.7.17"
 dependencies = [
  "async-trait",
@@ -688,8 +688,8 @@ dependencies = [
  "percent-encoding",
  "phf",
  "pin-project-lite",
- "postgres-protocol",
- "postgres-types",
+ "kingbase-protocol",
+ "kingbase-types",
  "rand",
  "socket2",
  "tokio",
