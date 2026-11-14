@@ -1,0 +1,19 @@
+[package]
+name = "kingbase-derive"
+version = "0.4.9"
+authors = ["Steven Fackler <sfackler@palantir.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2024"
+description = "An internal crate used by kingbase-types"
+repository = "https://github.com/eunseok328/rust-kingbase"
+rust-version = "1.85"
+
+[lib]
+proc-macro = true
+test = false
+
+[dependencies]
+syn = "2.0"
+proc-macro2 = "1.0"
+quote = "1.0"
+heck = "0.5"

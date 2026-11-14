@@ -1,14 +1,14 @@
 [workspace]
 members = [
     "codegen",
-    "postgres",
-    "postgres-derive",
-    "postgres-derive-test",
-    "postgres-native-tls",
-    "postgres-openssl",
-    "postgres-protocol",
-    "postgres-types",
-    "tokio-postgres",
+    "kingbase",
+    "kingbase-derive",
+    "kingbase-derive-test",
+    "kingbase-native-tls",
+    "kingbase-openssl",
+    "kingbase-protocol",
+    "kingbase-types",
+    "tokio-kingbase",
 ]
 resolver = "2"
 
