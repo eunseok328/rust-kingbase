@@ -1,0 +1,12 @@
+[package]
+name = "kingbase-derive-test"
+version = "0.1.0"
+authors = ["Steven Fackler <sfackler@gmail.com>"]
+edition = "2024"
+rust-version = "1.85"
+
+[dev-dependencies]
+trybuild = "1.0.18"
+
+kingbase-types = { path = "../kingbase-types", features = ["derive"] }
+kingbase = { path = "../kingbase" }

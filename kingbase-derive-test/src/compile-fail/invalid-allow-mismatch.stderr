@@ -1,0 +1,43 @@
+error: #[kingbase(allow_mismatch)] may only be applied to enums
+ --> src/compile-fail/invalid-allow-mismatch.rs:4:1
+  |
+4 | / #[kingbase(allow_mismatch)]
+5 | | struct ToSqlAllowMismatchStruct {
+6 | |     a: i32,
+7 | | }
+  | |_^
+
+error: #[kingbase(allow_mismatch)] may only be applied to enums
+  --> src/compile-fail/invalid-allow-mismatch.rs:10:1
+   |
+10 | / #[kingbase(allow_mismatch)]
+11 | | struct FromSqlAllowMismatchStruct {
+12 | |     a: i32,
+13 | | }
+   | |_^
+
+error: #[kingbase(allow_mismatch)] may only be applied to enums
+  --> src/compile-fail/invalid-allow-mismatch.rs:16:1
+   |
+16 | / #[kingbase(allow_mismatch)]
+17 | | struct ToSqlAllowMismatchTupleStruct(i32, i32);
+   | |_______________________________________________^
+
+error: #[kingbase(allow_mismatch)] may only be applied to enums
+  --> src/compile-fail/invalid-allow-mismatch.rs:20:1
+   |
+20 | / #[kingbase(allow_mismatch)]
+21 | | struct FromSqlAllowMismatchTupleStruct(i32, i32);
+   | |_________________________________________________^
+
+error: #[kingbase(transparent)] is not allowed with #[kingbase(allow_mismatch)]
+  --> src/compile-fail/invalid-allow-mismatch.rs:24:25
+   |
+24 | #[kingbase(transparent, allow_mismatch)]
+   |                         ^^^^^^^^^^^^^^
+
+error: #[kingbase(allow_mismatch)] is not allowed with #[kingbase(transparent)]
+  --> src/compile-fail/invalid-allow-mismatch.rs:28:28
+   |
+28 | #[kingbase(allow_mismatch, transparent)]
+   |                            ^^^^^^^^^^^
