@@ -166,3 +166,30 @@ async fn mac_can_be_followed_by_authentication_ok() {
     connect_ok(config(port, None)).await;
     task.join().unwrap();
 }
+
+#[tokio::test]
+async fn md5_authentication_with_optional_mac() {
+    for (before, after) in [(false, false), (true, false), (false, true), (true, true)] {
+        let (port, task) = support::server(move |stream| {
+            if before {
+                support::mac(stream);
+            }
+            let mut body = 5_i32.to_be_bytes().to_vec();
+            body.extend_from_slice(&[1, 2, 3, 4]);
+            support::send(stream, b'R', &body);
+            assert_eq!(
+                support::receive(stream, b'p'),
+                b"md5594f15006e55e17dff918116ee00778f\0"
+            );
+            if after {
+                support::mac(stream);
+            }
+            support::finish(stream);
+        });
+        let (client, connection) = config(port, Some("secret")).connect(NoTls).await.unwrap();
+        assert!(!client.is_closed());
+        drop(client);
+        drop(connection);
+        task.join().unwrap();
+    }
+}

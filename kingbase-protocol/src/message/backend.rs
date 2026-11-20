@@ -89,8 +89,6 @@ pub enum Message {
     AuthenticationKingbaseCertificate(AuthenticationKingbaseCertificateBody),
     /// A KingbaseES request for the client's network interface MAC addresses (type 19).
     AuthenticationMac,
-    /// A KingbaseES MD5_SHARDING password challenge (type 21), with a four-byte salt.
-    AuthenticationMd5ShardingPassword(AuthenticationMd5PasswordBody),
     BackendKeyData(BackendKeyDataBody),
     BindComplete,
     CloseComplete,
@@ -251,13 +249,6 @@ impl Message {
                     )
                 }
                 19 => Message::AuthenticationMac,
-                21 => {
-                    let mut salt = [0; 4];
-                    buf.read_exact(&mut salt)?;
-                    Message::AuthenticationMd5ShardingPassword(AuthenticationMd5PasswordBody {
-                        salt,
-                    })
-                }
                 tag => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,

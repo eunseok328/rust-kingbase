@@ -12,7 +12,7 @@ fn generated_type_modes_dispatch_by_schema() {
 
     let mysql_binary = Type::from_oid_in(TypeSystem::Mysql, 3383).unwrap();
     assert_eq!(mysql_binary.name(), "binary");
-    assert_eq!(mysql_binary.schema(), "sys");
+    assert_eq!(mysql_binary.schema(), "pg_catalog");
 
     let mysql_int4 = Type::from_oid_in(TypeSystem::Mysql, 23).unwrap();
     assert_eq!(mysql_int4, Type::INT4);
@@ -112,8 +112,9 @@ fn sqlserver_mode_includes_observed_fixed_type_registrations() {
 
     for oid in [
         4193, 5022, 5023, 5024, 5025, 5026, 5027, 5039, 5040, 5041, 5042, 5043, 5044, 5045, 5046,
-        5069, 5070, 6080, 6661, 6662, 7141, 7680, 7690, 7754, 7764, 7755, 7765, 7881, 7891, 7915,
-        7916, 8016, 8017, 8018, 8019, 12464, 12465, 12476,
+        5061, 5062, 5063, 5064, 5065, 5066, 5067, 5068, 5069, 5070, 6069, 6070, 6071, 6072, 6073,
+        6074, 6075, 6076, 6077, 6078, 6079, 6080, 6691, 6692, 7680, 7690, 7754, 7764, 7755, 7765,
+        7881, 7891, 7915, 7916, 7950, 7951, 8016, 8017, 8018, 8019, 12952, 12953, 12974,
     ] {
         let type_ = Type::from_oid_in(TypeSystem::SqlServer, oid)
             .unwrap_or_else(|| panic!("missing SQL Server type OID {oid}"));

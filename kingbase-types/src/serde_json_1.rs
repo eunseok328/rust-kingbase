@@ -6,8 +6,6 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::io::Read;
 
-mod lax;
-
 /// A wrapper type to allow arbitrary `Serialize`/`Deserialize` types to convert to Kingbase JSON values.
 ///
 /// Kingbase Oracle lax JSON is normalized when strict JSON deserialization fails.
@@ -54,7 +52,7 @@ where
                 if *ty == Type::JSON
                     && serde_json_1::from_slice::<serde_1::de::IgnoredAny>(raw).is_err()
                 {
-                    if let Some(normalized) = lax::normalize(raw) {
+                    if let Some(normalized) = crate::kingbase::oracle_json::normalize(raw) {
                         if let Ok(value) = serde_json_1::from_slice::<Value>(&normalized) {
                             return T::deserialize(value).map(Json).map_err(Into::into);
                         }

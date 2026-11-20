@@ -9,7 +9,7 @@ use crate::{Client, Connection, Error, SimpleQueryMessage};
 use bytes::BytesMut;
 use fallible_iterator::FallibleIterator;
 use futures_channel::mpsc;
-use futures_util::{FutureExt, Sink, SinkExt, Stream, TryStreamExt};
+use futures_util::{Sink, SinkExt, Stream, TryStreamExt};
 use kingbase_protocol::authentication;
 use kingbase_protocol::authentication::sasl;
 use kingbase_protocol::authentication::sasl::ScramSha256;
@@ -173,7 +173,7 @@ WHERE name = 'database_mode'
     let mut rows = pin!(client.simple_query_raw(KINGBASE_COMPATIBILITY_QUERY));
 
     let rows = match future::poll_fn(|cx| {
-        if connection.poll_unpin(cx)?.is_ready() {
+        if connection.poll_for_startup(cx)?.is_ready() {
             return Poll::Ready(Err(Error::closed()));
         }
 
@@ -189,7 +189,7 @@ WHERE name = 'database_mode'
 
     loop {
         let next = future::poll_fn(|cx| {
-            if connection.poll_unpin(cx)?.is_ready() {
+            if connection.poll_for_startup(cx)?.is_ready() {
                 return Poll::Ready(Some(Err(Error::closed())));
             }
 
@@ -282,17 +282,6 @@ where
                 .ok_or_else(|| Error::config("password missing".into()))?;
 
             let output = authentication::md5_hash(user.as_bytes(), pass, body.salt());
-            authenticate_password(stream, output.as_bytes()).await?;
-        }
-        Some(Message::AuthenticationMd5ShardingPassword(body)) => {
-            can_skip_channel_binding(config)?;
-
-            let pass = config
-                .password
-                .as_ref()
-                .ok_or_else(|| Error::config("password missing".into()))?;
-
-            let output = authentication::md5_hash_sharding(user.as_bytes(), pass, body.salt());
             authenticate_password(stream, output.as_bytes()).await?;
         }
         Some(Message::AuthenticationSasl(body)) => {

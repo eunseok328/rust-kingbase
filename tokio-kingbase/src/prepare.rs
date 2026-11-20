@@ -179,7 +179,7 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
     // A compatibility overlay may intentionally reuse an OID occupied by a
     // PostgreSQL catalog type in another type system (for example SQL Server
     // nchar/money). Resolve the active mode's extension first; shared types
-    // fall through to the single PostgreSQL table below.
+    // fall back to the PostgreSQL table within from_oid_in.
     if let Some(type_) = Type::from_oid_in(type_system, oid) {
         if type_.type_system() == Some(type_system) && type_system != crate::types::TypeSystem::Pg {
             let info = load_type_info(client, oid)
@@ -188,10 +188,6 @@ pub(crate) async fn get_type(client: &Arc<InnerClient>, oid: Oid) -> Result<Type
             validate_extension_type(&type_, &info)?;
             client.set_type(type_system, oid, &type_);
         }
-        return Ok(type_);
-    }
-
-    if let Some(type_) = Type::from_pg_oid(oid) {
         return Ok(type_);
     }
 

@@ -9,6 +9,7 @@ use kingbase_types::{Kind, Type};
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SqlParseSettings {
     standard_conforming_strings: bool,
+    enable_backquote: bool,
     enable_unpaired_comment: bool,
 }
 
@@ -16,6 +17,7 @@ impl Default for SqlParseSettings {
     fn default() -> Self {
         Self {
             standard_conforming_strings: true,
+            enable_backquote: false,
             enable_unpaired_comment: false,
         }
     }
@@ -34,6 +36,9 @@ impl SqlParseSettings {
         match name {
             "standard_conforming_strings" => {
                 self.standard_conforming_strings = !value.eq_ignore_ascii_case("off");
+            }
+            "enable_backquote" => {
+                self.enable_backquote = value.eq_ignore_ascii_case("on");
             }
             "enable_unpaired_comment" => {
                 self.enable_unpaired_comment = value.eq_ignore_ascii_case("on");
@@ -369,6 +374,11 @@ struct Token<'a> {
 
 fn tokens(mode: CompatibleMode, settings: SqlParseSettings, query: &str) -> Vec<Token<'_>> {
     let bytes = query.as_bytes();
+    let backquote_identifiers = mode == CompatibleMode::Mysql
+        || (mode == CompatibleMode::Oracle && settings.enable_backquote);
+    // SQL Server keeps block comments nested even when this setting is on.
+    let enable_unpaired_comment =
+        mode != CompatibleMode::SqlServer && settings.enable_unpaired_comment;
     let mut tokens = Vec::new();
     let mut i = 0;
     while i < bytes.len() {
@@ -404,7 +414,7 @@ fn tokens(mode: CompatibleMode, settings: SqlParseSettings, query: &str) -> Vec<
                 i = skip_quoted_identifier(bytes, i, b'"');
                 continue;
             }
-            b'\x60' if mode == CompatibleMode::Mysql => {
+            b'\x60' if backquote_identifiers => {
                 i = skip_quoted_identifier(bytes, i, b'\x60');
                 continue;
             }
@@ -426,7 +436,7 @@ fn tokens(mode: CompatibleMode, settings: SqlParseSettings, query: &str) -> Vec<
                 continue;
             }
             b'/' if bytes.get(i + 1) == Some(&b'*') => {
-                i = skip_block_comment(bytes, i, settings.enable_unpaired_comment);
+                i = skip_block_comment(bytes, i, enable_unpaired_comment);
                 continue;
             }
             b'$' => {

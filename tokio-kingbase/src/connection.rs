@@ -56,6 +56,7 @@ pub struct Connection<S, T> {
     receiver: mpsc::UnboundedReceiver<Request>,
     pending_request: Option<RequestMessages>,
     pending_responses: VecDeque<BackendMessage>,
+    pending_async_messages: VecDeque<AsyncMessage>,
     responses: VecDeque<Response>,
     state: State,
 }
@@ -79,6 +80,7 @@ where
             receiver,
             pending_request: None,
             pending_responses,
+            pending_async_messages: VecDeque::new(),
             responses: VecDeque::new(),
             state: State::Active,
         }
@@ -323,6 +325,14 @@ where
         }
     }
 
+    /// Drives startup queries while preserving asynchronous messages for the caller.
+    pub(crate) fn poll_for_startup(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        while let Some(message) = ready!(self.poll_message_inner(cx)?) {
+            self.pending_async_messages.push_back(message);
+        }
+        Poll::Ready(Ok(()))
+    }
+
     /// Polls for asynchronous messages from the server.
     ///
     /// The server can send notices as well as notifications asynchronously to the client. Applications that wish to
@@ -334,6 +344,10 @@ where
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<AsyncMessage, Error>>> {
+        if let Some(message) = self.pending_async_messages.pop_front() {
+            return Poll::Ready(Some(Ok(message)));
+        }
+
         match self.poll_message_inner(cx) {
             nominal @ (Poll::Pending | Poll::Ready(Some(Ok(_)))) => nominal,
             terminal @ (Poll::Ready(None) | Poll::Ready(Some(Err(_)))) => {
