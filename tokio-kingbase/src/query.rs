@@ -1,4 +1,4 @@
-use crate::client::{InnerClient, Responses};
+use crate::client::{CompatibleMode, InnerClient, Responses};
 use crate::codec::FrontendMessage;
 use crate::connection::RequestMessages;
 use crate::prepare::get_type;
@@ -12,6 +12,7 @@ use kingbase_protocol::message::frontend;
 use kingbase_types::Type;
 use log::{Level, debug, log_enabled};
 use pin_project_lite::pin_project;
+use std::borrow::Cow;
 use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -70,22 +71,9 @@ where
 {
     let buf = {
         let params = params.into_iter().collect::<Vec<_>>();
-        let param_oids = params
-            .iter()
-            .map(|(_, type_)| type_.oid())
-            .collect::<Vec<_>>();
+        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
 
-        let types = params
-            .iter()
-            .map(|(_, type_)| type_.clone())
-            .collect::<Vec<_>>();
-        let query = crate::sql_compat::rewrite_query(
-            client.compatible_mode(),
-            client.sql_parse_settings(),
-            query,
-            &types,
-        )
-        .map_err(Error::encode)?;
+        let query = rewrite_typed_query(client, query, &params)?;
         client.with_buf(|buf| {
             frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
             encode_bind_raw("", params, "", buf)?;
@@ -145,22 +133,9 @@ where
 {
     let buf = {
         let params = params.into_iter().collect::<Vec<_>>();
-        let param_oids = params
-            .iter()
-            .map(|(_, type_)| type_.oid())
-            .collect::<Vec<_>>();
+        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
 
-        let types = params
-            .iter()
-            .map(|(_, type_)| type_.clone())
-            .collect::<Vec<_>>();
-        let query = crate::sql_compat::rewrite_query(
-            client.compatible_mode(),
-            client.sql_parse_settings(),
-            query,
-            &types,
-        )
-        .map_err(Error::encode)?;
+        let query = rewrite_typed_query(client, query, &params)?;
         client.with_buf(|buf| {
             frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
             encode_bind_raw("", params, "", buf)?;
@@ -198,6 +173,26 @@ where
             }
         }
     }
+}
+
+fn rewrite_typed_query<'a, P>(
+    client: &InnerClient,
+    query: &'a str,
+    params: &[(P, Type)],
+) -> Result<Cow<'a, str>, Error> {
+    let mode = client.compatible_mode();
+    if mode == CompatibleMode::Pg {
+        return Ok(Cow::Borrowed(query));
+    }
+
+    // Only SQL Server's named EXEC rewrite needs parameter types.
+    let types = if mode == CompatibleMode::SqlServer {
+        params.iter().map(|(_, ty)| ty.clone()).collect()
+    } else {
+        Vec::new()
+    };
+    crate::sql_compat::rewrite_query(mode, client.sql_parse_settings(), query, &types)
+        .map_err(Error::encode)
 }
 
 pub async fn query_portal(
@@ -332,12 +327,7 @@ where
 {
     let (param_formats, params): (Vec<_>, Vec<_>) = params
         .into_iter()
-        .map(|(param, type_)| {
-            (
-                param.borrow_to_sql().encode_format(&type_) as i16,
-                (param, type_),
-            )
-        })
+        .map(|(p, ty)| (p.borrow_to_sql().encode_format(&ty) as i16, (p, ty)))
         .unzip();
 
     let mut error_idx = 0;
@@ -346,12 +336,12 @@ where
         statement_name,
         param_formats,
         params.into_iter().enumerate(),
-        |(idx, (param, type_)), buf| match param.borrow_to_sql().to_sql_checked(&type_, buf) {
+        |(idx, (param, ty)), buf| match param.borrow_to_sql().to_sql_checked(&ty, buf) {
             Ok(IsNull::No) => Ok(kingbase_protocol::IsNull::No),
             Ok(IsNull::Yes) => Ok(kingbase_protocol::IsNull::Yes),
-            Err(error) => {
+            Err(e) => {
                 error_idx = idx;
-                Err(error)
+                Err(e)
             }
         },
         Some(1),
@@ -367,7 +357,7 @@ where
 pin_project! {
     /// A stream of table rows.
     #[project(!Unpin)]
-pub struct RowStream {
+    pub struct RowStream {
         statement: Statement,
         responses: Responses,
         rows_affected: Option<u64>,

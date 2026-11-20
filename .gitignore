@@ -4,7 +4,4 @@ target
 *.iml
 .vscode
 
-.agent/
 .env
-*.log
-docs/
