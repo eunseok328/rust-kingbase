@@ -73,18 +73,27 @@ pub async fn prepare(
     query: &str,
     types: &[Type],
 ) -> Result<Statement, Error> {
-    let param_oids = types.iter().map(Type::oid).collect::<Vec<_>>();
-    prepare_inner(client, query, &param_oids, Some(types)).await
+    let query = crate::sql_compat::rewrite_query(
+        client.compatible_mode(),
+        client.sql_parse_settings(),
+        query,
+        types,
+    )
+    .map_err(Error::encode)?;
+    let mut param_oids = types.iter().map(Type::oid).collect();
+    if let Some((name, slots)) = crate::call::positional_call(client, &query) {
+        crate::call::parameter_oids(client, name, slots, &mut param_oids).await?;
+    }
+    prepare_raw(client, &query, &param_oids).await
 }
 
-async fn prepare_inner(
+pub(crate) async fn prepare_raw(
     client: &Arc<InnerClient>,
     query: &str,
     param_oids: &[Oid],
-    types: Option<&[Type]>,
 ) -> Result<Statement, Error> {
     let name = format!("s{}", NEXT_ID.fetch_add(1, Ordering::SeqCst));
-    let buf = encode(client, &name, query, param_oids, types)?;
+    let buf = encode(client, &name, query, param_oids)?;
     let mut responses = client.send(RequestMessages::Single(FrontendMessage::Raw(buf)))?;
 
     match responses.next().await? {
@@ -142,7 +151,6 @@ fn encode(
     name: &str,
     query: &str,
     param_oids: &[Oid],
-    types: Option<&[Type]>,
 ) -> Result<Bytes, Error> {
     if param_oids.is_empty() {
         debug!("preparing query {name}: {query}");
@@ -150,15 +158,8 @@ fn encode(
         debug!("preparing query {name} with type OIDs {param_oids:?}: {query}");
     }
 
-    let query = crate::sql_compat::rewrite_query(
-        client.compatible_mode(),
-        client.sql_parse_settings(),
-        query,
-        types.unwrap_or(&[]),
-    )
-    .map_err(Error::encode)?;
     client.with_buf(|buf| {
-        frontend::parse(name, &query, param_oids.iter().copied(), buf).map_err(Error::encode)?;
+        frontend::parse(name, query, param_oids.iter().copied(), buf).map_err(Error::encode)?;
         frontend::describe(b'S', name, buf).map_err(Error::encode)?;
         frontend::sync(buf);
         Ok(buf.split().freeze())

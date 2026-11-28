@@ -344,20 +344,25 @@ impl Client {
     /// Oracle mode accepts colon-prefixed names and numeric labels. Ordinary SQL
     /// binds every occurrence separately: both `:id, :id` and `:2, :1` consume two
     /// input parameters in their textual order. Anonymous PL/SQL blocks and CALL
-    /// statements instead reuse a slot for repeated names, assigning slots in
-    /// first-occurrence order. Names fold ASCII case; numeric labels do not index
-    /// the input slice. SQL strings inside a block are left for the server to
-    /// interpret. Use `prepare_typed`, `query_typed`, or `execute_typed` when the
-    /// server requires explicit bind types for a block or CALL statement.
+    /// statements compare names case-sensitively and reuse a slot for identical
+    /// names. Slots are assigned in first-occurrence order, including for numeric
+    /// labels. The server interprets SQL string literals inside a block. Use
+    /// `prepare_typed`, `query_typed`, or `execute_typed` when the server requires
+    /// explicit bind types for a block or CALL statement.
     ///
-    /// SQL Server mode accepts named `@name` parameters. Names differing only
-    /// in case reuse a slot; values follow the first occurrence of each distinct
+    /// SQL Server mode accepts case-sensitive named `@name` parameters. Identical
+    /// names reuse a slot, and values follow the first occurrence of each distinct
     /// name. Declared local variables, system variables, and procedure argument
     /// labels are preserved.
     /// Named EXEC input arguments use generated local variables because KES
     /// does not accept protocol slots directly after an argument label. Supply
     /// their types with `prepare_typed`, `query_typed`, or `execute_typed`.
     /// OUTPUT arguments must use declared server-side variables.
+    ///
+    /// For a standalone CALL with positional placeholders and a uniquely named
+    /// procedure, the driver obtains parameter directions from the server.
+    /// Bind a typed NULL for an OUT parameter and read the result using a query
+    /// method.
     ///
     /// Oracle and SQL Server modes leave question marks unchanged; they do not
     /// accept them as an additional driver parameter syntax. MySQL mode alone

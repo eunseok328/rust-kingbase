@@ -24,6 +24,10 @@ impl Default for SqlParseSettings {
 }
 
 impl SqlParseSettings {
+    pub(crate) fn unpaired_comments(self, mode: CompatibleMode) -> bool {
+        mode != CompatibleMode::SqlServer && self.enable_unpaired_comment
+    }
+
     pub(crate) fn from_parameters(parameters: &HashMap<String, String>) -> Self {
         let mut settings = Self::default();
         for (name, value) in parameters {
@@ -106,8 +110,8 @@ pub(crate) fn rewrite_query<'a>(
                 continue;
             }
             TokenKind::Named(name) if mode == CompatibleMode::SqlServer => {
-                let name = name.to_lowercase();
-                if declared.contains(&name) {
+                let variable_name = name.to_lowercase();
+                if declared.contains(&variable_name) {
                     continue;
                 }
                 let followed_by_equals = tokens
@@ -127,11 +131,11 @@ pub(crate) fn rewrite_query<'a>(
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
                         format!(
-                            "ambiguous SQL Server variable @{name}; declare it before assignment"
+                            "ambiguous SQL Server variable @{variable_name}; declare it before assignment"
                         ),
                     ));
                 }
-                if let Some(slot) = names.get(&name) {
+                if let Some(slot) = names.get(name) {
                     Some(*slot)
                 } else {
                     let slot = next_parameter(&mut used, &mut next)?;
@@ -140,10 +144,7 @@ pub(crate) fn rewrite_query<'a>(
                 }
             }
             TokenKind::Named(name) if oracle_reuses_names => {
-                // Unquoted Oracle bind names fold ASCII case. Preserve other
-                // characters: Unicode lowercasing can merge distinct KES names.
-                let name = name.to_ascii_lowercase();
-                if let Some(slot) = names.get(&name) {
+                if let Some(slot) = names.get(name) {
                     Some(*slot)
                 } else {
                     let slot = next_parameter(&mut used, &mut next)?;
@@ -377,8 +378,7 @@ fn tokens(mode: CompatibleMode, settings: SqlParseSettings, query: &str) -> Vec<
     let backquote_identifiers = mode == CompatibleMode::Mysql
         || (mode == CompatibleMode::Oracle && settings.enable_backquote);
     // SQL Server keeps block comments nested even when this setting is on.
-    let enable_unpaired_comment =
-        mode != CompatibleMode::SqlServer && settings.enable_unpaired_comment;
+    let enable_unpaired_comment = settings.unpaired_comments(mode);
     let mut tokens = Vec::new();
     let mut i = 0;
     while i < bytes.len() {
@@ -536,7 +536,7 @@ fn tokens(mode: CompatibleMode, settings: SqlParseSettings, query: &str) -> Vec<
     tokens
 }
 
-fn identifier_end(query: &str, start: usize, mode: CompatibleMode) -> usize {
+pub(crate) fn identifier_end(query: &str, start: usize, mode: CompatibleMode) -> usize {
     let mut end = start;
     for ch in query[start..].chars() {
         if ch == '_'
@@ -692,7 +692,7 @@ fn skip_oracle_q_quote(query: &str, start: usize) -> Option<usize> {
     )
 }
 
-fn skip_quoted_identifier(bytes: &[u8], start: usize, quote: u8) -> usize {
+pub(crate) fn skip_quoted_identifier(bytes: &[u8], start: usize, quote: u8) -> usize {
     let mut i = start + 1;
     while i < bytes.len() {
         if bytes[i] == quote {
@@ -724,7 +724,7 @@ fn skip_sqlserver_bracket(bytes: &[u8], start: usize) -> usize {
     bytes.len()
 }
 
-fn mysql_hash_operator_end(bytes: &[u8], start: usize) -> Option<usize> {
+pub(crate) fn mysql_hash_operator_end(bytes: &[u8], start: usize) -> Option<usize> {
     let mut end = start + 1;
     while let Some(byte) = bytes.get(end) {
         if !matches!(
@@ -754,7 +754,7 @@ fn mysql_hash_operator_end(bytes: &[u8], start: usize) -> Option<usize> {
     (end > start + 1).then_some(end)
 }
 
-fn skip_line_comment(bytes: &[u8], start: usize) -> usize {
+pub(crate) fn skip_line_comment(bytes: &[u8], start: usize) -> usize {
     let mut i = start + 1;
     while i < bytes.len() && !matches!(bytes[i], b'\n' | b'\r') {
         i += 1;
@@ -762,7 +762,11 @@ fn skip_line_comment(bytes: &[u8], start: usize) -> usize {
     i
 }
 
-fn skip_block_comment(bytes: &[u8], start: usize, enable_unpaired_comment: bool) -> usize {
+pub(crate) fn skip_block_comment(
+    bytes: &[u8],
+    start: usize,
+    enable_unpaired_comment: bool,
+) -> usize {
     let mut i = start + 2;
     let mut depth = 1;
     while i + 1 < bytes.len() {

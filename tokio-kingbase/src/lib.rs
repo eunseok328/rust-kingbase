@@ -153,6 +153,7 @@ use std::sync::Arc;
 
 pub mod binary_copy;
 mod bind;
+mod call;
 #[cfg(feature = "runtime")]
 mod cancel_query;
 mod cancel_query_raw;

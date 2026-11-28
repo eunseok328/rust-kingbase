@@ -69,22 +69,7 @@ where
     P: BorrowToSql,
     I: IntoIterator<Item = (P, Type)>,
 {
-    let buf = {
-        let params = params.into_iter().collect::<Vec<_>>();
-        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
-
-        let query = rewrite_typed_query(client, query, &params)?;
-        client.with_buf(|buf| {
-            frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
-            encode_bind_raw("", params, "", buf)?;
-            frontend::describe(b'S', "", buf).map_err(Error::encode)?;
-            frontend::execute("", 0, buf).map_err(Error::encode)?;
-            frontend::sync(buf);
-
-            Ok(buf.split().freeze())
-        })?
-    };
-
+    let buf = encode_typed(client, query, params).await?;
     let mut responses = client.send(RequestMessages::Single(FrontendMessage::Raw(buf)))?;
 
     loop {
@@ -131,22 +116,7 @@ where
     P: BorrowToSql,
     I: IntoIterator<Item = (P, Type)>,
 {
-    let buf = {
-        let params = params.into_iter().collect::<Vec<_>>();
-        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
-
-        let query = rewrite_typed_query(client, query, &params)?;
-        client.with_buf(|buf| {
-            frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
-            encode_bind_raw("", params, "", buf)?;
-            frontend::describe(b'S', "", buf).map_err(Error::encode)?;
-            frontend::execute("", 0, buf).map_err(Error::encode)?;
-            frontend::sync(buf);
-
-            Ok(buf.split().freeze())
-        })?
-    };
-
+    let buf = encode_typed(client, query, params).await?;
     let mut responses = client.send(RequestMessages::Single(FrontendMessage::Raw(buf)))?;
 
     let mut rows = 0;
@@ -173,6 +143,51 @@ where
             }
         }
     }
+}
+
+async fn encode_typed<P, I>(
+    client: &Arc<InnerClient>,
+    query: &str,
+    params: I,
+) -> Result<Bytes, Error>
+where
+    P: BorrowToSql,
+    I: IntoIterator<Item = (P, Type)>,
+{
+    let (query, name, slots, mut param_oids, bind_and_execute) = {
+        let params = params.into_iter().collect::<Vec<_>>();
+        let param_oids = params.iter().map(|(_, t)| t.oid()).collect::<Vec<_>>();
+        let query = rewrite_typed_query(client, query, &params)?;
+        let Some((name, slots)) = crate::call::positional_call(client, &query) else {
+            return client.with_buf(|buf| {
+                frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
+                encode_typed_execution(params, buf)?;
+                Ok(buf.split().freeze())
+            });
+        };
+        let name = name.to_owned();
+        // Serialize the user values before awaiting the catalog lookup.
+        let mut buf = BytesMut::new();
+        encode_typed_execution(params, &mut buf)?;
+        (query, name, slots, param_oids, buf)
+    };
+    crate::call::parameter_oids(client, &name, slots, &mut param_oids).await?;
+    client.with_buf(|buf| {
+        frontend::parse("", &query, param_oids, buf).map_err(Error::parse)?;
+        buf.extend_from_slice(&bind_and_execute);
+        Ok(buf.split().freeze())
+    })
+}
+
+fn encode_typed_execution<P: BorrowToSql>(
+    params: Vec<(P, Type)>,
+    buf: &mut BytesMut,
+) -> Result<(), Error> {
+    encode_bind_raw("", params, "", buf)?;
+    frontend::describe(b'S', "", buf).map_err(Error::encode)?;
+    frontend::execute("", 0, buf).map_err(Error::encode)?;
+    frontend::sync(buf);
+    Ok(())
 }
 
 fn rewrite_typed_query<'a, P>(

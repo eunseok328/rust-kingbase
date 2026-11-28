@@ -74,7 +74,7 @@ fn oracle_anonymous_blocks_and_calls_reuse_parameter_names() {
     for (sql, expected) in [
         (
             "BEGIN p(:x, :X, :y, :x); END;",
-            "BEGIN p($1, $1, $2, $1); END;",
+            "BEGIN p($1, $2, $3, $1); END;",
         ),
         (
             "DECLARE value INT := :2; BEGIN p(value, :1, :2); END;",
@@ -82,11 +82,11 @@ fn oracle_anonymous_blocks_and_calls_reuse_parameter_names() {
         ),
         (
             "-- CALL :ignored\n /* :ignored */ cAlL p(:x, :X, :y, :x)",
-            "-- CALL :ignored\n /* :ignored */ cAlL p($1, $1, $2, $1)",
+            "-- CALL :ignored\n /* :ignored */ cAlL p($1, $2, $3, $1)",
         ),
         (
             "<<outer_block>> DECLARE value INT := :x; BEGIN p(value, :X); END;",
-            "<<outer_block>> DECLARE value INT := $1; BEGIN p(value, $1); END;",
+            "<<outer_block>> DECLARE value INT := $1; BEGIN p(value, $2); END;",
         ),
     ] {
         assert_eq!(rewrite(CompatibleMode::Oracle, sql), expected);
@@ -97,12 +97,12 @@ fn oracle_anonymous_blocks_and_calls_reuse_parameter_names() {
 fn oracle_name_reuse_preserves_explicit_slots_and_dynamic_sql() {
     assert_eq!(
         rewrite(CompatibleMode::Oracle, "CALL p($2, :x, :X, :y, :2, :2)"),
-        "CALL p($2, $1, $1, $3, $4, $4)"
+        "CALL p($2, $1, $3, $4, $5, $5)"
     );
     let sql = "BEGIN EXECUTE IMMEDIATE nq'[BEGIN p(:x, :x, :y); END;]' USING :value, :VALUE; END;";
     assert_eq!(
         rewrite(CompatibleMode::Oracle, sql),
-        "BEGIN EXECUTE IMMEDIATE nq'[BEGIN p(:x, :x, :y); END;]' USING $1, $1; END;"
+        "BEGIN EXECUTE IMMEDIATE nq'[BEGIN p(:x, :x, :y); END;]' USING $1, $2; END;"
     );
     assert_eq!(
         rewrite(CompatibleMode::Oracle, "CALL p(:Ä, :ä, :Ä)"),
@@ -214,9 +214,9 @@ fn sqlserver_names_are_complete_and_reuse_slots() {
     assert_eq!(
         rewrite(
             CompatibleMode::SqlServer,
-            "SELECT @id, @ID, @a$b, @a#b, @中文, $2"
+            "SELECT @id, @ID, @id, @a$b, @a#b, @中文, $2"
         ),
-        "SELECT $1, $1, $3, $4, $5, $2"
+        "SELECT $1, $3, $1, $4, $5, $6, $2"
     );
     assert_eq!(
         rewrite(
@@ -242,11 +242,12 @@ fn sqlserver_preserves_local_variables_procedure_labels_and_system_variables() {
             CompatibleMode::SqlServer,
             SqlParseSettings::default(),
             exec,
-            &[Type::INT4],
+            &[Type::INT4, Type::INT4],
         )
         .unwrap(),
         "BEGIN\nDECLARE @__rust_kingbase_exec_1 \"pg_catalog\".\"int4\" = $1;\n\
-         EXEC dbo.proc @arg = @__rust_kingbase_exec_1, @other = @__rust_kingbase_exec_1\n; END\n"
+         DECLARE @__rust_kingbase_exec_2 \"pg_catalog\".\"int4\" = $2;\n\
+         EXEC dbo.proc @arg = @__rust_kingbase_exec_1, @other = @__rust_kingbase_exec_2\n; END\n"
     );
     assert_eq!(
         rewrite_query(
@@ -433,36 +434,48 @@ async fn oracle_live_anonymous_blocks_and_calls_reuse_parameters() {
         .unwrap();
 
     let call = "/* :ignored */ CALL pg_temp.placeholder_bind_record(:x, :X, :y, :x)";
-    let statement = client
-        .prepare_typed(call, &[Type::INT4, Type::INT4])
-        .await
-        .unwrap();
-    assert_eq!(statement.params(), &[Type::INT4, Type::INT4]);
-    for (x, y) in [(7_i32, 11_i32), (13, 17)] {
-        client.execute(&statement, &[&x, &y]).await.unwrap();
+    let types = [Type::INT4, Type::INT4, Type::INT4];
+    let statement = client.prepare_typed(call, &types).await.unwrap();
+    assert_eq!(statement.params(), &types);
+    for (x, upper_x, y) in [(7_i32, 8_i32, 11_i32), (13, 14, 17)] {
+        client
+            .execute(&statement, &[&x, &upper_x, &y])
+            .await
+            .unwrap();
     }
     assert!(
         client
-            .query_typed(call, &[(&19_i32, Type::INT4), (&23_i32, Type::INT4)])
+            .query_typed(
+                call,
+                &[
+                    (&19_i32, Type::INT4),
+                    (&20_i32, Type::INT4),
+                    (&23_i32, Type::INT4)
+                ],
+            )
             .await
             .unwrap()
             .is_empty()
     );
     client
-        .execute_typed(call, &[(&29_i32, Type::INT4), (&31_i32, Type::INT4)])
+        .execute_typed(
+            call,
+            &[
+                (&29_i32, Type::INT4),
+                (&30_i32, Type::INT4),
+                (&31_i32, Type::INT4),
+            ],
+        )
         .await
         .unwrap();
 
     let block = "DECLARE local_value INT := :x; BEGIN
         INSERT INTO pg_temp.placeholder_bind_results VALUES (local_value, :X, :y, :x);
         END;";
-    let block_statement = client
-        .prepare_typed(block, &[Type::INT4, Type::INT4])
-        .await
-        .unwrap();
-    assert_eq!(block_statement.params(), &[Type::INT4, Type::INT4]);
+    let block_statement = client.prepare_typed(block, &types).await.unwrap();
+    assert_eq!(block_statement.params(), &types);
     client
-        .execute(&block_statement, &[&37_i32, &41_i32])
+        .execute(&block_statement, &[&37_i32, &38_i32, &41_i32])
         .await
         .unwrap();
     client
@@ -481,6 +494,7 @@ async fn oracle_live_anonymous_blocks_and_calls_reuse_parameters() {
                 (&53_i32, Type::INT4),
                 (&59_i32, Type::INT4),
                 (&61_i32, Type::INT4),
+                (&63_i32, Type::INT4),
             ],
         )
         .await
@@ -496,14 +510,19 @@ async fn oracle_live_anonymous_blocks_and_calls_reuse_parameters() {
              INSERT INTO pg_temp.placeholder_bind_results
                  VALUES (result_value, :value, :other, :OTHER);
              END;",
-            &[(&67_i32, Type::INT4), (&73_i32, Type::INT4)],
+            &[
+                (&67_i32, Type::INT4),
+                (&69_i32, Type::INT4),
+                (&73_i32, Type::INT4),
+                (&75_i32, Type::INT4),
+            ],
         )
         .await
         .unwrap();
 
     let transaction = client.transaction().await.unwrap();
     transaction
-        .execute(&statement, &[&79_i32, &83_i32])
+        .execute(&statement, &[&79_i32, &81_i32, &83_i32])
         .await
         .unwrap();
     transaction.rollback().await.unwrap();
@@ -529,14 +548,14 @@ async fn oracle_live_anonymous_blocks_and_calls_reuse_parameters() {
     assert_eq!(
         values,
         vec![
-            (7, 7, 11, 7),
-            (13, 13, 17, 13),
-            (19, 19, 23, 19),
-            (29, 29, 31, 29),
-            (37, 37, 41, 37),
+            (7, 8, 11, 7),
+            (13, 14, 17, 13),
+            (19, 20, 23, 19),
+            (29, 30, 31, 29),
+            (37, 38, 41, 37),
             (43, 43, 47, 43),
-            (59, 53, 53, 61),
-            (134, 67, 73, 73),
+            (59, 53, 61, 63),
+            (136, 67, 73, 75),
         ]
     );
     client.check_connection().await.unwrap();
@@ -601,23 +620,23 @@ async fn sqlserver_live_names_case_literals_and_no_question_binds() {
     let stmt = client
         .prepare("SELECT '@id ?' AS literal, CAST(@id AS INT), CAST(@ID AS INT), CAST(@a$b AS INT), CAST(@a#b AS INT), CAST(@中文 AS INT)")
         .await.unwrap();
-    assert_eq!(stmt.params().len(), 4);
+    assert_eq!(stmt.params().len(), 5);
     let row = client
-        .query_one(&stmt, &[&7_i32, &11_i32, &13_i32, &17_i32])
+        .query_one(&stmt, &[&7_i32, &9_i32, &11_i32, &13_i32, &17_i32])
         .await
         .unwrap();
     assert_eq!(row.get::<_, String>(0), "@id ?");
-    for (column, value) in [7, 7, 11, 13, 17].into_iter().enumerate() {
+    for (column, value) in [7, 9, 11, 13, 17].into_iter().enumerate() {
         assert_eq!(row.get::<_, i32>(column + 1), value);
     }
     let rows = client
         .query_typed(
             "SELECT CAST(@id AS INT), CAST(@ID AS INT)",
-            &[(&7_i32, Type::INT4)],
+            &[(&7_i32, Type::INT4), (&9_i32, Type::INT4)],
         )
         .await
         .unwrap();
-    assert_eq!((rows[0].get::<_, i32>(0), rows[0].get::<_, i32>(1)), (7, 7));
+    assert_eq!((rows[0].get::<_, i32>(0), rows[0].get::<_, i32>(1)), (7, 9));
     assert_eq!(
         client
             .execute_typed("SELECT CAST(@id AS INT)", &[(&7_i32, Type::INT4)])
